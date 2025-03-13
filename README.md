@@ -33,27 +33,36 @@ gl_deep_search/
 ├── docker-compose.prod.yml          # Production setup
 │
 ├── backend/
-│   ├── etl/                         # ETL Pipeline
-│   │   ├── Dockerfile               # ETL Docker configuration
-│   │   ├── config.yaml              # ETL configuration
-│   │   ├── .env.example             # Example environment variables
-│   │   ├── main.py                  # Main ETL orchestration script
-│   │   ├── scripts/
-│   │   │   ├── growth_lab_scraper.py # Growth Lab website scraper
-│   │   │   ├── openAlex_client.py    # OpenAlex API client
-│   │   │   ├── process_pdfs.py       # OCR and process PDFs
-│   │   │   ├── embed_text.py         # Generate embeddings
-│   │   │   └── upload_data.py        # Store in vector DB
+│   ├── etl/
+│   │   ├── Dockerfile                # ETL container configuration
+│   │   ├── docker-compose.yml        # Local development setup
+│   │   ├── config.yaml               # Default configuration
+│   │   ├── .env.example              # Environment variables template
+│   │   ├── pyproject.toml            # Python dependencies (uv)
+│   │   ├── main.py                   # ETL orchestration entry point
+│   │   ├── models.py                 # Pydantic data models
+│   │   ├── config.py                 # Configuration management
+│   │   ├── scrapers/
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py               # Abstract scraper interface
+│   │   │   ├── growthlab.py          # Growth Lab website scraper
+│   │   │   └── openalex.py           # OpenAlex API client
+│   │   ├── processors/
+│   │   │   ├── __init__.py
+│   │   │   ├── pdf_processor.py      # PDF processing and OCR
+│   │   │   └── manifest.py           # Manifest management
+│   │   ├── storage/
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py               # Storage abstraction
+│   │   │   ├── local.py              # Local filesystem adapter
+│   │   │   └── gcs.py                # Google Cloud Storage adapter
 │   │   ├── utils/
-│   │   │   ├── ocr_utils.py          # OCR with modern tools
-│   │   │   ├── text_utils.py         # Text processing and chunking
-│   │   │   ├── embedding_utils.py    # Embedding generation
-│   │   │   ├── storage_utils.py      # Vector DB interactions
-│   │   │   └── cloud_utils.py        # Utilities for cloud storage
-│   │   └── data/                     # Local data storage during development
-│   │       ├── raw/                  # Raw downloaded files
-│   │       ├── intermediate/         # Processed but not final data
-│   │       └── processed/            # Final processed data
+│   │   │   ├── __init__.py
+│   │   │   ├── id_utils.py           # ID generation utilities
+│   │   │   ├── async_utils.py        # Async helpers & rate limiting
+│   │   │   ├── ocr_utils.py          # OCR interface
+│   │   │   └── logger.py             # Logging configuration
+│   │   └── tests/                    # Unit and integration tests
 │   │
 │   ├── service/                      # Main backend service (replaces "agent")
 │   │   ├── Dockerfile                # Service Docker configuration
