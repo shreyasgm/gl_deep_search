@@ -101,10 +101,10 @@ gl_deep_search/
 
 ## Tech Stack
 
-- **ETL Pipeline**: GitHub Actions, Modern OCR tools (Dockling/Marker/Gemini Flash 2)
+- **ETL Pipeline**: GitHub Actions, Modern OCR tools (Docling/Marker/Gemini Flash 2)
 - **Vector Storage**: Qdrant for embeddings, with Cohere for reranking
 - **Agent System**: LangGraph for agentic RAG workflows
-- **Backend API**: FastAPI, Python 3.11+
+- **Backend API**: FastAPI, Python 3.12+
 - **Frontend**: Streamlit or Chainlit for MVP
 - **Deployment**: Google Cloud Run
 - **Package Management**: uv
@@ -114,7 +114,7 @@ gl_deep_search/
 ### Prerequisites
 
 - Docker and Docker Compose
-- Python 3.11+
+- Python 3.12+
 - GCP account and credentials (for production)
 - API keys for OpenAI, Anthropic, etc.
 
