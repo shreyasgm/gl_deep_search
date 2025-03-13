@@ -4,7 +4,7 @@ An agentic RAG system that helps users query Growth Lab-specific unstructured da
 
 ## 🔍 Project Overview
 
-Growth Lab Agent is an agentic AI system designed to answer complex questions about the Growth Lab's research and publications. The system incorporates:
+Growth Lab Deep Search is an agentic AI system designed to answer complex questions about the Growth Lab's research and publications. The system incorporates:
 
 **Key Features:**
 
@@ -20,7 +20,7 @@ Growth Lab Agent is an agentic AI system designed to answer complex questions ab
 This is a rough outline of the intended directory structure. The actual structure might look different, but this should give an idea of the intended code organization.
 
 ```
-growth-lab-agent/
+gl_deep_search/
 ├── .github/
 │   └── workflows/
 │       ├── etl-pipeline.yml         # Scheduled ETL runs and deployment
@@ -154,22 +154,22 @@ The project uses Docker for consistent development and deployment environments:
 
 ### Running the ETL Pipeline
 
-The ETL pipeline can be run through Docker in both development and production:
+The ETL pipeline supports both development and production environments through containerized deployment. Initial data ingestion and processing of historical documents is executed on a High-Performance Computing (HPC) infrastructure using SLURM workload manager. Incremental updates for new documents are handled through Google Cloud Run.
 
 ```bash
-# Development: Run the ETL pipeline locally
+# Development: Execute ETL pipeline in local environment
 docker-compose run --rm etl python main.py
 
-# Production: Initial data processing on SLURM (HPC environment)
+# Production: Initial bulk processing via HPC/SLURM
 sbatch scripts/slurm_etl_initial.sh
 
-# Test specific ETL components
+# Component-specific execution
 docker-compose run --rm etl python main.py --component scraper
 docker-compose run --rm etl python main.py --component processor
 docker-compose run --rm etl python main.py --component embedder
 ```
 
-After the initial SLURM processing, data is transferred to GCP Cloud Storage, and subsequent ETL runs are automatically scheduled through GitHub Actions and Cloud Run.
+Post-initial processing, data is migrated to Google Cloud Storage. Subsequent ETL operations are orchestrated through automated GitHub Actions workflows and executed on Google Cloud Run.
 
 ## Deployment
 

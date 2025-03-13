@@ -2,8 +2,8 @@
 set -e
 
 # To run this script:
-#   chmod +x scripts/setup.sh
-#   ./scripts/setup.sh
+#   chmod +x setup.sh
+#   ./setup.sh
 
 # Display banner
 echo "=================================================="
@@ -21,7 +21,6 @@ mkdir -p backend/service/utils
 mkdir -p backend/storage
 mkdir -p backend/cloud
 mkdir -p frontend
-mkdir -p scripts
 
 # Create basic .env files
 echo "# Add your API keys and configuration here" > backend/etl/.env
