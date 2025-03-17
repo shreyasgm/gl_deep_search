@@ -182,6 +182,9 @@ skip-magic-trailing-comma = false
 
 # Configure import sorting (replaces isort functionality)
 [tool.ruff.isort]
-known-first-party = ["growth_lab_deep_search"]
+known-first-party = ["gl_deep_search"]
 force-single-line = false
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]

@@ -1,5 +1,6 @@
 # Project-specific
 .cursorrules
+CLAUDE.md
 data/raw/
 data/intermediate/
 data/processed/
