@@ -7,7 +7,7 @@ name = "growth-lab-deep-search"
 version = "0.1.0"
 description = "An agentic RAG system that helps users query Growth Lab-specific unstructured data"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 license = { text = "CC-BY-NC-SA 4.0" }
 authors = [
     { name = "Shreyas Gadgin Matha" },
@@ -44,13 +44,13 @@ etl = [
     "scrapy",
     "backoff",
     "asyncio",
-    
+
     # PDF processing and OCR
     "langdetect",
     "unstructured",
     "docling",
     "marker-pdf",
-    
+
     # Vector databases and embeddings
     "qdrant-client",
     "sentence-transformers",
@@ -61,7 +61,7 @@ etl = [
     "pandas",
     "numpy",
     "seaborn",
-    
+
     # Cloud storage
     "google-cloud-storage",
 ]
@@ -72,24 +72,24 @@ service = [
     "fastapi",
     "uvicorn",
     "pydantic-settings",
-    
+
     # Vector search
     "qdrant-client",
-    
+
     # LLM frameworks
     "langgraph",
     "langchain",
     "langchain-community",
     "langchain-openai",
     "langchain-anthropic",
-    
+
     # LLM providers
     "openai",
     "anthropic",
-    
+
     # Observability
     "langsmith",
-    
+
     # Embeddings
     "sentence-transformers",
     "cohere",
@@ -116,16 +116,16 @@ dev = [
     # MCP for Cursor or other IDE
     "browser-use",
     "playwright",
-    
+
     # Linting, formatting, type checking
     "ruff",
     "mypy",
     "types-requests",
     "types-PyYAML",
-    
+
     # Pre-commit hooks
     "pre-commit",
-    
+
     # Documentation
     "mkdocs",
     "mkdocs-material",

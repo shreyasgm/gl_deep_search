@@ -132,7 +132,7 @@ gl_deep_search/
    cp backend/service/.env.example backend/service/.env
    cp frontend/.env.example frontend/.env
    ```
-   
+
 3. Add your API keys and configuration to the `.env` files
 
 ### Docker Development Environment
@@ -153,10 +153,10 @@ The project uses Docker for consistent development and deployment environments:
    ```bash
    # Run only the ETL service
    docker-compose up etl
-   
+
    # Run only the backend service
    docker-compose up service
-   
+
    # Run only the frontend
    docker-compose up frontend
    ```

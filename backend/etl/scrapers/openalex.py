@@ -34,14 +34,14 @@ class OpenAlexPublication(BaseModel):
     cited_by_count: int | None = None
 
     @field_validator("paper_id")
-    def validate_id(self, v):
+    def validate_id(cls, v):  # noqa: N805
         """Ensure paper_id is just the ID without the URL prefix"""
         if v.startswith("https://openalex.org/"):
             return v.replace("https://openalex.org/", "")
         return v
 
     @model_validator(mode="before")
-    def set_openalex_id(self, values: dict[str, Any]) -> dict[str, Any]:
+    def set_openalex_id(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa: N805
         """Ensure openalex_id is the full URL"""
         if "paper_id" in values and not values.get("openalex_id"):
             paper_id = values["paper_id"]
@@ -138,7 +138,7 @@ class OpenAlexClient:
     async def fetch_all_pages(self) -> list[dict[str, Any]]:
         """Fetch all pages of results from OpenAlex API"""
         all_results = []
-        cursor = "*"  # Start with first page
+        cursor: str | None = "*"  # Start with first page
         overall_retries = 0
 
         async with aiohttp.ClientSession() as session:
@@ -172,7 +172,7 @@ class OpenAlexClient:
                 max_pos = max(positions)
 
         # Create a list with None placeholders
-        abstract_list = [None] * (max_pos + 1)
+        abstract_list: list[str | None] = [None] * (max_pos + 1)
 
         # Fill in the words at their positions
         for word, positions in abstract_dict.items():

@@ -12,7 +12,7 @@ sources:
     download_timeout: 60
     redownload_existing: false
     remove_outdated_files: true
-  
+
   openalex:
     author_id: "A5034550995" # Ricardo's author ID
     email: "your_email@example.com" # for polite OpenAlex API use
@@ -29,7 +29,7 @@ file_processing:
     chunk_size: 1000
     chunk_overlap: 200
     language_detection_pages: 5
-  
+
   embedding:
     model: "openai"  # Options: openai, sentence_transformer
     dimensions: 1536
@@ -37,11 +37,11 @@ file_processing:
 
 # Storage
 storage:
-  vector_db: 
+  vector_db:
     name: "qdrant"
     collections:
       documents: "gl_documents"
-      chunks: "gl_chunks"  
+      chunks: "gl_chunks"
 
 
 # Runtime detection

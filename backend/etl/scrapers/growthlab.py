@@ -3,19 +3,18 @@ Scraper module for the Growth Lab website publications
 """
 
 import asyncio
+import hashlib
 import logging
 import re
-import time
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Tuple
-import yaml
+from typing import Any
+
 import aiohttp
-from bs4 import BeautifulSoup
-from pydantic import BaseModel, HttpUrl, Field, validator
 import pandas as pd
+import yaml
+from bs4 import BeautifulSoup
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 from tqdm.asyncio import tqdm as async_tqdm
-import hashlib
-import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -23,18 +22,18 @@ logger = logging.getLogger(__name__)
 class Publication(BaseModel):
     """Represents a publication with relevant details"""
 
-    paper_id: Optional[str] = None
-    title: Optional[str] = None
-    authors: Optional[str] = None
-    year: Optional[int] = None
-    abstract: Optional[str] = None
-    pub_url: Optional[HttpUrl] = None
-    file_urls: List[HttpUrl] = Field(default_factory=list)
+    paper_id: str | None = None
+    title: str | None = None
+    authors: str | None = None
+    year: int | None = None
+    abstract: str | None = None
+    pub_url: HttpUrl | None = None
+    file_urls: list[HttpUrl] = Field(default_factory=list)
     source: str = "GrowthLab"
-    content_hash: Optional[str] = None  # Hash for detecting changes in publication
+    content_hash: str | None = None  # Hash for detecting changes in publication
 
-    @validator("year")
-    def validate_year(cls, v):
+    @field_validator("year")
+    def validate_year(cls, v):  # noqa: N805
         """Validate year is reasonable"""
         if v and (v < 1900 or v > 2100):
             return None
@@ -68,13 +67,14 @@ class Publication(BaseModel):
 class GrowthLabScraper:
     """Scraper for Growth Lab website publications"""
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """Initialize the scraper with configuration"""
         self.config = self._load_config(config_path)
         self.base_url = self.config["base_url"]
         self.scrape_delay = self.config["scrape_delay"]
 
-        # Hardcoded year corrections for publications with missing years
+        # fmt: off
+        # ruff: noqa: E501
         self.year_corrections = {
             "https://growthlab.hks.harvard.edu/publications/sri-lanka-growth-diagnostic": 2018,
             "https://growthlab.hks.harvard.edu/publications/recommendations-trade-adjustment-assistance-sri-lanka": 2017,
@@ -85,14 +85,15 @@ class GrowthLabScraper:
             "https://growthlab.hks.harvard.edu/publications/economic-complexity-brief": 2013,
             "https://growthlab.hks.harvard.edu/publications/journey-through-time-story-behind-%E2%80%98eight-decades-changes-occupational-tasks": 2024,
         }
+        # fmt: on
 
-    def _load_config(self, config_path: Optional[Path] = None) -> Dict[str, Any]:
+    def _load_config(self, config_path: Path | None = None) -> dict[str, Any]:
         """Load scraper configuration"""
         if not config_path:
             config_path = Path(__file__).parent.parent / "config.yaml"
 
         try:
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
                 return config["sources"]["growth_lab"]
         except Exception as e:
@@ -126,7 +127,7 @@ class GrowthLabScraper:
 
     async def parse_publication(
         self, pub_element: BeautifulSoup, base_url: str
-    ) -> Optional[Publication]:
+    ) -> Publication | None:
         """Parse a single publication element"""
         try:
             title_element = pub_element.find("span", {"class": "biblio-title"})
@@ -195,7 +196,7 @@ class GrowthLabScraper:
 
     async def fetch_page(
         self, session: aiohttp.ClientSession, page_num: int
-    ) -> List[Publication]:
+    ) -> list[Publication]:
         """Fetch a single page of publications"""
         url = self.base_url if page_num == 0 else f"{self.base_url}?page={page_num}"
         publications = []
@@ -222,7 +223,7 @@ class GrowthLabScraper:
             logger.error(f"Error fetching page {page_num}: {e}")
             return []
 
-    async def extract_publications(self) -> List[Publication]:
+    async def extract_publications(self) -> list[Publication]:
         """Extract all publications from the Growth Lab website"""
         async with aiohttp.ClientSession() as session:
             # Get the maximum page number
@@ -246,7 +247,7 @@ class GrowthLabScraper:
 
     async def get_endnote_file_url(
         self, session: aiohttp.ClientSession, publication_url: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Fetch Endnote file URL from a publication page"""
         try:
             async with session.get(publication_url) as response:
@@ -264,9 +265,9 @@ class GrowthLabScraper:
             logger.error(f"Error fetching Endnote URL for {publication_url}: {e}")
             return None
 
-    async def parse_endnote_content(self, content: str) -> Dict[str, Any]:
+    async def parse_endnote_content(self, content: str) -> dict[str, Any]:
         """Parse Endnote file content"""
-        record: Dict[str, Any] = {}
+        record: dict[str, Any] = {}
         lines = content.split("\n")
 
         for line in lines:
@@ -307,7 +308,7 @@ class GrowthLabScraper:
         if not pub.pub_url:
             return pub
 
-        endnote_url = await self.get_endnote_file_url(session, pub.pub_url)
+        endnote_url = await self.get_endnote_file_url(session, str(pub.pub_url))
         if not endnote_url:
             return pub
 
@@ -337,7 +338,7 @@ class GrowthLabScraper:
             logger.error(f"Error enriching publication from Endnote: {e}")
             return pub
 
-    async def extract_and_enrich_publications(self) -> List[Publication]:
+    async def extract_and_enrich_publications(self) -> list[Publication]:
         """Extract all publications and enrich them with Endnote data"""
         publications = await self.extract_publications()
 
@@ -349,13 +350,13 @@ class GrowthLabScraper:
 
         return enriched_publications
 
-    def save_to_csv(self, publications: List[Publication], output_path: Path) -> None:
+    def save_to_csv(self, publications: list[Publication], output_path: Path) -> None:
         """Save publications to CSV file"""
         df = pd.DataFrame([pub.dict() for pub in publications])
         df.to_csv(output_path, index=False)
         logger.info(f"Saved {len(publications)} publications to {output_path}")
 
-    def load_from_csv(self, input_path: Path) -> List[Publication]:
+    def load_from_csv(self, input_path: Path) -> list[Publication]:
         """Load publications from CSV file"""
         if not input_path.exists():
             logger.warning(f"CSV file {input_path} does not exist")
@@ -371,8 +372,8 @@ class GrowthLabScraper:
             return []
 
     async def update_publications(
-        self, existing_path: Optional[Path] = None, output_path: Optional[Path] = None
-    ) -> List[Publication]:
+        self, existing_path: Path | None = None, output_path: Path | None = None
+    ) -> list[Publication]:
         """
         Update publications by comparing existing ones with newly scraped ones
 
