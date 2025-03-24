@@ -36,6 +36,24 @@ Repository = "https://github.com/shreyasgm/gl-deep-search"
 
 [project.optional-dependencies]
 # ETL pipeline dependencies
+
+# made here a subset of dependencies just for the gl scraper which might change - we can maybe merge them after the final etl scrapers are ready?
+
+growthlab_scraper = [
+    #current setup
+    "aiohttp",           # For async HTTP requests
+    "pandas",            # Data manipulation
+    "pyyaml",            # Config loading
+    "beautifulsoup4",    # HTML parsing
+    "pydantic>=2",       # Data validation
+    "tqdm",              # Progress bars
+    "lxml",              # Faster HTML parser for BeautifulSoup
+    "jupyter",           # For notebook exploration
+    "ipykernel",         # For notebook kernel
+    "pytest",            # For testing
+    "polars"
+]
+
 etl = [
     # Web scraping
     "beautifulsoup4",
