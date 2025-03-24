@@ -1,30 +1,38 @@
 """
-Minimal test for Growth Lab scraper functionality
+Minimal test for scraper functionality - yet to learn some of the packages
 """
+
+#async programming - maybe I just use dask?
 import asyncio
+
+#stuff
 import logging
 from pathlib import Path
 
+#async http
 import aiohttp
+
+#read config
 import yaml
+
+#usual web scraping
 from bs4 import BeautifulSoup
 
-# Set up basic logging
+#setting up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def test_scraper_functionality():
-    """Test if we can load the config and access the Growth Lab website"""
-    
-    # 1. Test loading config - FIXED PATH for running from scrapers directory
+async def test_scraper_functionality():    
+    #unsure if this is the way to do it
     config_path = Path(__file__).parent.parent / "config.yaml"
     
-    # Debug the path to verify it's correct
+    #check once - had to skip one directory, maybe we can move this script itself down to dev
     logger.info(f"Looking for config at: {config_path.absolute()}")
     
     try:
         with open(config_path) as f:
             config = yaml.safe_load(f)
+            #use the inputs for this script
             base_url = config["sources"]["growth_lab"]["base_url"]
             logger.info(f"Successfully loaded config, base_url: {base_url}")
     except Exception as e:
@@ -33,18 +41,18 @@ async def test_scraper_functionality():
         base_url = "https://growthlab.hks.harvard.edu/publications"
         logger.info(f"Using fallback base_url: {base_url}")
     
-    # 2. Test connecting to website
+    #test connection -0 used to get a chrome headless machine error
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(base_url) as response:
                 if response.status == 200:
                     logger.info(f"Successfully connected to {base_url}")
                     
-                    # 3. Test parsing HTML
+                    #wait for response and parse the HTML
                     html = await response.text()
                     soup = BeautifulSoup(html, "html.parser")
                     
-                    # Find first publication title
+                    #first pub
                     first_pub = soup.find("span", {"class": "biblio-title"})
                     if first_pub:
                         logger.info(f"Found publication: {first_pub.text.strip()}")
