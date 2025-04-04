@@ -36,7 +36,7 @@ class Publication(BaseModel):
     def validate_year(cls, v):  # noqa: N805
         """Validate year is reasonable"""
         if v and (v < 1900 or v > 2100):
-            return None
+            raise ValueError(f"Year {v} is not in valid range (1900-2100)")
         return v
 
     def generate_id(self) -> str:
@@ -352,7 +352,7 @@ class GrowthLabScraper:
 
     def save_to_csv(self, publications: list[Publication], output_path: Path) -> None:
         """Save publications to CSV file"""
-        df = pd.DataFrame([pub.dict() for pub in publications])
+        df = pd.DataFrame([pub.model_dump() for pub in publications])
         df.to_csv(output_path, index=False)
         logger.info(f"Saved {len(publications)} publications to {output_path}")
 
@@ -364,6 +364,10 @@ class GrowthLabScraper:
 
         try:
             df = pd.read_csv(input_path)
+            # Convert string representation of list to actual list for file_urls
+            df["file_urls"] = df["file_urls"].apply(
+                lambda x: eval(x) if isinstance(x, str) else []
+            )
             publications = [Publication(**row) for _, row in df.iterrows()]
             logger.info(f"Loaded {len(publications)} publications from {input_path}")
             return publications
@@ -372,27 +376,40 @@ class GrowthLabScraper:
             return []
 
     async def update_publications(
-        self, existing_path: Path | None = None, output_path: Path | None = None
+        self,
+        existing_path: Path | None = None,
+        output_path: Path | None = None,
+        storage=None,
     ) -> list[Publication]:
         """
         Update publications by comparing existing ones with newly scraped ones
 
         This handles updates to existing publications by comparing content hashes
+
+        Args:
+            existing_path: Optional path to existing publications CSV
+            output_path: Optional path to save updated publications
+            storage: Optional storage instance (will use default if None)
         """
+        # Import storage factory here to avoid circular imports
+        from backend.storage.factory import get_storage
+
+        # Get storage instance if not provided
+        storage = storage or get_storage()
+
         # Default paths if not provided
         if not existing_path:
-            existing_path = (
-                Path(__file__).parent.parent
-                / "data"
-                / "intermediate"
-                / "growth_lab_publications.csv"
+            existing_path = storage.get_path(
+                "intermediate", "growth_lab_publications.csv"
             )
         if not output_path:
             output_path = existing_path
 
         # Load existing publications if available
         existing_publications = (
-            self.load_from_csv(existing_path) if existing_path.exists() else []
+            self.load_from_csv(existing_path)
+            if existing_path and existing_path.exists()
+            else []
         )
         existing_pub_map = {pub.paper_id: pub for pub in existing_publications}
 
@@ -430,6 +447,8 @@ class GrowthLabScraper:
 
         # Save updated publications
         if output_path:
+            # Ensure parent directory exists
+            storage.ensure_dir(output_path.parent)
             self.save_to_csv(updated_publications, output_path)
 
         return updated_publications
