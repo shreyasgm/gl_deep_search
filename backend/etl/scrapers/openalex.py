@@ -202,19 +202,21 @@ class OpenAlexClient:
                 title = result.get("title", "")
 
                 # Extract authors
-                authorships = result.get("authorships", [])
-                authors = ", ".join(
-                    author.get("author", {}).get("display_name", "")
-                    for author in authorships
-                    if "author" in author and "display_name" in author["author"]
-                )
+                authorships = result.get("authorships") or []
+                # Build author string
+                author_names = []
+                for author in authorships:
+                    author_obj = author.get("author", {})
+                    if author_obj and "display_name" in author_obj:
+                        author_names.append(author_obj.get("display_name", ""))
+                authors = ", ".join(author_names)
 
                 # Extract abstract
                 abstract_dict = result.get("abstract_inverted_index", {})
                 abstract = self._extract_abstract(abstract_dict)
 
                 # Extract URL
-                primary_location = result.get("primary_location", {})
+                primary_location = result.get("primary_location") or {}
                 pub_url = primary_location.get("landing_page_url", None)
 
                 # Extract DOI as file URL
@@ -256,7 +258,7 @@ class OpenAlexClient:
         self, publications: list[OpenAlexPublication], output_path: Path
     ) -> None:
         """Save publications to CSV file"""
-        df = pd.DataFrame([pub.dict() for pub in publications])
+        df = pd.DataFrame([pub.model_dump() for pub in publications])
         df.to_csv(output_path, index=False)
         logger.info(f"Saved {len(publications)} publications to {output_path}")
 
@@ -268,7 +270,38 @@ class OpenAlexClient:
 
         try:
             df = pd.read_csv(input_path)
-            publications = [OpenAlexPublication(**row) for _, row in df.iterrows()]
+
+            # Convert string representation of lists to actual lists
+            # Process list fields
+            for list_field in ["file_urls", "concepts"]:
+                if list_field in df.columns:
+                    df[list_field] = df[list_field].apply(
+                        lambda x: eval(x)
+                        if isinstance(x, str) and x.startswith("[")
+                        else []
+                    )
+
+            # Convert NaN values to None (or appropriate default values)
+            df = df.replace({pd.NA: None})
+            for col in df.columns:
+                df[col] = df[col].apply(lambda x: None if pd.isna(x) else x)
+
+            publications = []
+            for _, row in df.iterrows():
+                try:
+                    # Create a clean dictionary without NaN values
+                    clean_dict: dict[str, Any] = {}
+                    for k, v in row.to_dict().items():
+                        if pd.isna(v):
+                            clean_dict[k] = None
+                        else:
+                            clean_dict[k] = v
+
+                    pub = OpenAlexPublication(**clean_dict)
+                    publications.append(pub)
+                except Exception as e:
+                    logger.warning(f"Could not load publication: {e}")
+
             logger.info(f"Loaded {len(publications)} publications from {input_path}")
             return publications
         except Exception as e:
@@ -276,31 +309,45 @@ class OpenAlexClient:
             return []
 
     async def update_publications(
-        self, existing_path: Path | None = None, output_path: Path | None = None
+        self,
+        existing_path: Path | None = None,
+        output_path: Path | None = None,
+        storage=None,
     ) -> list[OpenAlexPublication]:
-        """Update publications by comparing existing ones with newly fetched ones"""
+        """
+        Update publications by comparing existing ones with newly fetched ones
+
+        This handles updates to existing publications by comparing content hashes
+
+        Args:
+            existing_path: Optional path to existing publications CSV
+            output_path: Optional path to save updated publications
+            storage: Optional storage instance (will use default if None)
+        """
+        # Import storage factory here to avoid circular imports
+        from backend.storage.factory import get_storage
+
+        # Get storage instance if not provided
+        storage = storage or get_storage()
+
         # Default paths if not provided
         if not existing_path:
-            existing_path = (
-                Path(__file__).parent.parent
-                / "data"
-                / "intermediate"
-                / "openalex_publications.csv"
-            )
+            existing_path = storage.get_path("intermediate/openalex_publications.csv")
         if not output_path:
             output_path = existing_path
 
         # Load existing publications if available
         existing_publications = (
-            self.load_from_csv(existing_path) if existing_path.exists() else []
+            self.load_from_csv(existing_path)
+            if existing_path and existing_path.exists()
+            else []
         )
         existing_pub_map = {pub.paper_id: pub for pub in existing_publications}
 
         # Get new publications
         new_publications = await self.fetch_publications()
 
-        # Merge existing and new publications,
-        # preferring new ones with different content
+        # Merge publications, preferring new ones with different content
         updated_publications = []
         new_pub_map = {}
 
@@ -332,6 +379,8 @@ class OpenAlexClient:
 
         # Save updated publications
         if output_path:
+            # Ensure parent directory exists
+            storage.ensure_dir(output_path.parent)
             self.save_to_csv(updated_publications, output_path)
 
         return updated_publications
