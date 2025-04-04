@@ -44,6 +44,7 @@ etl = [
     "scrapy",
     "backoff",
     "asyncio",
+    "aiohttp>=3.8.0,!=3.11.14",  # Avoid yanked version 3.11.14
 
     # PDF processing and OCR
     "langdetect",
@@ -122,6 +123,9 @@ dev = [
     "mypy",
     "types-requests",
     "types-PyYAML",
+    "types-tqdm",
+    "pandas-stubs",
+    "types-beautifulsoup4",
 
     # Pre-commit hooks
     "pre-commit",
@@ -148,7 +152,7 @@ all = [
 # Basic linting configuration
 line-length = 88
 target-version = "py312"
-select = [
+lint.select = [
     "E",    # Critical errors
     "F",    # Pyflakes
     "B",    # Bug detection
@@ -159,18 +163,14 @@ select = [
     "D",    # Documentation (will be set to warning)
     "ANN",  # Type annotations (will be set to warning)
 ]
+lint.unfixable = ["D", "ANN"]
 
 # Make documentation and type annotation rules generate warnings instead of errors
 [tool.ruff.per-file-ignores]
 "**/*" = ["D", "ANN"]  # Ignore these rules everywhere by default
 
-# These rules will now show up as warnings in your IDE and CI,
-# but won't cause failures
-[tool.ruff.lint]
-unfixable = ["D", "ANN"]
-
 # Configure specific documentation rules
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"  # Use Google-style docstrings
 
 # Configure Ruff to handle formatting
@@ -181,7 +181,7 @@ line-ending = "auto"
 skip-magic-trailing-comma = false
 
 # Configure import sorting (replaces isort functionality)
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["gl_deep_search"]
 force-single-line = false
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
