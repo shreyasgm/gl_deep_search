@@ -258,7 +258,18 @@ class OpenAlexClient:
         self, publications: list[OpenAlexPublication], output_path: Path
     ) -> None:
         """Save publications to CSV file"""
-        df = pd.DataFrame([pub.model_dump() for pub in publications])
+        # Convert publications to dictionaries and handle HttpUrl objects
+        pub_dicts = []
+        for pub in publications:
+            pub_dict = pub.model_dump()
+            # Convert HttpUrl objects to strings
+            if pub_dict.get("pub_url"):
+                pub_dict["pub_url"] = str(pub_dict["pub_url"])
+            if pub_dict.get("file_urls"):
+                pub_dict["file_urls"] = [str(url) for url in pub_dict["file_urls"]]
+            pub_dicts.append(pub_dict)
+
+        df = pd.DataFrame(pub_dicts)
         df.to_csv(output_path, index=False)
         logger.info(f"Saved {len(publications)} publications to {output_path}")
 

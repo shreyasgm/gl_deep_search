@@ -7,7 +7,11 @@ environment: "development"  # Options: development, production
 sources:
   growth_lab:
     base_url: "https://growthlab.hks.harvard.edu/publications"
-    scrape_delay: 2.5  # seconds between requests
+    scrape_delay: 2.0  # seconds between requests
+    concurrency_limit: 2  # Maximum number of concurrent requests
+    max_retries: 5  # Maximum number of retries for failed requests
+    retry_base_delay: 5.0  # Initial delay in seconds before retrying
+    retry_max_delay: 30.0  # Maximum delay in seconds before retrying
     max_concurrent_downloads: 10
     download_timeout: 60
     redownload_existing: false

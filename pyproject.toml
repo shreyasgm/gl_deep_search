@@ -166,7 +166,7 @@ lint.select = [
 lint.unfixable = ["D", "ANN"]
 
 # Make documentation and type annotation rules generate warnings instead of errors
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "**/*" = ["D", "ANN"]  # Ignore these rules everywhere by default
 
 # Configure specific documentation rules
@@ -185,6 +185,15 @@ skip-magic-trailing-comma = false
 known-first-party = ["gl_deep_search"]
 force-single-line = false
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+show_error_codes = true
+
+# Convert only specific errors to warnings, particularly union-attr and similar ones from BeautifulSoup
+# See https://mypy.readthedocs.io/en/stable/error_codes.html
+disable_error_code = ["union-attr", "arg-type", "index", "misc", "call-overload", "return-value"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["backend"]
