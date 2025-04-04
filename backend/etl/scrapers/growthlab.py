@@ -399,9 +399,7 @@ class GrowthLabScraper:
 
         # Default paths if not provided
         if not existing_path:
-            existing_path = storage.get_path(
-                "intermediate", "growth_lab_publications.csv"
-            )
+            existing_path = storage.get_path("intermediate/growth_lab_publications.csv")
         if not output_path:
             output_path = existing_path
 

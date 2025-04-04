@@ -65,20 +65,48 @@ class GCSStorage(StorageBase):
         blob = self.bucket.blob(blob_name)
         return blob.exists()
 
-    def list_files(self, data_type: str, pattern: str | None = None) -> list[Path]:
-        """List files of a specific data type, optionally filtered by pattern."""
-        # Map data_type to appropriate path prefix
-        if data_type == "raw":
-            path_prefix = "raw"
-        elif data_type == "intermediate":
-            path_prefix = "intermediate"
-        elif data_type == "processed":
-            path_prefix = "processed"
-        else:
-            raise ValueError(f"Unknown data type: {data_type}")
+    def get_path(self, filename: str) -> Path:
+        """
+        Get the appropriate path for a given filename.
 
-        prefix = self._get_blob_name(path_prefix)
-        if not prefix.endswith("/"):
+        Note: For cloud storage, we return a special Path that represents
+        the cloud location but can be used for temporary local operations.
+
+        Args:
+            filename: Name of the file
+
+        Returns:
+            Path representing the cloud location
+        """
+        # Return a temporary local path for operations
+        # Note: This doesn't actually download anything yet
+        local_path = self.temp_dir
+        self.ensure_dir(local_path)
+        return local_path / filename
+
+    def ensure_dir(self, path: Path) -> None:
+        """
+        Ensure a directory exists.
+
+        For cloud storage, this creates the local temp directory.
+
+        Args:
+            path: Directory path to ensure
+        """
+        path.mkdir(parents=True, exist_ok=True)
+
+    def list_files(self, pattern: str | None = None) -> list[Path]:
+        """
+        List files, optionally filtered by pattern.
+
+        Args:
+            pattern: Optional glob pattern to filter files
+
+        Returns:
+            List of file paths
+        """
+        prefix = self.base_prefix
+        if not prefix.endswith("/") and prefix:
             prefix += "/"
 
         blobs = self.bucket.list_blobs(prefix=prefix)
@@ -95,7 +123,7 @@ class GCSStorage(StorageBase):
             filename = Path(blob.name).name
 
             # Create a local path reference
-            local_path = self.temp_dir / data_type / filename
+            local_path = self.temp_dir / filename
             local_paths.append(local_path)
 
         # Filter by pattern if needed

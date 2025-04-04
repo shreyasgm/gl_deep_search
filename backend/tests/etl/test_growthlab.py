@@ -192,7 +192,7 @@ async def test_update_publications_with_storage(scraper, sample_publication, tmp
         return [sample_publication]
 
     # Save a test CSV first to simulate existing data
-    existing_path = storage.get_path("intermediate", "growth_lab_publications.csv")
+    existing_path = storage.get_path("intermediate/growth_lab_publications.csv")
     storage.ensure_dir(existing_path.parent)
     scraper.save_to_csv([sample_publication], existing_path)
 

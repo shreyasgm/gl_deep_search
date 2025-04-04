@@ -28,40 +28,22 @@ class CloudStorage(StorageBase):
         # Create temp directory for local operations
         self.temp_dir = Path(tempfile.mkdtemp())
 
-        # Define data type paths
-        self.data_types = {
-            "raw": f"{self.base_prefix}/raw" if self.base_prefix else "raw",
-            "intermediate": f"{self.base_prefix}/intermediate"
-            if self.base_prefix
-            else "intermediate",
-            "processed": f"{self.base_prefix}/processed"
-            if self.base_prefix
-            else "processed",
-        }
-
-    def get_path(self, data_type: str, filename: str) -> Path:
+    def get_path(self, filename: str) -> Path:
         """
-        Get the appropriate path for a given data type and filename.
+        Get the appropriate path for a given filename.
 
         Note: For cloud storage, we return a special Path that represents
         the cloud location but can be used for temporary local operations.
 
         Args:
-            data_type: Type of data (raw, intermediate, processed)
             filename: Name of the file
 
         Returns:
             Path representing the cloud location
         """
-        if data_type not in self.data_types:
-            raise ValueError(f"Unknown data type: {data_type}")
-
-        # Return temp path for local operations if needed
-        _ = self.data_types[data_type]  # Validate data_type exists
-
         # Return a temporary local path for operations
         # Note: This doesn't actually download anything yet
-        local_path = self.temp_dir / data_type
+        local_path = self.temp_dir
         self.ensure_dir(local_path)
         return local_path / filename
 
@@ -76,29 +58,25 @@ class CloudStorage(StorageBase):
         """
         path.mkdir(parents=True, exist_ok=True)
 
-    def list_files(self, data_type: str, pattern: str | None = None) -> list[Path]:
+    def list_files(self, pattern: str | None = None) -> list[Path]:
         """
-        List files of a specific data type, optionally filtered by pattern.
+        List files, optionally filtered by pattern.
 
         Args:
-            data_type: Type of data (raw, intermediate, processed)
             pattern: Optional glob pattern to filter files
 
         Returns:
             List of file paths
         """
-        if data_type not in self.data_types:
-            raise ValueError(f"Unknown data type: {data_type}")
-
-        prefix = self.data_types[data_type]
-        if not prefix.endswith("/"):
+        prefix = self.base_prefix
+        if not prefix.endswith("/") and prefix:
             prefix += "/"
 
         blobs = list(self.bucket.list_blobs(prefix=prefix))
 
         # Convert to local paths for consistency
         local_paths = []
-        prefix_len = len(prefix)
+        prefix_len = len(prefix) if prefix else 0
 
         for blob in blobs:
             # Skip directories (represented as blobs ending with /)
@@ -106,12 +84,12 @@ class CloudStorage(StorageBase):
                 continue
 
             # Get filename without prefix
-            filename = blob.name[prefix_len:]
+            filename = blob.name[prefix_len:] if prefix_len > 0 else blob.name
             if not filename:  # Skip the directory blob itself
                 continue
 
             # Create local path reference
-            local_path = self.temp_dir / data_type / filename
+            local_path = self.temp_dir / filename
             local_paths.append(local_path)
 
         # Filter by pattern if needed

@@ -14,8 +14,8 @@ sources:
     remove_outdated_files: true
 
   openalex:
-    author_id: "A5034550995" # Ricardo's author ID
-    email: "your_email@example.com" # for polite OpenAlex API use
+    author_id: "A5034550995" # Ricardo Hausmann's author ID
+    email: "parlay.donegal.0j@icloud.com" # for polite OpenAlex API use
     max_retries_per_page: 3
     max_overall_retries: 10
     redownload_existing: false

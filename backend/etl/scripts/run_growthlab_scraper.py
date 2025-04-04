@@ -39,7 +39,7 @@ async def main():
     logger.info("Starting GrowthLab scraper")
 
     # Get output path from storage abstraction
-    output_path = storage.get_path("intermediate", "growth_lab_publications.csv")
+    output_path = storage.get_path("intermediate/growth_lab_publications.csv")
     # Ensure directory exists
     storage.ensure_dir(output_path.parent)
 

@@ -10,12 +10,11 @@ class StorageBase(abc.ABC):
     """Abstract base class for storage implementations."""
 
     @abc.abstractmethod
-    def get_path(self, data_type: str, filename: str) -> Path:
+    def get_path(self, filename: str) -> Path:
         """
-        Get the appropriate path for a given data type and filename.
+        Get the appropriate path for a given filename.
 
         Args:
-            data_type: Type of data (raw, intermediate, processed)
             filename: Name of the file
 
         Returns:
@@ -34,12 +33,11 @@ class StorageBase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def list_files(self, data_type: str, pattern: str | None = None) -> list[Path]:
+    def list_files(self, pattern: str | None = None) -> list[Path]:
         """
-        List files of a specific data type, optionally filtered by pattern.
+        List files, optionally filtered by pattern.
 
         Args:
-            data_type: Type of data (raw, intermediate, processed)
             pattern: Optional glob pattern to filter files
 
         Returns:
