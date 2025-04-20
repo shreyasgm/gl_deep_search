@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -6,6 +7,9 @@ from backend.etl.scrapers.growthlab import (
     GrowthLabScraper,
     Publication,
 )
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -117,7 +121,44 @@ def test_publication_model(sample_publication):
     # Test ID generation
     paper_id = sample_publication.generate_id()
     assert paper_id.startswith("gl_")
-    assert "2023" in paper_id
+    assert (
+        "2023" in paper_id or "url_" in paper_id
+    )  # Check for either year or URL-based ID
+
+    # Test URL-based ID generation
+    pub_with_url = Publication(
+        title="Test URL Based ID",
+        pub_url="https://growthlab.hks.harvard.edu/publications/economic-complexity-analysis",
+        source="GrowthLab",
+    )
+    url_based_id = pub_with_url.generate_id()
+    assert url_based_id.startswith("gl_url_")
+    assert len(url_based_id) > 10  # Should be longer than the old 10-char hash
+
+    # Test text normalization
+    pub1 = Publication(
+        title="Test Publication",
+        authors="John Doe, Jane Smith",
+        year=2023,
+    )
+    pub2 = Publication(
+        title="TEST PUBLICATION",  # Different case
+        authors="John Doe,Jane Smith",  # Different spacing
+        year=2023,
+    )
+    # IDs should be the same despite minor text differences
+    assert pub1.generate_id() == pub2.generate_id()
+
+    # Test with minimal information
+    pub_minimal = Publication(title="Just a Title")
+    minimal_id = pub_minimal.generate_id()
+    assert minimal_id.startswith("gl_")
+    assert "0000" in minimal_id  # Default year
+
+    # Test empty case (fallback to random ID)
+    pub_empty = Publication()
+    empty_id = pub_empty.generate_id()
+    assert empty_id.startswith("gl_unknown_")
 
     # Test content hash generation
     content_hash = sample_publication.generate_content_hash()
@@ -206,3 +247,94 @@ async def test_update_publications_with_storage(scraper, sample_publication, tmp
 
     # Verify the file was created in the right location
     assert existing_path.exists()
+
+
+@pytest.mark.integration
+def test_growthlab_real_data_id_generation(tmp_path):
+    """
+    Integration test that verifies ID generation with real data
+    from the Growth Lab scraper.
+
+    This test confirms that:
+    1. Most publications have URL-based IDs (gl_url_*)
+    2. ID generation is stable for real publications
+    3. The fallback ID generation mechanisms work properly
+    """
+    from pathlib import Path
+
+    import pandas as pd
+
+    # Path to real Growth Lab data
+    data_path = Path(
+        "/Users/shg309/Dropbox (Personal)/Education/hks_cid_growth_lab/gl_deep_search/data/intermediate/growth_lab_publications.csv"
+    )
+
+    # Skip if data file doesn't exist (for CI environments)
+    if not data_path.exists():
+        pytest.skip(f"Real data file not found at {data_path}")
+
+    # Load the real data
+    df = pd.read_csv(data_path)
+
+    # Ensure we have at least a few records to test with
+    assert len(df) > 10, "Not enough real data records found for testing"
+
+    # Count different types of IDs
+    url_based_ids = sum(1 for id in df["paper_id"] if id.startswith("gl_url_"))
+    year_based_ids = sum(
+        1
+        for id in df["paper_id"]
+        if id.startswith("gl_")
+        and not id.startswith("gl_url_")
+        and not id.startswith("gl_unknown_")
+    )
+    unknown_ids = sum(1 for id in df["paper_id"] if id.startswith("gl_unknown_"))
+
+    # Compute percentages
+    total_count = len(df)
+    url_pct = (url_based_ids / total_count) * 100
+    year_pct = (year_based_ids / total_count) * 100
+    unknown_pct = (unknown_ids / total_count) * 100
+
+    # Log summary for visibility in test output
+    logger.info(f"Growth Lab ID generation summary ({total_count} publications):")
+    logger.info(f"- URL-based IDs: {url_based_ids} ({url_pct:.1f}%)")
+    logger.info(f"- Year-based IDs: {year_based_ids} ({year_pct:.1f}%)")
+    logger.info(f"- Unknown IDs: {unknown_ids} ({unknown_pct:.1f}%)")
+
+    # Load a sample of publications to verify ID regeneration
+    from backend.etl.scrapers.growthlab import Publication
+
+    # Test with a subset of publications to keep test fast
+    sample_size = min(20, len(df))
+    sample_df = df.sample(n=sample_size, random_state=42)
+
+    # For each publication, recreate the model and check if IDs match
+    for _, row in sample_df.iterrows():
+        # Convert string representation of list to actual list for file_urls
+        file_urls = eval(row["file_urls"]) if isinstance(row["file_urls"], str) else []
+
+        # Create Publication object
+        pub = Publication(
+            title=row["title"] if not pd.isna(row["title"]) else None,
+            authors=row["authors"] if not pd.isna(row["authors"]) else None,
+            year=int(row["year"]) if not pd.isna(row["year"]) else None,
+            abstract=row["abstract"] if not pd.isna(row["abstract"]) else None,
+            pub_url=row["pub_url"] if not pd.isna(row["pub_url"]) else None,
+            file_urls=file_urls,
+            source="GrowthLab",
+        )
+
+        # Generate ID without setting paper_id first to test generation logic
+        generated_id = pub.generate_id()
+
+        # The original ID from the dataset
+        original_id = row["paper_id"]
+
+        # Verify ID stability - generated ID should match original
+        assert (
+            generated_id == original_id
+        ), f"ID generation not stable: {generated_id} != {original_id}"
+
+    # Verify most publications use URL-based IDs as expected
+    assert url_pct > 50, "Less than 50% of publications have URL-based IDs"

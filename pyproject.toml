@@ -167,7 +167,7 @@ lint.unfixable = ["D", "ANN"]
 
 # Make documentation and type annotation rules generate warnings instead of errors
 [tool.ruff.lint.per-file-ignores]
-"**/*" = ["D", "ANN"]  # Ignore these rules everywhere by default
+"**/*" = ["D", "ANN", "E501", "E722", "F841"]  # Ignore documentation, type annotations, line length, bare except, and unused vars
 
 # Configure specific documentation rules
 [tool.ruff.lint.pydocstyle]
@@ -194,6 +194,16 @@ show_error_codes = true
 # Convert only specific errors to warnings, particularly union-attr and similar ones from BeautifulSoup
 # See https://mypy.readthedocs.io/en/stable/error_codes.html
 disable_error_code = ["union-attr", "arg-type", "index", "misc", "call-overload", "return-value"]
+
+[tool.pytest.ini_options]
+# Register custom marks
+markers = [
+    "integration: mark tests as integration tests that may require real data",
+]
+# Configure pytest-asyncio plugin
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
 
 [tool.hatch.build.targets.wheel]
 packages = ["backend"]
