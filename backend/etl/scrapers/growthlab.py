@@ -111,15 +111,75 @@ class Publication(BaseModel):
         if self.paper_id:
             return self.paper_id
 
-        # Create base string for hashing
-        base = f"{self.title}_{self.authors}_{self.year}_{self.pub_url}"
+        # Prefer URL-based ID for stability if available
+        if self.pub_url:
+            # Extract the publication slug from the URL
+            url_path = str(self.pub_url).lower()
+            # Remove the domain and get the path
+            if "/publications/" in url_path:
+                slug = url_path.split("/publications/")[-1]
+                # Remove any query parameters or fragments
+                slug = slug.split("?")[0].split("#")[0]
+                # Remove trailing slash if present
+                slug = slug.rstrip("/")
+                if slug:  # If we got a valid slug
+                    return f"gl_url_{hashlib.sha256(slug.encode()).hexdigest()[:16]}"
 
-        # Create hash for stability
-        hash_obj = hashlib.md5(base.encode())
-        hash_id = hash_obj.hexdigest()[:10]
+        # Create normalized base string for hashing
+        components = []
+
+        # Normalize title - lowercase, remove punctuation and extra spaces
+        if self.title:
+            normalized_title = self._normalize_text(self.title)
+            if normalized_title:
+                components.append(f"t:{normalized_title}")
+
+        # Normalize authors - lowercase, remove punctuation and extra spaces
+        if self.authors:
+            normalized_authors = self._normalize_text(self.authors)
+            if normalized_authors:
+                components.append(f"a:{normalized_authors}")
+
+        # Add year if available
+        if self.year:
+            components.append(f"y:{self.year}")
+
+        # Create a stable, normalized base for hashing
+        base = "_".join(components)
+
+        # If we don't have enough information to create a reliable hash
+        if not base:
+            # Use timestamp-based random ID as last resort
+            import random
+            import time
+
+            random_id = f"{int(time.time())}_{random.randint(1000, 9999)}"
+            return f"gl_unknown_{hashlib.sha256(random_id.encode()).hexdigest()[:16]}"
+
+        # Create hash using SHA-256 for better collision resistance
+        hash_id = hashlib.sha256(base.encode()).hexdigest()[:16]
 
         # Format: source_year_hash
         return f"gl_{self.year or '0000'}_{hash_id}"
+
+    def _normalize_text(self, text: str) -> str:
+        """Normalize text for stable ID generation
+
+        Removes punctuation, extra spaces, and converts to lowercase.
+        """
+        if not text:
+            return ""
+
+        import re
+
+        # Convert to lowercase
+        text = text.lower()
+        # Replace punctuation and special chars with spaces
+        text = re.sub(r"[^\w\s]", " ", text)
+        # Replace multiple spaces with a single space
+        text = re.sub(r"\s+", " ", text)
+        # Remove leading/trailing whitespace
+        return text.strip()
 
     def generate_content_hash(self) -> str:
         """Generate a hash of the publication content to detect changes"""

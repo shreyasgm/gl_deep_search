@@ -49,6 +49,91 @@ class OpenAlexPublication(BaseModel):
                 values["openalex_id"] = f"https://openalex.org/{paper_id}"
         return values
 
+    def generate_id(self) -> str:
+        """Generate a stable ID for the publication
+
+        This method is included for compatibility with the Growth Lab scraper,
+        but we typically just use the OpenAlex ID directly since it's already stable.
+        """
+        # First choice: use the existing OpenAlex ID (already stable)
+        if self.paper_id and self.paper_id.startswith("W"):
+            return f"oa_{self.paper_id}"
+
+        # Second choice: use DOI if available
+        if self.file_urls:
+            for url in self.file_urls:
+                url_str = str(url).lower()
+                if "doi.org" in url_str:
+                    # Extract DOI and use it as identifier
+                    doi = url_str.split("doi.org/")[-1]
+                    # Remove any query parameters or fragments
+                    doi = doi.split("?")[0].split("#")[0]
+                    # Remove trailing slash if present
+                    doi = doi.rstrip("/")
+                    if doi:  # If we got a valid DOI
+                        return f"oa_doi_{hashlib.sha256(doi.encode()).hexdigest()[:16]}"
+
+        # Third choice: use the URL
+        if self.pub_url:
+            url_path = str(self.pub_url).lower()
+            return f"oa_url_{hashlib.sha256(url_path.encode()).hexdigest()[:16]}"
+
+        # Final fallback: use normalized metadata fields
+        components = []
+
+        # Normalize title - lowercase, remove punctuation and extra spaces
+        if self.title:
+            normalized_title = self._normalize_text(self.title)
+            if normalized_title:
+                components.append(f"t:{normalized_title}")
+
+        # Normalize authors - lowercase, remove punctuation and extra spaces
+        if self.authors:
+            normalized_authors = self._normalize_text(self.authors)
+            if normalized_authors:
+                components.append(f"a:{normalized_authors}")
+
+        # Add year if available
+        if self.year:
+            components.append(f"y:{self.year}")
+
+        # Create a stable, normalized base for hashing
+        base = "_".join(components)
+
+        # If we don't have enough information to create a reliable hash
+        if not base:
+            # Use timestamp-based random ID as last resort
+            import random
+            import time
+
+            random_id = f"{int(time.time())}_{random.randint(1000, 9999)}"
+            return f"oa_unknown_{hashlib.sha256(random_id.encode()).hexdigest()[:16]}"
+
+        # Create hash using SHA-256 for better collision resistance
+        hash_id = hashlib.sha256(base.encode()).hexdigest()[:16]
+
+        # Format: source_year_hash
+        return f"oa_{self.year or '0000'}_{hash_id}"
+
+    def _normalize_text(self, text: str) -> str:
+        """Normalize text for stable ID generation
+
+        Removes punctuation, extra spaces, and converts to lowercase.
+        """
+        if not text:
+            return ""
+
+        import re
+
+        # Convert to lowercase
+        text = text.lower()
+        # Replace punctuation and special chars with spaces
+        text = re.sub(r"[^\w\s]", " ", text)
+        # Replace multiple spaces with a single space
+        text = re.sub(r"\s+", " ", text)
+        # Remove leading/trailing whitespace
+        return text.strip()
+
     def generate_content_hash(self) -> str:
         """Generate a hash of the publication content to detect changes"""
         content = (
@@ -236,6 +321,13 @@ class OpenAlexClient:
                     source="OpenAlex",
                     cited_by_count=result.get("cited_by_count"),
                 )
+
+                # Use our improved ID generation if needed
+                # Note: OpenAlex already has stable IDs, but this is here for
+                # consistency with the rest of the system
+                # If we don't have a standard OpenAlex ID
+                if not pub.paper_id.startswith("W"):
+                    pub.paper_id = pub.generate_id()
 
                 # Generate content hash
                 pub.content_hash = pub.generate_content_hash()
