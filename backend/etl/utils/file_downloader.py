@@ -7,7 +7,6 @@ features like retrying, rate limiting, and validation.
 
 import asyncio
 import hashlib
-import importlib.util
 import logging
 import mimetypes
 import random
@@ -24,6 +23,7 @@ import aiohttp
 import tqdm.asyncio
 
 from backend.etl.models.publications import GrowthLabPublication
+from backend.etl.scrapers.growthlab import GrowthLabScraper
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
@@ -477,7 +477,8 @@ class FileDownloader:
             self.download_stats["total_attempted"] += 1
 
             # Download with retry
-            result = await retry_with_backoff(
+            # Explicitly annotate the result as DownloadResult to help mypy
+            result: DownloadResult = await retry_with_backoff(
                 self._download_file_impl,
                 session,
                 url,
@@ -494,17 +495,17 @@ class FileDownloader:
             await asyncio.sleep(self.download_delay * (0.5 + random.random()))
 
             # Update statistics
-            download_result = await result
-            if download_result.success:
+            # Note: result is already awaited, no need to await again
+            if result.success:
                 self.download_stats["successful"] += 1
-                if download_result.file_size:
-                    self.download_stats["total_bytes"] += download_result.file_size
-            elif download_result.cached:
+                if result.file_size:
+                    self.download_stats["total_bytes"] += result.file_size
+            elif result.cached:
                 self.download_stats["cached"] += 1
             else:
                 self.download_stats["failed"] += 1
 
-            return download_result
+            return result
 
     async def _validate_downloaded_file(
         self, file_path: Path, expected_content_type: str | None = None
@@ -795,15 +796,6 @@ async def download_growthlab_files(
     Returns:
         List of download results
     """
-    spec = importlib.util.find_spec("backend.etl.scrapers.growthlab")
-    if spec is None:
-        logger.error("Cannot import GrowthLabScraper module")
-        return []
-
-    growthlab_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(growthlab_module)
-    growthlab_scraper_class = growthlab_module.GrowthLabScraper
-
     # Get storage
     storage = storage or get_storage()
 
@@ -819,7 +811,7 @@ async def download_growthlab_files(
         return []
 
     # Load publication data
-    scraper = growthlab_scraper_class()
+    scraper = GrowthLabScraper()
     publications = scraper.load_from_csv(publication_data_path)
 
     if not publications:

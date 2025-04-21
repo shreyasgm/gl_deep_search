@@ -114,6 +114,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-mock",
+    "pytest-asyncio",
 
     # MCP for Cursor or other IDE
     "browser-use",
@@ -201,9 +202,10 @@ disable_error_code = ["union-attr", "arg-type", "index", "misc", "call-overload"
 # Register custom marks
 markers = [
     "integration: mark tests as integration tests that may require real data",
+    "asyncio: mark a test as an asyncio coroutine",
 ]
 # Configure pytest-asyncio plugin
-asyncio_mode = "strict"
+asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 asyncio_default_test_loop_scope = "function"
 
