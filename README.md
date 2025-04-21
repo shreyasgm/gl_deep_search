@@ -128,14 +128,23 @@ gl_deep_search/
    ```
 2. Run `uv` in the CLI to check that it is available. After this, run `uv sync` in to install dependencies and create the `.venv` file
 
-3. Create and configure environment files:
+3. To add new packages to the project, use the following format:
+   ```bash
+   # Add a package to a specific group (etl, service, frontend, dev, prod)
+   uv add package_name --optional group_name
+
+   # Example: Add seaborn to the service group
+   uv add seaborn --optional service
+   ```
+
+4. Create and configure environment files:
    ```bash
    cp backend/etl/.env.example backend/etl/.env
    cp backend/service/.env.example backend/service/.env
    cp frontend/.env.example frontend/.env
    ```
 
-4. Add your API keys and configuration to the `.env` files
+5. Add your API keys and configuration to the `.env` files
 
 ### Docker Development Environment
 
