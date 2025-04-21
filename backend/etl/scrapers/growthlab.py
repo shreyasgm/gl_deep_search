@@ -3,7 +3,6 @@ Scraper module for the Growth Lab website publications
 """
 
 import asyncio
-import hashlib
 import logging
 import re
 from pathlib import Path
@@ -13,120 +12,15 @@ import aiohttp
 import pandas as pd
 import yaml
 from bs4 import BeautifulSoup
-from pydantic import BaseModel, Field, HttpUrl, field_validator
 from tqdm.asyncio import tqdm as async_tqdm
 
+from backend.etl.models.publications import GrowthLabPublication
 from backend.etl.utils.retry import retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
 # Type variable for generic retry function
 T = TypeVar("T")
-
-
-class Publication(BaseModel):
-    """Represents a publication with relevant details"""
-
-    paper_id: str | None = None
-    title: str | None = None
-    authors: str | None = None
-    year: int | None = None
-    abstract: str | None = None
-    pub_url: HttpUrl | None = None
-    file_urls: list[HttpUrl] = Field(default_factory=list)
-    source: str = "GrowthLab"
-    content_hash: str | None = None  # Hash for detecting changes in publication
-
-    @field_validator("year")
-    def validate_year(cls, v):  # noqa: N805
-        """Validate year is reasonable"""
-        if v and (v < 1900 or v > 2100):
-            raise ValueError(f"Year {v} is not in valid range (1900-2100)")
-        return v
-
-    def generate_id(self) -> str:
-        """Generate a stable ID for the publication"""
-        if self.paper_id:
-            return self.paper_id
-
-        # Prefer URL-based ID for stability if available
-        if self.pub_url:
-            # Extract the publication slug from the URL
-            url_path = str(self.pub_url).lower()
-            # Remove the domain and get the path
-            if "/publications/" in url_path:
-                slug = url_path.split("/publications/")[-1]
-                # Remove any query parameters or fragments
-                slug = slug.split("?")[0].split("#")[0]
-                # Remove trailing slash if present
-                slug = slug.rstrip("/")
-                if slug:  # If we got a valid slug
-                    return f"gl_url_{hashlib.sha256(slug.encode()).hexdigest()[:16]}"
-
-        # Create normalized base string for hashing
-        components = []
-
-        # Normalize title - lowercase, remove punctuation and extra spaces
-        if self.title:
-            normalized_title = self._normalize_text(self.title)
-            if normalized_title:
-                components.append(f"t:{normalized_title}")
-
-        # Normalize authors - lowercase, remove punctuation and extra spaces
-        if self.authors:
-            normalized_authors = self._normalize_text(self.authors)
-            if normalized_authors:
-                components.append(f"a:{normalized_authors}")
-
-        # Add year if available
-        if self.year:
-            components.append(f"y:{self.year}")
-
-        # Create a stable, normalized base for hashing
-        base = "_".join(components)
-
-        # If we don't have enough information to create a reliable hash
-        if not base:
-            # Use timestamp-based random ID as last resort
-            import random
-            import time
-
-            random_id = f"{int(time.time())}_{random.randint(1000, 9999)}"
-            return f"gl_unknown_{hashlib.sha256(random_id.encode()).hexdigest()[:16]}"
-
-        # Create hash using SHA-256 for better collision resistance
-        hash_id = hashlib.sha256(base.encode()).hexdigest()[:16]
-
-        # Format: source_year_hash
-        return f"gl_{self.year or '0000'}_{hash_id}"
-
-    def _normalize_text(self, text: str) -> str:
-        """Normalize text for stable ID generation
-
-        Removes punctuation, extra spaces, and converts to lowercase.
-        """
-        if not text:
-            return ""
-
-        import re
-
-        # Convert to lowercase
-        text = text.lower()
-        # Replace punctuation and special chars with spaces
-        text = re.sub(r"[^\w\s]", " ", text)
-        # Replace multiple spaces with a single space
-        text = re.sub(r"\s+", " ", text)
-        # Remove leading/trailing whitespace
-        return text.strip()
-
-    def generate_content_hash(self) -> str:
-        """Generate a hash of the publication content to detect changes"""
-        content = (
-            f"{self.title}_{self.authors}_{self.year}_{self.abstract}_{self.pub_url}"
-        )
-        for url in self.file_urls:
-            content += f"_{url}"
-        return hashlib.sha256(content.encode()).hexdigest()
 
 
 class GrowthLabScraper:
@@ -237,7 +131,7 @@ class GrowthLabScraper:
 
     async def parse_publication(
         self, pub_element: BeautifulSoup, base_url: str
-    ) -> Publication | None:
+    ) -> GrowthLabPublication | None:
         """Parse a single publication element"""
         try:
             title_element = pub_element.find("span", {"class": "biblio-title"})
@@ -285,7 +179,7 @@ class GrowthLabScraper:
                             file_url = f"{base_url.split('/publications')[0]}{file_url}"
                         file_urls.append(file_url)
 
-            pub = Publication(
+            pub = GrowthLabPublication(
                 title=title,
                 authors=authors,
                 year=year,
@@ -306,7 +200,7 @@ class GrowthLabScraper:
 
     async def _fetch_page_impl(
         self, session: aiohttp.ClientSession, page_num: int
-    ) -> list[Publication]:
+    ) -> list[GrowthLabPublication]:
         """Implementation to fetch a single page of publications"""
         url = self.base_url if page_num == 0 else f"{self.base_url}?page={page_num}"
         publications = []
@@ -348,7 +242,7 @@ class GrowthLabScraper:
 
     async def fetch_page(
         self, session: aiohttp.ClientSession, page_num: int
-    ) -> list[Publication]:
+    ) -> list[GrowthLabPublication]:
         """Fetch a single page of publications with retry mechanism"""
         max_retries = self.config.get("max_retries", 3)
         base_delay = self.config.get("retry_base_delay", 1.0)
@@ -368,7 +262,7 @@ class GrowthLabScraper:
             logger.error(f"All retries failed for page {page_num}: {e}")
             return []
 
-    async def extract_publications(self) -> list[Publication]:
+    async def extract_publications(self) -> list[GrowthLabPublication]:
         """Extract all publications from the Growth Lab website"""
         # Create more robust session with timeouts
         timeout = aiohttp.ClientTimeout(
@@ -537,8 +431,11 @@ class GrowthLabScraper:
         return record
 
     async def _enrich_publication_impl(
-        self, session: aiohttp.ClientSession, pub: Publication, endnote_url: str
-    ) -> Publication:
+        self,
+        session: aiohttp.ClientSession,
+        pub: GrowthLabPublication,
+        endnote_url: str,
+    ) -> GrowthLabPublication:
         """Implementation to enrich publication with data from Endnote file"""
         async with self.semaphore:
             try:
@@ -610,8 +507,8 @@ class GrowthLabScraper:
                 return pub
 
     async def enrich_publication(
-        self, session: aiohttp.ClientSession, pub: Publication
-    ) -> Publication:
+        self, session: aiohttp.ClientSession, pub: GrowthLabPublication
+    ) -> GrowthLabPublication:
         """Enrich publication with data from Endnote file with retry mechanism"""
         if not pub.pub_url:
             return pub
@@ -641,7 +538,7 @@ class GrowthLabScraper:
             )
             return pub
 
-    async def extract_and_enrich_publications(self) -> list[Publication]:
+    async def extract_and_enrich_publications(self) -> list[GrowthLabPublication]:
         """Extract all publications and enrich them with Endnote data"""
         publications = await self.extract_publications()
 
@@ -731,7 +628,9 @@ class GrowthLabScraper:
         )
         return enriched_publications
 
-    def save_to_csv(self, publications: list[Publication], output_path: Path) -> None:
+    def save_to_csv(
+        self, publications: list[GrowthLabPublication], output_path: Path
+    ) -> None:
         """Save publications to CSV file"""
         # Convert publications to dictionaries and handle HttpUrl objects
         pub_dicts = []
@@ -748,7 +647,7 @@ class GrowthLabScraper:
         df.to_csv(output_path, index=False)
         logger.info(f"Saved {len(publications)} publications to {output_path}")
 
-    def load_from_csv(self, input_path: Path) -> list[Publication]:
+    def load_from_csv(self, input_path: Path) -> list[GrowthLabPublication]:
         """Load publications from CSV file"""
         if not input_path.exists():
             logger.warning(f"CSV file {input_path} does not exist")
@@ -771,7 +670,7 @@ class GrowthLabScraper:
             df["file_urls"] = df["file_urls"].apply(
                 lambda x: eval(x) if isinstance(x, str) else []
             )
-            publications = [Publication(**row) for _, row in df.iterrows()]
+            publications = [GrowthLabPublication(**row) for _, row in df.iterrows()]
             logger.info(f"Loaded {len(publications)} publications from {input_path}")
             return publications
         except Exception as e:
@@ -783,7 +682,7 @@ class GrowthLabScraper:
         existing_path: Path | None = None,
         output_path: Path | None = None,
         storage=None,
-    ) -> list[Publication]:
+    ) -> list[GrowthLabPublication]:
         """
         Update publications by comparing existing ones with newly scraped ones
 

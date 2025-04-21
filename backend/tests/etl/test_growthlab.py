@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from backend.etl.scrapers.growthlab import (
+    GrowthLabPublication,
     GrowthLabScraper,
-    Publication,
 )
 
 # Configure logger
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def sample_publication():
-    pub = Publication(
+    pub = GrowthLabPublication(
         title="Test Publication",
         authors="John Doe, Jane Smith",
         year=2023,
@@ -99,7 +99,7 @@ async def test_extract_publications(scraper):
     with patch("aiohttp.ClientSession", return_value=mock_session):
         with patch.object(scraper, "get_max_page_num", return_value=1):
             # Also mock the fetch_page method to return a valid publication
-            test_pub = Publication(
+            test_pub = GrowthLabPublication(
                 title="Test Publication",
                 authors="John Doe",
                 year=2023,
@@ -126,7 +126,7 @@ def test_publication_model(sample_publication):
     )  # Check for either year or URL-based ID
 
     # Test URL-based ID generation
-    pub_with_url = Publication(
+    pub_with_url = GrowthLabPublication(
         title="Test URL Based ID",
         pub_url="https://growthlab.hks.harvard.edu/publications/economic-complexity-analysis",
         source="GrowthLab",
@@ -136,12 +136,12 @@ def test_publication_model(sample_publication):
     assert len(url_based_id) > 10  # Should be longer than the old 10-char hash
 
     # Test text normalization
-    pub1 = Publication(
+    pub1 = GrowthLabPublication(
         title="Test Publication",
         authors="John Doe, Jane Smith",
         year=2023,
     )
-    pub2 = Publication(
+    pub2 = GrowthLabPublication(
         title="TEST PUBLICATION",  # Different case
         authors="John Doe,Jane Smith",  # Different spacing
         year=2023,
@@ -150,13 +150,13 @@ def test_publication_model(sample_publication):
     assert pub1.generate_id() == pub2.generate_id()
 
     # Test with minimal information
-    pub_minimal = Publication(title="Just a Title")
+    pub_minimal = GrowthLabPublication(title="Just a Title")
     minimal_id = pub_minimal.generate_id()
     assert minimal_id.startswith("gl_")
     assert "0000" in minimal_id  # Default year
 
     # Test empty case (fallback to random ID)
-    pub_empty = Publication()
+    pub_empty = GrowthLabPublication()
     empty_id = pub_empty.generate_id()
     assert empty_id.startswith("gl_unknown_")
 
@@ -166,13 +166,13 @@ def test_publication_model(sample_publication):
 
     # Test year validation
     with pytest.raises(ValueError, match="Year 1899 is not in valid range"):
-        Publication(title="Invalid Year", year=1899, source="GrowthLab")
+        GrowthLabPublication(title="Invalid Year", year=1899, source="GrowthLab")
 
 
 def test_publication_enrichment():
     """Test the enrichment functionality without using async mocks"""
     # Create a test publication with missing fields
-    test_pub = Publication(
+    test_pub = GrowthLabPublication(
         title="Test Publication",
         authors=None,  # Set to None to test enrichment
         year=2023,
@@ -303,7 +303,7 @@ def test_growthlab_real_data_id_generation(tmp_path):
     logger.info(f"- Unknown IDs: {unknown_ids} ({unknown_pct:.1f}%)")
 
     # Load a sample of publications to verify ID regeneration
-    from backend.etl.scrapers.growthlab import Publication
+    from backend.etl.scrapers.growthlab import GrowthLabPublication
 
     # Test with a subset of publications to keep test fast
     sample_size = min(20, len(df))
@@ -315,7 +315,7 @@ def test_growthlab_real_data_id_generation(tmp_path):
         file_urls = eval(row["file_urls"]) if isinstance(row["file_urls"], str) else []
 
         # Create Publication object
-        pub = Publication(
+        pub = GrowthLabPublication(
             title=row["title"] if not pd.isna(row["title"]) else None,
             authors=row["authors"] if not pd.isna(row["authors"]) else None,
             year=int(row["year"]) if not pd.isna(row["year"]) else None,

@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import aiohttp
 import pytest
 
-from backend.etl.scrapers.growthlab import Publication
+from backend.etl.scrapers.growthlab import GrowthLabPublication
 from backend.etl.utils.file_downloader import DownloadResult, FileDownloader
 from backend.storage.local import LocalStorage
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 @pytest.fixture
 def sample_publication():
     """Create a sample publication for testing."""
-    pub = Publication(
+    pub = GrowthLabPublication(
         title="Test Publication",
         authors="John Doe, Jane Smith",
         year=2023,
@@ -303,7 +303,7 @@ async def test_download_publications(file_downloader, sample_publication, tmp_pa
     """Test downloading files for multiple publications."""
     # Create multiple test publications
     pub1 = sample_publication
-    pub2 = Publication(
+    pub2 = GrowthLabPublication(
         title="Another Publication",
         authors="Jane Smith",
         year=2022,
@@ -438,7 +438,7 @@ async def test_download_growthlab_files(storage, sample_publication, tmp_path):
 async def test_integration_end_to_end(storage, tmp_path):
     """End-to-end integration test with actual files."""
     # Create test publications with known good URLs that are likely to work
-    pub = Publication(
+    pub = GrowthLabPublication(
         title="Test Publication",
         authors="Integration Test",
         year=2023,

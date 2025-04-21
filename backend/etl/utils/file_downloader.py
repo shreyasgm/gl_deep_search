@@ -22,7 +22,7 @@ import aiofiles
 import aiohttp
 import tqdm.asyncio
 
-from backend.etl.scrapers.growthlab import Publication
+from backend.etl.scrapers.growthlab import GrowthLabPublication
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
@@ -187,7 +187,7 @@ class FileDownloader:
 
         return self._session
 
-    def _get_file_path(self, publication: Publication, file_url: str) -> Path:
+    def _get_file_path(self, publication: GrowthLabPublication, file_url: str) -> Path:
         """
         Determine the appropriate path for saving a file.
 
@@ -620,7 +620,7 @@ class FileDownloader:
 
     async def download_publications(
         self,
-        publications: Sequence[Publication],
+        publications: Sequence[GrowthLabPublication],
         overwrite: bool = False,
         limit: int | None = None,
         progress_bar: bool = True,
