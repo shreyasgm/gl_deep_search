@@ -1140,6 +1140,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "aiofiles" },
     { name = "aiohttp" },
     { name = "anthropic" },
     { name = "asyncio" },
@@ -1209,6 +1210,7 @@ dev = [
     { name = "types-tqdm" },
 ]
 etl = [
+    { name = "aiofiles" },
     { name = "aiohttp" },
     { name = "asyncio" },
     { name = "backoff" },
@@ -1260,6 +1262,7 @@ service = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiofiles", marker = "extra == 'etl'" },
     { name = "aiohttp", marker = "extra == 'etl'", specifier = ">=3.8.0,!=3.11.14" },
     { name = "anthropic", marker = "extra == 'service'" },
     { name = "asyncio", marker = "extra == 'etl'" },
