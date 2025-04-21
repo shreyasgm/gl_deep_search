@@ -25,6 +25,20 @@ sources:
     redownload_existing: false
     remove_outdated_files: true
 
+# File downloader configuration
+file_downloader:
+  download_delay: 1.0
+  max_retries: 5
+  retry_base_delay: 1.0
+  retry_max_delay: 60.0
+  min_file_size: 1024  # 1KB
+  max_file_size: 100_000_000  # 100MB
+  user_agent_list:
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/120.0.0.0"
+
 # File processing
 file_processing:
   ocr:
