@@ -3,11 +3,8 @@ Scraper module for the Growth Lab website publications
 """
 
 import asyncio
-import hashlib
 import logging
-import random
 import re
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -15,120 +12,16 @@ import aiohttp
 import pandas as pd
 import yaml
 from bs4 import BeautifulSoup
-from pydantic import BaseModel, Field, HttpUrl, field_validator
 from tqdm.asyncio import tqdm as async_tqdm
+
+from backend.etl.models.publications import GrowthLabPublication
+from backend.etl.utils.retry import retry_with_backoff
+from backend.storage.factory import get_storage
 
 logger = logging.getLogger(__name__)
 
 # Type variable for generic retry function
 T = TypeVar("T")
-
-
-async def retry_with_backoff(
-    func: Callable[..., T],
-    *args,
-    max_retries: int = 5,
-    base_delay: float = 1.0,
-    max_delay: float = 60.0,
-    retry_on: tuple = (aiohttp.ClientError, TimeoutError),
-    **kwargs,
-) -> T:
-    """
-    Retry an async function with exponential backoff.
-
-    Args:
-        func: The async function to retry
-        *args: Arguments to pass to the function
-        max_retries: Maximum number of retries
-        base_delay: Base delay in seconds
-        max_delay: Maximum delay in seconds
-        retry_on: Tuple of exceptions to retry on
-        **kwargs: Keyword arguments to pass to the function
-
-    Returns:
-        The return value of the function
-
-    Raises:
-        The last exception encountered if max_retries is exceeded
-    """
-    last_exception = None
-
-    for attempt in range(max_retries + 1):
-        try:
-            result = func(*args, **kwargs)
-            if asyncio.iscoroutine(result):
-                return await result
-            return result
-        except retry_on as e:
-            if attempt == max_retries:
-                # On last attempt, re-raise the exception
-                logger.error(
-                    f"Max retries ({max_retries}) exceeded for {func.__name__}: {e}"
-                )
-                raise
-
-            # Calculate delay with jitter to avoid thundering herd
-            delay = min(base_delay * (2**attempt) + random.uniform(0, 1), max_delay)
-
-            # Log retry attempt
-            logger.warning(
-                f"Request failed with {e.__class__.__name__}: {e}. "
-                f"Retrying in {delay:.2f}s (attempt {attempt + 1}/{max_retries})"
-            )
-
-            last_exception = e
-            await asyncio.sleep(delay)
-
-    # This should not be reached due to the re-raise in the loop,
-    # but just in case, we raise the last exception here
-    if last_exception:
-        raise last_exception
-    raise RuntimeError("Unexpected failure in retry logic")
-
-
-class Publication(BaseModel):
-    """Represents a publication with relevant details"""
-
-    paper_id: str | None = None
-    title: str | None = None
-    authors: str | None = None
-    year: int | None = None
-    abstract: str | None = None
-    pub_url: HttpUrl | None = None
-    file_urls: list[HttpUrl] = Field(default_factory=list)
-    source: str = "GrowthLab"
-    content_hash: str | None = None  # Hash for detecting changes in publication
-
-    @field_validator("year")
-    def validate_year(cls, v):  # noqa: N805
-        """Validate year is reasonable"""
-        if v and (v < 1900 or v > 2100):
-            raise ValueError(f"Year {v} is not in valid range (1900-2100)")
-        return v
-
-    def generate_id(self) -> str:
-        """Generate a stable ID for the publication"""
-        if self.paper_id:
-            return self.paper_id
-
-        # Create base string for hashing
-        base = f"{self.title}_{self.authors}_{self.year}_{self.pub_url}"
-
-        # Create hash for stability
-        hash_obj = hashlib.md5(base.encode())
-        hash_id = hash_obj.hexdigest()[:10]
-
-        # Format: source_year_hash
-        return f"gl_{self.year or '0000'}_{hash_id}"
-
-    def generate_content_hash(self) -> str:
-        """Generate a hash of the publication content to detect changes"""
-        content = (
-            f"{self.title}_{self.authors}_{self.year}_{self.abstract}_{self.pub_url}"
-        )
-        for url in self.file_urls:
-            content += f"_{url}"
-        return hashlib.sha256(content.encode()).hexdigest()
 
 
 class GrowthLabScraper:
@@ -239,7 +132,7 @@ class GrowthLabScraper:
 
     async def parse_publication(
         self, pub_element: BeautifulSoup, base_url: str
-    ) -> Publication | None:
+    ) -> GrowthLabPublication | None:
         """Parse a single publication element"""
         try:
             title_element = pub_element.find("span", {"class": "biblio-title"})
@@ -287,7 +180,7 @@ class GrowthLabScraper:
                             file_url = f"{base_url.split('/publications')[0]}{file_url}"
                         file_urls.append(file_url)
 
-            pub = Publication(
+            pub = GrowthLabPublication(
                 title=title,
                 authors=authors,
                 year=year,
@@ -308,7 +201,7 @@ class GrowthLabScraper:
 
     async def _fetch_page_impl(
         self, session: aiohttp.ClientSession, page_num: int
-    ) -> list[Publication]:
+    ) -> list[GrowthLabPublication]:
         """Implementation to fetch a single page of publications"""
         url = self.base_url if page_num == 0 else f"{self.base_url}?page={page_num}"
         publications = []
@@ -350,7 +243,7 @@ class GrowthLabScraper:
 
     async def fetch_page(
         self, session: aiohttp.ClientSession, page_num: int
-    ) -> list[Publication]:
+    ) -> list[GrowthLabPublication]:
         """Fetch a single page of publications with retry mechanism"""
         max_retries = self.config.get("max_retries", 3)
         base_delay = self.config.get("retry_base_delay", 1.0)
@@ -370,7 +263,7 @@ class GrowthLabScraper:
             logger.error(f"All retries failed for page {page_num}: {e}")
             return []
 
-    async def extract_publications(self) -> list[Publication]:
+    async def extract_publications(self) -> list[GrowthLabPublication]:
         """Extract all publications from the Growth Lab website"""
         # Create more robust session with timeouts
         timeout = aiohttp.ClientTimeout(
@@ -539,8 +432,11 @@ class GrowthLabScraper:
         return record
 
     async def _enrich_publication_impl(
-        self, session: aiohttp.ClientSession, pub: Publication, endnote_url: str
-    ) -> Publication:
+        self,
+        session: aiohttp.ClientSession,
+        pub: GrowthLabPublication,
+        endnote_url: str,
+    ) -> GrowthLabPublication:
         """Implementation to enrich publication with data from Endnote file"""
         async with self.semaphore:
             try:
@@ -612,8 +508,8 @@ class GrowthLabScraper:
                 return pub
 
     async def enrich_publication(
-        self, session: aiohttp.ClientSession, pub: Publication
-    ) -> Publication:
+        self, session: aiohttp.ClientSession, pub: GrowthLabPublication
+    ) -> GrowthLabPublication:
         """Enrich publication with data from Endnote file with retry mechanism"""
         if not pub.pub_url:
             return pub
@@ -643,7 +539,7 @@ class GrowthLabScraper:
             )
             return pub
 
-    async def extract_and_enrich_publications(self) -> list[Publication]:
+    async def extract_and_enrich_publications(self) -> list[GrowthLabPublication]:
         """Extract all publications and enrich them with Endnote data"""
         publications = await self.extract_publications()
 
@@ -733,7 +629,9 @@ class GrowthLabScraper:
         )
         return enriched_publications
 
-    def save_to_csv(self, publications: list[Publication], output_path: Path) -> None:
+    def save_to_csv(
+        self, publications: list[GrowthLabPublication], output_path: Path
+    ) -> None:
         """Save publications to CSV file"""
         # Convert publications to dictionaries and handle HttpUrl objects
         pub_dicts = []
@@ -750,7 +648,7 @@ class GrowthLabScraper:
         df.to_csv(output_path, index=False)
         logger.info(f"Saved {len(publications)} publications to {output_path}")
 
-    def load_from_csv(self, input_path: Path) -> list[Publication]:
+    def load_from_csv(self, input_path: Path) -> list[GrowthLabPublication]:
         """Load publications from CSV file"""
         if not input_path.exists():
             logger.warning(f"CSV file {input_path} does not exist")
@@ -773,7 +671,7 @@ class GrowthLabScraper:
             df["file_urls"] = df["file_urls"].apply(
                 lambda x: eval(x) if isinstance(x, str) else []
             )
-            publications = [Publication(**row) for _, row in df.iterrows()]
+            publications = [GrowthLabPublication(**row) for _, row in df.iterrows()]
             logger.info(f"Loaded {len(publications)} publications from {input_path}")
             return publications
         except Exception as e:
@@ -785,7 +683,7 @@ class GrowthLabScraper:
         existing_path: Path | None = None,
         output_path: Path | None = None,
         storage=None,
-    ) -> list[Publication]:
+    ) -> list[GrowthLabPublication]:
         """
         Update publications by comparing existing ones with newly scraped ones
 
@@ -796,9 +694,6 @@ class GrowthLabScraper:
             output_path: Optional path to save updated publications
             storage: Optional storage instance (will use default if None)
         """
-        # Import storage factory here to avoid circular imports
-        from backend.storage.factory import get_storage
-
         # Get storage instance if not provided
         storage = storage or get_storage()
 

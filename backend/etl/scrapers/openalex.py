@@ -3,60 +3,23 @@ OpenAlex API client for fetching academic publications
 """
 
 import asyncio
-import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import aiohttp
 import pandas as pd
 import yaml
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 from tqdm.asyncio import tqdm as async_tqdm
+
+from backend.etl.models.publications import OpenAlexPublication
+from backend.storage.factory import get_storage
 
 logger = logging.getLogger(__name__)
 
-
-class OpenAlexPublication(BaseModel):
-    """Represents a publication from the OpenAlex API"""
-
-    paper_id: str  # OpenAlex ID (e.g., "W2741809807")
-    openalex_id: str  # Full OpenAlex URL
-    title: str | None = None
-    authors: str | None = None
-    year: int | None = None
-    abstract: str | None = None
-    pub_url: HttpUrl | None = None
-    file_urls: list[HttpUrl] = Field(default_factory=list)
-    source: str = "OpenAlex"
-    content_hash: str | None = None  # Hash for detecting changes
-    cited_by_count: int | None = None
-
-    @field_validator("paper_id")
-    def validate_id(cls, v):  # noqa: N805
-        """Ensure paper_id is just the ID without the URL prefix"""
-        if v.startswith("https://openalex.org/"):
-            return v.replace("https://openalex.org/", "")
-        return v
-
-    @model_validator(mode="before")
-    def set_openalex_id(cls, values: dict[str, Any]) -> dict[str, Any]:  # noqa: N805
-        """Ensure openalex_id is the full URL"""
-        if "paper_id" in values and not values.get("openalex_id"):
-            paper_id = values["paper_id"]
-            if not paper_id.startswith("https://openalex.org/"):
-                values["openalex_id"] = f"https://openalex.org/{paper_id}"
-        return values
-
-    def generate_content_hash(self) -> str:
-        """Generate a hash of the publication content to detect changes"""
-        content = (
-            f"{self.title}_{self.authors}_{self.year}_{self.abstract}_{self.pub_url}"
-        )
-        for url in self.file_urls:
-            content += f"_{url}"
-        return hashlib.sha256(content.encode()).hexdigest()
+# Type variable for generic retry function
+T = TypeVar("T")
 
 
 class OpenAlexClient:
@@ -237,6 +200,13 @@ class OpenAlexClient:
                     cited_by_count=result.get("cited_by_count"),
                 )
 
+                # Use our improved ID generation if needed
+                # Note: OpenAlex already has stable IDs, but this is here for
+                # consistency with the rest of the system
+                # If we don't have a standard OpenAlex ID
+                if not pub.paper_id.startswith("W"):
+                    pub.paper_id = pub.generate_id()
+
                 # Generate content hash
                 pub.content_hash = pub.generate_content_hash()
 
@@ -335,9 +305,6 @@ class OpenAlexClient:
             output_path: Optional path to save updated publications
             storage: Optional storage instance (will use default if None)
         """
-        # Import storage factory here to avoid circular imports
-        from backend.storage.factory import get_storage
-
         # Get storage instance if not provided
         storage = storage or get_storage()
 

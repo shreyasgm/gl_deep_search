@@ -924,6 +924,211 @@ wheels = [
 ]
 
 [[package]]
+name = "gl-deep-search"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "loguru" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "tqdm" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "aiofiles" },
+    { name = "aiohttp" },
+    { name = "anthropic" },
+    { name = "asyncio" },
+    { name = "backoff" },
+    { name = "beautifulsoup4" },
+    { name = "browser-use" },
+    { name = "cohere" },
+    { name = "docling", version = "2.15.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "docling", version = "2.26.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "fastapi" },
+    { name = "google-cloud-logging" },
+    { name = "google-cloud-monitoring" },
+    { name = "google-cloud-secret-manager" },
+    { name = "google-cloud-storage" },
+    { name = "gunicorn" },
+    { name = "langchain" },
+    { name = "langchain-anthropic" },
+    { name = "langchain-community" },
+    { name = "langchain-openai" },
+    { name = "langdetect" },
+    { name = "langgraph" },
+    { name = "langsmith" },
+    { name = "lxml" },
+    { name = "marker-pdf" },
+    { name = "mkdocs" },
+    { name = "mkdocs-material" },
+    { name = "mypy" },
+    { name = "numpy" },
+    { name = "openai" },
+    { name = "pandas" },
+    { name = "pandas-stubs" },
+    { name = "playwright" },
+    { name = "pre-commit" },
+    { name = "pydantic-settings" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "qdrant-client" },
+    { name = "requests" },
+    { name = "ruff" },
+    { name = "scrapy" },
+    { name = "seaborn" },
+    { name = "sentence-transformers" },
+    { name = "streamlit" },
+    { name = "types-aiofiles" },
+    { name = "types-beautifulsoup4" },
+    { name = "types-pyyaml" },
+    { name = "types-requests" },
+    { name = "types-tqdm" },
+    { name = "unstructured" },
+    { name = "uvicorn" },
+]
+dev = [
+    { name = "browser-use" },
+    { name = "mkdocs" },
+    { name = "mkdocs-material" },
+    { name = "mypy" },
+    { name = "pandas-stubs" },
+    { name = "playwright" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "ruff" },
+    { name = "types-aiofiles" },
+    { name = "types-beautifulsoup4" },
+    { name = "types-pyyaml" },
+    { name = "types-requests" },
+    { name = "types-tqdm" },
+]
+etl = [
+    { name = "aiofiles" },
+    { name = "aiohttp" },
+    { name = "asyncio" },
+    { name = "backoff" },
+    { name = "beautifulsoup4" },
+    { name = "cohere" },
+    { name = "docling", version = "2.15.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "docling", version = "2.26.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "google-cloud-storage" },
+    { name = "langdetect" },
+    { name = "lxml" },
+    { name = "marker-pdf" },
+    { name = "numpy" },
+    { name = "openai" },
+    { name = "pandas" },
+    { name = "qdrant-client" },
+    { name = "requests" },
+    { name = "scrapy" },
+    { name = "seaborn" },
+    { name = "sentence-transformers" },
+    { name = "unstructured" },
+]
+frontend = [
+    { name = "pandas" },
+    { name = "requests" },
+    { name = "streamlit" },
+]
+prod = [
+    { name = "google-cloud-logging" },
+    { name = "google-cloud-monitoring" },
+    { name = "google-cloud-secret-manager" },
+    { name = "gunicorn" },
+]
+service = [
+    { name = "anthropic" },
+    { name = "cohere" },
+    { name = "fastapi" },
+    { name = "langchain" },
+    { name = "langchain-anthropic" },
+    { name = "langchain-community" },
+    { name = "langchain-openai" },
+    { name = "langgraph" },
+    { name = "langsmith" },
+    { name = "openai" },
+    { name = "pydantic-settings" },
+    { name = "qdrant-client" },
+    { name = "sentence-transformers" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiofiles", marker = "extra == 'etl'" },
+    { name = "aiohttp", marker = "extra == 'etl'", specifier = ">=3.8.0,!=3.11.14" },
+    { name = "anthropic", marker = "extra == 'service'" },
+    { name = "asyncio", marker = "extra == 'etl'" },
+    { name = "backoff", marker = "extra == 'etl'" },
+    { name = "beautifulsoup4", marker = "extra == 'etl'" },
+    { name = "browser-use", marker = "extra == 'dev'" },
+    { name = "cohere", marker = "extra == 'etl'" },
+    { name = "cohere", marker = "extra == 'service'" },
+    { name = "docling", marker = "extra == 'etl'" },
+    { name = "fastapi", marker = "extra == 'service'" },
+    { name = "gl-deep-search", extras = ["etl", "service", "frontend", "dev", "prod"], marker = "extra == 'all'" },
+    { name = "google-cloud-logging", marker = "extra == 'prod'" },
+    { name = "google-cloud-monitoring", marker = "extra == 'prod'" },
+    { name = "google-cloud-secret-manager", marker = "extra == 'prod'" },
+    { name = "google-cloud-storage", marker = "extra == 'etl'" },
+    { name = "gunicorn", marker = "extra == 'prod'" },
+    { name = "langchain", marker = "extra == 'service'" },
+    { name = "langchain-anthropic", marker = "extra == 'service'" },
+    { name = "langchain-community", marker = "extra == 'service'" },
+    { name = "langchain-openai", marker = "extra == 'service'" },
+    { name = "langdetect", marker = "extra == 'etl'" },
+    { name = "langgraph", marker = "extra == 'service'" },
+    { name = "langsmith", marker = "extra == 'service'" },
+    { name = "loguru" },
+    { name = "lxml", marker = "extra == 'etl'" },
+    { name = "marker-pdf", marker = "extra == 'etl'" },
+    { name = "mkdocs", marker = "extra == 'dev'" },
+    { name = "mkdocs-material", marker = "extra == 'dev'" },
+    { name = "mypy", marker = "extra == 'dev'" },
+    { name = "numpy", marker = "extra == 'etl'" },
+    { name = "openai", marker = "extra == 'etl'" },
+    { name = "openai", marker = "extra == 'service'" },
+    { name = "pandas", marker = "extra == 'etl'" },
+    { name = "pandas", marker = "extra == 'frontend'" },
+    { name = "pandas-stubs", marker = "extra == 'dev'" },
+    { name = "playwright", marker = "extra == 'dev'" },
+    { name = "pre-commit", marker = "extra == 'dev'" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "pydantic-settings", marker = "extra == 'service'" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'" },
+    { name = "pytest-cov", marker = "extra == 'dev'" },
+    { name = "pytest-mock", marker = "extra == 'dev'" },
+    { name = "python-dotenv", specifier = ">=1" },
+    { name = "qdrant-client", marker = "extra == 'etl'" },
+    { name = "qdrant-client", marker = "extra == 'service'" },
+    { name = "requests", marker = "extra == 'etl'" },
+    { name = "requests", marker = "extra == 'frontend'" },
+    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "scrapy", marker = "extra == 'etl'" },
+    { name = "seaborn", marker = "extra == 'etl'" },
+    { name = "sentence-transformers", marker = "extra == 'etl'" },
+    { name = "sentence-transformers", marker = "extra == 'service'" },
+    { name = "streamlit", marker = "extra == 'frontend'" },
+    { name = "tqdm" },
+    { name = "types-aiofiles", marker = "extra == 'dev'" },
+    { name = "types-beautifulsoup4", marker = "extra == 'dev'" },
+    { name = "types-pyyaml", marker = "extra == 'dev'" },
+    { name = "types-requests", marker = "extra == 'dev'" },
+    { name = "types-tqdm", marker = "extra == 'dev'" },
+    { name = "unstructured", marker = "extra == 'etl'" },
+    { name = "uvicorn", marker = "extra == 'service'" },
+]
+provides-extras = ["etl", "service", "frontend", "dev", "prod", "all"]
+
+[[package]]
 name = "google-api-core"
 version = "2.24.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1126,202 +1331,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/38/f9/c0a0eb61bdf808d23266ecf1d63309f0e1471f284300ce6dac0ae1231881/greenlet-3.1.1-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:23f20bb60ae298d7d8656c6ec6db134bca379ecefadb0b19ce6f19d1f232a942", size = 1163955 },
     { url = "https://files.pythonhosted.org/packages/43/21/a5d9df1d21514883333fc86584c07c2b49ba7c602e670b174bd73cfc9c7f/greenlet-3.1.1-cp312-cp312-win_amd64.whl", hash = "sha256:7124e16b4c55d417577c2077be379514321916d5790fa287c9ed6f23bd2ffd01", size = 299655 },
 ]
-
-[[package]]
-name = "growth-lab-deep-search"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "loguru" },
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "tqdm" },
-]
-
-[package.optional-dependencies]
-all = [
-    { name = "aiohttp" },
-    { name = "anthropic" },
-    { name = "asyncio" },
-    { name = "backoff" },
-    { name = "beautifulsoup4" },
-    { name = "browser-use" },
-    { name = "cohere" },
-    { name = "docling", version = "2.15.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
-    { name = "docling", version = "2.26.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
-    { name = "fastapi" },
-    { name = "google-cloud-logging" },
-    { name = "google-cloud-monitoring" },
-    { name = "google-cloud-secret-manager" },
-    { name = "google-cloud-storage" },
-    { name = "gunicorn" },
-    { name = "langchain" },
-    { name = "langchain-anthropic" },
-    { name = "langchain-community" },
-    { name = "langchain-openai" },
-    { name = "langdetect" },
-    { name = "langgraph" },
-    { name = "langsmith" },
-    { name = "lxml" },
-    { name = "marker-pdf" },
-    { name = "mkdocs" },
-    { name = "mkdocs-material" },
-    { name = "mypy" },
-    { name = "numpy" },
-    { name = "openai" },
-    { name = "pandas" },
-    { name = "pandas-stubs" },
-    { name = "playwright" },
-    { name = "pre-commit" },
-    { name = "pydantic-settings" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "qdrant-client" },
-    { name = "requests" },
-    { name = "ruff" },
-    { name = "scrapy" },
-    { name = "seaborn" },
-    { name = "sentence-transformers" },
-    { name = "streamlit" },
-    { name = "types-beautifulsoup4" },
-    { name = "types-pyyaml" },
-    { name = "types-requests" },
-    { name = "types-tqdm" },
-    { name = "unstructured" },
-    { name = "uvicorn" },
-]
-dev = [
-    { name = "browser-use" },
-    { name = "mkdocs" },
-    { name = "mkdocs-material" },
-    { name = "mypy" },
-    { name = "pandas-stubs" },
-    { name = "playwright" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "ruff" },
-    { name = "types-beautifulsoup4" },
-    { name = "types-pyyaml" },
-    { name = "types-requests" },
-    { name = "types-tqdm" },
-]
-etl = [
-    { name = "aiohttp" },
-    { name = "asyncio" },
-    { name = "backoff" },
-    { name = "beautifulsoup4" },
-    { name = "cohere" },
-    { name = "docling", version = "2.15.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
-    { name = "docling", version = "2.26.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
-    { name = "google-cloud-storage" },
-    { name = "langdetect" },
-    { name = "lxml" },
-    { name = "marker-pdf" },
-    { name = "numpy" },
-    { name = "openai" },
-    { name = "pandas" },
-    { name = "qdrant-client" },
-    { name = "requests" },
-    { name = "scrapy" },
-    { name = "seaborn" },
-    { name = "sentence-transformers" },
-    { name = "unstructured" },
-]
-frontend = [
-    { name = "pandas" },
-    { name = "requests" },
-    { name = "streamlit" },
-]
-prod = [
-    { name = "google-cloud-logging" },
-    { name = "google-cloud-monitoring" },
-    { name = "google-cloud-secret-manager" },
-    { name = "gunicorn" },
-]
-service = [
-    { name = "anthropic" },
-    { name = "cohere" },
-    { name = "fastapi" },
-    { name = "langchain" },
-    { name = "langchain-anthropic" },
-    { name = "langchain-community" },
-    { name = "langchain-openai" },
-    { name = "langgraph" },
-    { name = "langsmith" },
-    { name = "openai" },
-    { name = "pydantic-settings" },
-    { name = "qdrant-client" },
-    { name = "sentence-transformers" },
-    { name = "uvicorn" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp", marker = "extra == 'etl'", specifier = ">=3.8.0,!=3.11.14" },
-    { name = "anthropic", marker = "extra == 'service'" },
-    { name = "asyncio", marker = "extra == 'etl'" },
-    { name = "backoff", marker = "extra == 'etl'" },
-    { name = "beautifulsoup4", marker = "extra == 'etl'" },
-    { name = "browser-use", marker = "extra == 'dev'" },
-    { name = "cohere", marker = "extra == 'etl'" },
-    { name = "cohere", marker = "extra == 'service'" },
-    { name = "docling", marker = "extra == 'etl'" },
-    { name = "fastapi", marker = "extra == 'service'" },
-    { name = "google-cloud-logging", marker = "extra == 'prod'" },
-    { name = "google-cloud-monitoring", marker = "extra == 'prod'" },
-    { name = "google-cloud-secret-manager", marker = "extra == 'prod'" },
-    { name = "google-cloud-storage", marker = "extra == 'etl'" },
-    { name = "growth-lab-deep-search", extras = ["etl", "service", "frontend", "dev", "prod"], marker = "extra == 'all'" },
-    { name = "gunicorn", marker = "extra == 'prod'" },
-    { name = "langchain", marker = "extra == 'service'" },
-    { name = "langchain-anthropic", marker = "extra == 'service'" },
-    { name = "langchain-community", marker = "extra == 'service'" },
-    { name = "langchain-openai", marker = "extra == 'service'" },
-    { name = "langdetect", marker = "extra == 'etl'" },
-    { name = "langgraph", marker = "extra == 'service'" },
-    { name = "langsmith", marker = "extra == 'service'" },
-    { name = "loguru" },
-    { name = "lxml", marker = "extra == 'etl'" },
-    { name = "marker-pdf", marker = "extra == 'etl'" },
-    { name = "mkdocs", marker = "extra == 'dev'" },
-    { name = "mkdocs-material", marker = "extra == 'dev'" },
-    { name = "mypy", marker = "extra == 'dev'" },
-    { name = "numpy", marker = "extra == 'etl'" },
-    { name = "openai", marker = "extra == 'etl'" },
-    { name = "openai", marker = "extra == 'service'" },
-    { name = "pandas", marker = "extra == 'etl'" },
-    { name = "pandas", marker = "extra == 'frontend'" },
-    { name = "pandas-stubs", marker = "extra == 'dev'" },
-    { name = "playwright", marker = "extra == 'dev'" },
-    { name = "pre-commit", marker = "extra == 'dev'" },
-    { name = "pydantic", specifier = ">=2" },
-    { name = "pydantic-settings", marker = "extra == 'service'" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-cov", marker = "extra == 'dev'" },
-    { name = "pytest-mock", marker = "extra == 'dev'" },
-    { name = "python-dotenv", specifier = ">=1" },
-    { name = "qdrant-client", marker = "extra == 'etl'" },
-    { name = "qdrant-client", marker = "extra == 'service'" },
-    { name = "requests", marker = "extra == 'etl'" },
-    { name = "requests", marker = "extra == 'frontend'" },
-    { name = "ruff", marker = "extra == 'dev'" },
-    { name = "scrapy", marker = "extra == 'etl'" },
-    { name = "seaborn", marker = "extra == 'etl'" },
-    { name = "sentence-transformers", marker = "extra == 'etl'" },
-    { name = "sentence-transformers", marker = "extra == 'service'" },
-    { name = "streamlit", marker = "extra == 'frontend'" },
-    { name = "tqdm" },
-    { name = "types-beautifulsoup4", marker = "extra == 'dev'" },
-    { name = "types-pyyaml", marker = "extra == 'dev'" },
-    { name = "types-requests", marker = "extra == 'dev'" },
-    { name = "types-tqdm", marker = "extra == 'dev'" },
-    { name = "unstructured", marker = "extra == 'etl'" },
-    { name = "uvicorn", marker = "extra == 'service'" },
-]
-provides-extras = ["etl", "service", "frontend", "dev", "prod", "all"]
 
 [[package]]
 name = "grpc-google-iam-v1"
@@ -3189,6 +3198,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-asyncio"
+version = "0.26.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8e/c4/453c52c659521066969523e87d85d54139bbd17b78f09532fb8eb8cdb58e/pytest_asyncio-0.26.0.tar.gz", hash = "sha256:c4df2a697648241ff39e7f0e4a73050b03f123f760673956cf0d72a4990e312f", size = 54156 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/7f/338843f449ace853647ace35870874f69a764d251872ed1b4de9f234822c/pytest_asyncio-0.26.0-py3-none-any.whl", hash = "sha256:7b51ed894f4fbea1340262bdae5135797ebbe21d8638978e35d31c6d19f72fb0", size = 19694 },
+]
+
+[[package]]
 name = "pytest-cov"
 version = "6.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4196,6 +4217,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/58/a79003b91ac2c6890fc5d90145c662fd5771c6f11447f116b63300436bc9/typer-0.12.5.tar.gz", hash = "sha256:f592f089bedcc8ec1b974125d64851029c3b1af145f04aca64d69410f0c9b722", size = 98953 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a8/2b/886d13e742e514f704c33c4caa7df0f3b89e5a25ef8db02aa9ca3d9535d5/typer-0.12.5-py3-none-any.whl", hash = "sha256:62fe4e471711b147e3365034133904df3e235698399bc4de2b36c8579298d52b", size = 47288 },
+]
+
+[[package]]
+name = "types-aiofiles"
+version = "24.1.0.20250326"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/25/c76a9ee91eefac376ed8905b029272e27c44739e3f148faf5c00afe71e43/types_aiofiles-24.1.0.20250326.tar.gz", hash = "sha256:c4bbe432fd043911ba83fb635456f5cc54f6d05fda2aadf6bef12a84f07a6efe", size = 14369 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/18/1016ffd4c7775f24371f6a0309483dc5597e8245b5add67924e54ea3b83a/types_aiofiles-24.1.0.20250326-py3-none-any.whl", hash = "sha256:dfb58c9aa18bd449e80fb5d7f49dc3dd20d31de920a46223a61798ee4a521a70", size = 14344 },
 ]
 
 [[package]]

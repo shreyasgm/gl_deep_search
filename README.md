@@ -115,6 +115,7 @@ gl_deep_search/
 
 - Docker and Docker Compose
 - Python 3.12+
+- `uv` for project management (check documentarion [here](https://docs.astral.sh/uv/))
 - GCP account and credentials (for production)
 - API keys for OpenAI, Anthropic, etc.
 
@@ -122,18 +123,28 @@ gl_deep_search/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-org/growth-lab-deep-search.git
-   cd growth-lab-deep-search
+   git clone https://github.com/shreyasgm/gl_deep_search.git
+   cd gl_deep_search
+   ```
+2. Run `uv` in the CLI to check that it is available. After this, run `uv sync` in to install dependencies and create the `.venv` file
+
+3. To add new packages to the project, use the following format:
+   ```bash
+   # Add a package to a specific group (etl, service, frontend, dev, prod)
+   uv add package_name --optional group_name
+
+   # Example: Add seaborn to the service group
+   uv add seaborn --optional service
    ```
 
-2. Create and configure environment files:
+4. Create and configure environment files:
    ```bash
    cp backend/etl/.env.example backend/etl/.env
    cp backend/service/.env.example backend/service/.env
    cp frontend/.env.example frontend/.env
    ```
 
-3. Add your API keys and configuration to the `.env` files
+5. Add your API keys and configuration to the `.env` files
 
 ### Docker Development Environment
 

@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import AsyncMock, patch
 
 # No need to import aiohttp directly for tests
@@ -7,6 +8,9 @@ from backend.etl.scrapers.openalex import (
     OpenAlexClient,
     OpenAlexPublication,
 )
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -53,6 +57,61 @@ def test_publication_model(sample_publication):
         title="Test",
     )
     assert pub2.openalex_id == "https://openalex.org/W654321"
+
+    # Test ID generation with OpenAlex ID
+    assert pub2.generate_id() == "oa_W654321"
+
+    # Test ID generation with DOI
+    pub_with_doi = OpenAlexPublication(
+        paper_id="test_no_w_id",
+        title="Test DOI Based ID",
+        file_urls=["https://doi.org/10.1234/test.doi"],
+    )
+    doi_based_id = pub_with_doi.generate_id()
+    assert doi_based_id.startswith("oa_doi_")
+    assert len(doi_based_id) > 10
+
+    # Test ID generation with URL
+    pub_with_url = OpenAlexPublication(
+        paper_id="test_no_w_id",
+        title="Test URL Based ID",
+        pub_url="https://example.com/paper/123",
+    )
+    url_based_id = pub_with_url.generate_id()
+    assert url_based_id.startswith("oa_url_")
+    assert len(url_based_id) > 10
+
+    # Test text normalization
+    pub1 = OpenAlexPublication(
+        paper_id="test_no_w_id",
+        title="Test Publication",
+        authors="John Doe, Jane Smith",
+        year=2023,
+    )
+    pub2 = OpenAlexPublication(
+        paper_id="test_no_w_id",
+        title="TEST PUBLICATION",  # Different case
+        authors="John Doe,Jane Smith",  # Different spacing
+        year=2023,
+    )
+    # IDs should be the same despite minor text differences
+    assert pub1.generate_id() == pub2.generate_id()
+
+    # Test with minimal information
+    pub_minimal = OpenAlexPublication(
+        paper_id="test_no_w_id",
+        title="Just a Title",
+    )
+    minimal_id = pub_minimal.generate_id()
+    assert minimal_id.startswith("oa_")
+    assert "0000" in minimal_id  # Default year
+
+    # Test empty case (fallback to random ID)
+    pub_empty = OpenAlexPublication(
+        paper_id="test_no_w_id",
+    )
+    empty_id = pub_empty.generate_id()
+    assert empty_id.startswith("oa_unknown_")
 
 
 def test_extract_abstract(client):
@@ -200,3 +259,127 @@ async def test_update_publications(client, sample_publication, tmp_path):
         # Verify the file was created in the right location
         expected_path = storage.get_path("intermediate/openalex_publications.csv")
         assert expected_path.exists()
+
+
+@pytest.mark.integration
+def test_openalex_real_data_id_generation(tmp_path):
+    """
+    Integration test that verifies ID generation with real data
+    from the OpenAlex API client.
+
+    This test confirms that:
+    1. Most publications have OpenAlex IDs as primary IDs (oa_W*)
+    2. ID generation is stable for real publications
+    3. The fallback ID generation mechanisms work properly
+    """
+    from pathlib import Path
+
+    import pandas as pd
+
+    # Path to real OpenAlex data
+    data_path = Path("data/intermediate/openalex_publications.csv")
+
+    # Skip if data file doesn't exist (for CI environments)
+    if not data_path.exists():
+        pytest.skip(f"Real data file not found at {data_path}")
+
+    # Load the real data
+    df = pd.read_csv(data_path)
+
+    # Ensure we have at least a few records to test with
+    assert len(df) > 10, "Not enough real data records found for testing"
+
+    # Count different types of IDs
+    openalex_ids = sum(
+        1 for id in df["paper_id"] if id.startswith("W")
+    )  # Direct OpenAlex IDs
+    prefixed_openalex_ids = sum(
+        1 for id in df["paper_id"] if id.startswith("oa_W")
+    )  # Prefixed OpenAlex IDs
+    doi_based_ids = sum(1 for id in df["paper_id"] if id.startswith("oa_doi_"))
+    url_based_ids = sum(1 for id in df["paper_id"] if id.startswith("oa_url_"))
+    year_based_ids = sum(
+        1
+        for id in df["paper_id"]
+        if id.startswith("oa_")
+        and not id.startswith("oa_W")
+        and not id.startswith("oa_doi_")
+        and not id.startswith("oa_url_")
+        and not id.startswith("oa_unknown_")
+    )
+    unknown_ids = sum(1 for id in df["paper_id"] if id.startswith("oa_unknown_"))
+
+    # Compute percentages
+    total_count = len(df)
+    openalex_pct = ((openalex_ids + prefixed_openalex_ids) / total_count) * 100
+    doi_pct = (doi_based_ids / total_count) * 100
+    url_pct = (url_based_ids / total_count) * 100
+    year_pct = (year_based_ids / total_count) * 100
+    unknown_pct = (unknown_ids / total_count) * 100
+
+    # Log summary for visibility in test output
+    logger.info(f"OpenAlex ID generation summary ({total_count} publications):")
+    logger.info(
+        f"- OpenAlex IDs (W* or oa_W*): "
+        f"{openalex_ids + prefixed_openalex_ids} ({openalex_pct:.1f}%)"
+    )
+    logger.info(f"- DOI-based IDs: {doi_based_ids} ({doi_pct:.1f}%)")
+    logger.info(f"- URL-based IDs: {url_based_ids} ({url_pct:.1f}%)")
+    logger.info(f"- Year-based IDs: {year_based_ids} ({year_pct:.1f}%)")
+    logger.info(f"- Unknown IDs: {unknown_ids} ({unknown_pct:.1f}%)")
+
+    # Load a sample of publications to verify ID regeneration
+    from backend.etl.scrapers.openalex import OpenAlexPublication
+
+    # Test with a subset of publications to keep test fast
+    sample_size = min(20, len(df))
+    sample_df = df.sample(n=sample_size, random_state=42)
+
+    # For each publication, recreate the model and check if IDs match
+    for _, row in sample_df.iterrows():
+        # Skip if the paper_id is already in OpenAlex format (W*) without our prefix
+        # since our generation would add the prefix
+        if row["paper_id"].startswith("W"):
+            continue
+
+        # Convert string representation of list to actual list for file_urls
+        try:
+            file_urls = (
+                eval(row["file_urls"]) if isinstance(row["file_urls"], str) else []
+            )
+        except:
+            file_urls = []
+
+        # Create OpenAlexPublication object without setting paper_id
+        # This simulates ID generation for a new publication
+        original_id = row["paper_id"]
+        test_id = "test_id_for_regeneration"  # Temporary ID for testing
+
+        pub = OpenAlexPublication(
+            paper_id=test_id,  # Use a temporary ID - we'll test regeneration
+            openalex_id=row["openalex_id"] if not pd.isna(row["openalex_id"]) else None,
+            title=row["title"] if not pd.isna(row["title"]) else None,
+            authors=row["authors"] if not pd.isna(row["authors"]) else None,
+            year=int(row["year"]) if not pd.isna(row["year"]) else None,
+            abstract=row["abstract"] if not pd.isna(row["abstract"]) else None,
+            pub_url=row["pub_url"] if not pd.isna(row["pub_url"]) else None,
+            file_urls=file_urls,
+            source="OpenAlex",
+            cited_by_count=row["cited_by_count"]
+            if not pd.isna(row["cited_by_count"])
+            else None,
+        )
+
+        # Now regenerate the ID - if we have OpenAlex ID, it should preserve it
+        if "openalex_id" in row and not pd.isna(row["openalex_id"]):
+            openalex_id = row["openalex_id"]
+            if openalex_id.startswith("https://openalex.org/W"):
+                # Extract actual ID from URL and ensure it's preserved
+                expected_id = f"oa_{openalex_id.replace('https://openalex.org/', '')}"
+                generated_id = pub.generate_id()
+                assert (
+                    generated_id == expected_id
+                ), f"OpenAlex ID not preserved: {generated_id} != {expected_id}"
+
+    # Verify most publications use OpenAlex IDs as expected
+    assert openalex_pct > 90, "Less than 90% of publications have OpenAlex IDs"
