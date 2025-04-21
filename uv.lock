@@ -1128,7 +1128,7 @@ wheels = [
 ]
 
 [[package]]
-name = "growth-lab-deep-search"
+name = "gl-deep-search"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -1185,6 +1185,7 @@ all = [
     { name = "seaborn" },
     { name = "sentence-transformers" },
     { name = "streamlit" },
+    { name = "types-aiofiles" },
     { name = "types-beautifulsoup4" },
     { name = "types-pyyaml" },
     { name = "types-requests" },
@@ -1204,6 +1205,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "ruff" },
+    { name = "types-aiofiles" },
     { name = "types-beautifulsoup4" },
     { name = "types-pyyaml" },
     { name = "types-requests" },
@@ -1277,7 +1279,7 @@ requires-dist = [
     { name = "google-cloud-monitoring", marker = "extra == 'prod'" },
     { name = "google-cloud-secret-manager", marker = "extra == 'prod'" },
     { name = "google-cloud-storage", marker = "extra == 'etl'" },
-    { name = "growth-lab-deep-search", extras = ["etl", "service", "frontend", "dev", "prod"], marker = "extra == 'all'" },
+    { name = "gl-deep-search", extras = ["etl", "service", "frontend", "dev", "prod"], marker = "extra == 'all'" },
     { name = "gunicorn", marker = "extra == 'prod'" },
     { name = "langchain", marker = "extra == 'service'" },
     { name = "langchain-anthropic", marker = "extra == 'service'" },
@@ -1317,6 +1319,7 @@ requires-dist = [
     { name = "sentence-transformers", marker = "extra == 'service'" },
     { name = "streamlit", marker = "extra == 'frontend'" },
     { name = "tqdm" },
+    { name = "types-aiofiles", marker = "extra == 'dev'" },
     { name = "types-beautifulsoup4", marker = "extra == 'dev'" },
     { name = "types-pyyaml", marker = "extra == 'dev'" },
     { name = "types-requests", marker = "extra == 'dev'" },
@@ -4199,6 +4202,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/58/a79003b91ac2c6890fc5d90145c662fd5771c6f11447f116b63300436bc9/typer-0.12.5.tar.gz", hash = "sha256:f592f089bedcc8ec1b974125d64851029c3b1af145f04aca64d69410f0c9b722", size = 98953 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a8/2b/886d13e742e514f704c33c4caa7df0f3b89e5a25ef8db02aa9ca3d9535d5/typer-0.12.5-py3-none-any.whl", hash = "sha256:62fe4e471711b147e3365034133904df3e235698399bc4de2b36c8579298d52b", size = 47288 },
+]
+
+[[package]]
+name = "types-aiofiles"
+version = "24.1.0.20250326"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/25/c76a9ee91eefac376ed8905b029272e27c44739e3f148faf5c00afe71e43/types_aiofiles-24.1.0.20250326.tar.gz", hash = "sha256:c4bbe432fd043911ba83fb635456f5cc54f6d05fda2aadf6bef12a84f07a6efe", size = 14369 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/18/1016ffd4c7775f24371f6a0309483dc5597e8245b5add67924e54ea3b83a/types_aiofiles-24.1.0.20250326-py3-none-any.whl", hash = "sha256:dfb58c9aa18bd449e80fb5d7f49dc3dd20d31de920a46223a61798ee4a521a70", size = 14344 },
 ]
 
 [[package]]

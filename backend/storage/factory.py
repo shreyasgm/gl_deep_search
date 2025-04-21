@@ -32,7 +32,7 @@ class StorageFactory:
                 "runtime": {
                     "detect_automatically": True,
                     "local_storage_path": "data/",
-                    "gcs_bucket": "growth-lab-deep-search",
+                    "gcs_bucket": "gl-deep-search",
                 }
             }
 
@@ -68,7 +68,7 @@ class StorageFactory:
 
         # Create appropriate storage instance
         if storage_type == "cloud":
-            bucket_name = runtime_config.get("gcs_bucket", "growth-lab-deep-search")
+            bucket_name = runtime_config.get("gcs_bucket", "gl-deep-search")
             return CloudStorage(bucket_name)
         else:
             # Default to local storage

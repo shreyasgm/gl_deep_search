@@ -67,5 +67,5 @@ runtime:
   detect_automatically: true
   slurm_indicators: ["SLURM_JOB_ID", "SLURM_STEP_ID"]
   local_storage_path: "data/"
-  gcs_bucket: "growth-lab-deep-search"
+  gcs_bucket: "gl-deep-search"
   sync_to_gcs: true # Only used in SLURM environment

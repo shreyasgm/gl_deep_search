@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "growth-lab-deep-search"
+name = "gl-deep-search"
 version = "0.1.0"
 description = "An agentic RAG system that helps users query Growth Lab-specific unstructured data"
 readme = "README.md"
@@ -125,6 +125,7 @@ dev = [
     "types-requests",
     "types-PyYAML",
     "types-tqdm",
+    "types-aiofiles",
     "pandas-stubs",
     "types-beautifulsoup4",
 
@@ -146,7 +147,7 @@ prod = [
 
 # All dependencies (for CI or full development environment)
 all = [
-    "growth-lab-deep-search[etl,service,frontend,dev,prod]",
+    "gl-deep-search[etl,service,frontend,dev,prod]",
 ]
 
 [tool.ruff]

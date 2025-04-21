@@ -23,6 +23,7 @@ repos:
         additional_dependencies:
           - pydantic>=2.4.2
           - types-PyYAML
+          - types-aiofiles
           - types-requests
           - loguru>=0.7.2
         args: [--ignore-missing-imports]
