@@ -22,7 +22,8 @@ import aiofiles
 import aiohttp
 import tqdm.asyncio
 
-from backend.etl.scrapers.growthlab import Publication, retry_with_backoff
+from backend.etl.scrapers.growthlab import Publication
+from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
 

@@ -5,9 +5,7 @@ Scraper module for the Growth Lab website publications
 import asyncio
 import hashlib
 import logging
-import random
 import re
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -18,72 +16,12 @@ from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 from tqdm.asyncio import tqdm as async_tqdm
 
+from backend.etl.utils.retry import retry_with_backoff
+
 logger = logging.getLogger(__name__)
 
 # Type variable for generic retry function
 T = TypeVar("T")
-
-
-async def retry_with_backoff(
-    func: Callable[..., T],
-    *args,
-    max_retries: int = 5,
-    base_delay: float = 1.0,
-    max_delay: float = 60.0,
-    retry_on: tuple = (aiohttp.ClientError, TimeoutError),
-    **kwargs,
-) -> T:
-    """
-    Retry an async function with exponential backoff.
-
-    Args:
-        func: The async function to retry
-        *args: Arguments to pass to the function
-        max_retries: Maximum number of retries
-        base_delay: Base delay in seconds
-        max_delay: Maximum delay in seconds
-        retry_on: Tuple of exceptions to retry on
-        **kwargs: Keyword arguments to pass to the function
-
-    Returns:
-        The return value of the function
-
-    Raises:
-        The last exception encountered if max_retries is exceeded
-    """
-    last_exception = None
-
-    for attempt in range(max_retries + 1):
-        try:
-            result = func(*args, **kwargs)
-            if asyncio.iscoroutine(result):
-                return await result
-            return result
-        except retry_on as e:
-            if attempt == max_retries:
-                # On last attempt, re-raise the exception
-                logger.error(
-                    f"Max retries ({max_retries}) exceeded for {func.__name__}: {e}"
-                )
-                raise
-
-            # Calculate delay with jitter to avoid thundering herd
-            delay = min(base_delay * (2**attempt) + random.uniform(0, 1), max_delay)
-
-            # Log retry attempt
-            logger.warning(
-                f"Request failed with {e.__class__.__name__}: {e}. "
-                f"Retrying in {delay:.2f}s (attempt {attempt + 1}/{max_retries})"
-            )
-
-            last_exception = e
-            await asyncio.sleep(delay)
-
-    # This should not be reached due to the re-raise in the loop,
-    # but just in case, we raise the last exception here
-    if last_exception:
-        raise last_exception
-    raise RuntimeError("Unexpected failure in retry logic")
 
 
 class Publication(BaseModel):
