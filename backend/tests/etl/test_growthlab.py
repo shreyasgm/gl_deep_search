@@ -265,9 +265,7 @@ def test_growthlab_real_data_id_generation(tmp_path):
     import pandas as pd
 
     # Path to real Growth Lab data
-    data_path = Path(
-        "/Users/shg309/Dropbox (Personal)/Education/hks_cid_growth_lab/gl_deep_search/data/intermediate/growth_lab_publications.csv"
-    )
+    data_path = Path("data/intermediate/growth_lab_publications.csv")
 
     # Skip if data file doesn't exist (for CI environments)
     if not data_path.exists():

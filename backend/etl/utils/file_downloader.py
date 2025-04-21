@@ -136,10 +136,10 @@ class FileDownloader:
             "min_file_size": 1024,  # 1KB
             "max_file_size": 100 * 1024 * 1024,  # 100MB
             "user_agent_list": [
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/120.0.0.0",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",  # noqa: E501
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",  # noqa: E501
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",  # noqa: E501
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/120.0.0.0",  # noqa: E501
             ],
         }
 
@@ -166,7 +166,7 @@ class FileDownloader:
             user_agents = self.config.get(
                 "user_agent_list",
                 [
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"  # noqa: E501
                 ],
             )
             user_agent = random.choice(user_agents)
@@ -174,7 +174,7 @@ class FileDownloader:
             # Default headers
             headers = {
                 "User-Agent": user_agent,
-                "Accept": "application/pdf,application/octet-stream,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,*/*",
+                "Accept": "application/pdf,application/octet-stream,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,*/*",  # noqa: E501
                 "Accept-Language": "en-US,en;q=0.9",
                 "Connection": "keep-alive",
             }
@@ -218,7 +218,7 @@ class FileDownloader:
                     ext = ".doc"
                 elif (
                     content_type
-                    == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"  # noqa: E501
                 ):
                     ext = ".docx"
                 elif content_type.startswith("text/"):
@@ -365,7 +365,8 @@ class FileDownloader:
 
                 if not validation_result["is_valid"]:
                     logger.error(
-                        f"Downloaded file validation failed for {url}: {validation_result}"
+                        f"Downloaded file validation failed for {url}: "
+                        f"{validation_result}"
                     )
 
                     # Delete invalid file
@@ -586,7 +587,8 @@ class FileDownloader:
                     "application/msword",
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 ] or file_path.suffix.lower() in [".doc", ".docx"]:
-                    # Check for DOC signature (D0 CF 11 E0 A1 B1 1A E1) or DOCX signature (PK..)
+                    # Check for DOC signature (D0 CF 11 E0 A1 B1 1A E1)
+                    # or DOCX signature (PK..)
                     if header.startswith(
                         b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
                     ) or header.startswith(b"PK\x03\x04"):
@@ -766,9 +768,12 @@ class FileDownloader:
         logger.info("File Download Summary:")
         logger.info(f"Total attempts: {total}")
         logger.info(
-            f"  - Successfully downloaded: {successful} ({successful / total * 100:.1f}%)"
+            f"  - Successfully downloaded: {successful} "
+            f"({successful / total * 100:.1f}%)"
         )
-        logger.info(f"  - Used cached files: {cached} ({cached / total * 100:.1f}%)")
+        logger.info(
+            f"  - Used cached files: {cached} " f"({cached / total * 100:.1f}%)"
+        )
         logger.info(f"  - Failed: {failed} ({failed / total * 100:.1f}%)")
         logger.info(f"Total data downloaded: {size_str}")
         logger.info("-" * 50)
@@ -822,7 +827,8 @@ async def download_growthlab_files(
     publications_with_files = [p for p in publications if p.file_urls]
 
     logger.info(
-        f"Found {len(publications_with_files)}/{len(publications)} publications with file URLs"
+        f"Found {len(publications_with_files)}/{len(publications)} "
+        "publications with file URLs"
     )
 
     # Create downloader and download files

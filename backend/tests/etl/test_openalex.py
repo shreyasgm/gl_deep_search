@@ -277,9 +277,7 @@ def test_openalex_real_data_id_generation(tmp_path):
     import pandas as pd
 
     # Path to real OpenAlex data
-    data_path = Path(
-        "/Users/shg309/Dropbox (Personal)/Education/hks_cid_growth_lab/gl_deep_search/data/intermediate/openalex_publications.csv"
-    )
+    data_path = Path("data/intermediate/openalex_publications.csv")
 
     # Skip if data file doesn't exist (for CI environments)
     if not data_path.exists():
@@ -322,7 +320,8 @@ def test_openalex_real_data_id_generation(tmp_path):
     # Log summary for visibility in test output
     logger.info(f"OpenAlex ID generation summary ({total_count} publications):")
     logger.info(
-        f"- OpenAlex IDs (W* or oa_W*): {openalex_ids + prefixed_openalex_ids} ({openalex_pct:.1f}%)"
+        f"- OpenAlex IDs (W* or oa_W*): "
+        f"{openalex_ids + prefixed_openalex_ids} ({openalex_pct:.1f}%)"
     )
     logger.info(f"- DOI-based IDs: {doi_based_ids} ({doi_pct:.1f}%)")
     logger.info(f"- URL-based IDs: {url_based_ids} ({url_pct:.1f}%)")
