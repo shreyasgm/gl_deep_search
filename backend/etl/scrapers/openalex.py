@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import aiohttp
 import pandas as pd
@@ -14,8 +14,12 @@ import yaml
 from tqdm.asyncio import tqdm as async_tqdm
 
 from backend.etl.models.publications import OpenAlexPublication
+from backend.storage.factory import get_storage
 
 logger = logging.getLogger(__name__)
+
+# Type variable for generic retry function
+T = TypeVar("T")
 
 
 class OpenAlexClient:
@@ -301,9 +305,6 @@ class OpenAlexClient:
             output_path: Optional path to save updated publications
             storage: Optional storage instance (will use default if None)
         """
-        # Import storage factory here to avoid circular imports
-        from backend.storage.factory import get_storage
-
         # Get storage instance if not provided
         storage = storage or get_storage()
 

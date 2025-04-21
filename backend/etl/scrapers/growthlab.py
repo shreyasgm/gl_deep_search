@@ -16,6 +16,7 @@ from tqdm.asyncio import tqdm as async_tqdm
 
 from backend.etl.models.publications import GrowthLabPublication
 from backend.etl.utils.retry import retry_with_backoff
+from backend.storage.factory import get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -693,9 +694,6 @@ class GrowthLabScraper:
             output_path: Optional path to save updated publications
             storage: Optional storage instance (will use default if None)
         """
-        # Import storage factory here to avoid circular imports
-        from backend.storage.factory import get_storage
-
         # Get storage instance if not provided
         storage = storage or get_storage()
 

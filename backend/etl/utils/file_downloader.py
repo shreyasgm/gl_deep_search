@@ -7,6 +7,7 @@ features like retrying, rate limiting, and validation.
 
 import asyncio
 import hashlib
+import importlib.util
 import logging
 import mimetypes
 import random
@@ -22,7 +23,7 @@ import aiofiles
 import aiohttp
 import tqdm.asyncio
 
-from backend.etl.scrapers.growthlab import GrowthLabPublication
+from backend.etl.models.publications import GrowthLabPublication
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
@@ -794,10 +795,6 @@ async def download_growthlab_files(
     Returns:
         List of download results
     """
-    # Import here to avoid circular imports
-    # since GrowthLabScraper imports retry_with_backoff from this module
-    import importlib.util
-
     spec = importlib.util.find_spec("backend.etl.scrapers.growthlab")
     if spec is None:
         logger.error("Cannot import GrowthLabScraper module")
