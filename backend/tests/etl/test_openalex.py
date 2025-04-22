@@ -377,9 +377,9 @@ def test_openalex_real_data_id_generation(tmp_path):
                 # Extract actual ID from URL and ensure it's preserved
                 expected_id = f"oa_{openalex_id.replace('https://openalex.org/', '')}"
                 generated_id = pub.generate_id()
-                assert (
-                    generated_id == expected_id
-                ), f"OpenAlex ID not preserved: {generated_id} != {expected_id}"
+                assert generated_id == expected_id, (
+                    f"OpenAlex ID not preserved: {generated_id} != {expected_id}"
+                )
 
     # Verify most publications use OpenAlex IDs as expected
     assert openalex_pct > 90, "Less than 90% of publications have OpenAlex IDs"

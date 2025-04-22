@@ -121,8 +121,8 @@ dev = [
     "playwright",
 
     # Linting, formatting, type checking
-    "ruff",
-    "mypy",
+    "ruff==0.11.0",
+    "mypy==1.15.0",
     "types-requests",
     "types-PyYAML",
     "types-tqdm",

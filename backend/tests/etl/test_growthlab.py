@@ -330,9 +330,9 @@ def test_growthlab_real_data_id_generation(tmp_path):
         original_id = row["paper_id"]
 
         # Verify ID stability - generated ID should match original
-        assert (
-            generated_id == original_id
-        ), f"ID generation not stable: {generated_id} != {original_id}"
+        assert generated_id == original_id, (
+            f"ID generation not stable: {generated_id} != {original_id}"
+        )
 
     # Verify most publications use URL-based IDs as expected
     assert url_pct > 50, "Less than 50% of publications have URL-based IDs"
