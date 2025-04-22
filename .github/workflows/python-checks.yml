@@ -1,0 +1,62 @@
+name: Python Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  lint-and-type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          pip install uv
+
+      - name: Install dependencies
+        run: |
+          uv pip install -e ".[dev]"
+
+      - name: Run ruff check
+        run: |
+          uv run ruff check .
+
+      - name: Run ruff format check
+        run: |
+          uv run ruff format --check .
+
+      - name: Run mypy type checking
+        run: |
+          uv run mypy .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          pip install uv
+
+      - name: Install dependencies
+        run: |
+          uv pip install -e ".[dev]"
+
+      - name: Run tests
+        run: |
+          uv run pytest
