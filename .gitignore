@@ -32,6 +32,8 @@ venv.bak/
 .ipynb_checkpoints
 profile_default/
 ipython_config.py
+notebooks/*.ipynb
+
 
 # Logs and Cache
 logs/
@@ -222,5 +224,3 @@ poetry.toml
 
 # LSP config files
 pyrightconfig.json
-
-**/CLAUDE.local.md
