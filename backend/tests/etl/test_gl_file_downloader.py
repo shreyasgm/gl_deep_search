@@ -478,7 +478,7 @@ async def test_integration_end_to_end(storage, tmp_path):
 
         # Log all results for debugging
         for i, r in enumerate(results):
-            logger.debug(f"Result {i+1}:")
+            logger.debug(f"Result {i + 1}:")
             logger.debug(f"  URL: {r['url']}")
             logger.debug(f"  Success: {r['success']}")
             logger.debug(f"  File path: {r.get('file_path')}")

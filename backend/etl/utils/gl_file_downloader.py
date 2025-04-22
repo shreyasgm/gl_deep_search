@@ -771,9 +771,7 @@ class FileDownloader:
             f"  - Successfully downloaded: {successful} "
             f"({successful / total * 100:.1f}%)"
         )
-        logger.info(
-            f"  - Used cached files: {cached} " f"({cached / total * 100:.1f}%)"
-        )
+        logger.info(f"  - Used cached files: {cached} ({cached / total * 100:.1f}%)")
         logger.info(f"  - Failed: {failed} ({failed / total * 100:.1f}%)")
         logger.info(f"Total data downloaded: {size_str}")
         logger.info("-" * 50)
