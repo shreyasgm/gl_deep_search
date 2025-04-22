@@ -662,7 +662,8 @@ class FileDownloader:
                 # Get destination path
                 dest_path = self._get_file_path(pub, url_str)
 
-                all_downloads.append((pub, url_str, dest_path))
+                # Store the original HttpUrl object, not the string
+                all_downloads.append((pub, url, dest_path))
 
         # Log download plan
         logger.info(f"Found {len(all_downloads)} files to download")
@@ -684,7 +685,7 @@ class FileDownloader:
             )
             # Store publication, URL string, and task in tasks
             # We must use string to avoid HttpUrl type error
-            tasks.append((pub, url_str, task))
+            tasks.append((pub, url, task))
 
         # Process downloads with progress bar
         with tqdm.asyncio.tqdm(
@@ -692,8 +693,11 @@ class FileDownloader:
             desc="Downloading files",
             disable=not progress_bar,
         ) as pbar:
-            for pub, url_str, download_task in tasks:
+            for pub, url, download_task in tasks:
                 try:
+                    # Convert url to string for logging and results
+                    url_str = str(url)
+
                     # Await the download task
                     result = await download_task
 
@@ -701,7 +705,7 @@ class FileDownloader:
                     pub_result = {
                         "publication_id": pub.paper_id,
                         "publication_title": pub.title,
-                        "url": url_str,  # Already converted to string above
+                        "url": url_str,
                         "success": result.success,
                         "file_path": result.file_path,
                         "file_size": result.file_size,
@@ -721,12 +725,15 @@ class FileDownloader:
                         pbar.set_postfix_str(f"Last: failed - {result.error}")
 
                 except Exception as e:
+                    # Convert url to string for logging and results
+                    url_str = str(url)
+
                     # Record unexpected errors
                     logger.error(f"Unexpected error downloading {url_str}: {e}")
                     pub_result = {
                         "publication_id": pub.paper_id,
                         "publication_title": pub.title,
-                        "url": url_str,  # Already converted to string
+                        "url": url_str,
                         "success": False,
                         "error": f"Unexpected error: {str(e)}",
                     }
