@@ -1,7 +1,7 @@
 """
-File downloader module for Growth Lab Deep Search.
+Growth Lab file downloader module for Deep Search.
 
-Handles asynchronous downloading of files from publication URLs, with
+Handles asynchronous downloading of files from Growth Lab publication URLs, with
 features like retrying, rate limiting, and validation.
 """
 
@@ -121,7 +121,7 @@ class FileDownloader:
             try:
                 with open(config_path) as f:
                     config = yaml.safe_load(f)
-                    return config.get("file_downloader", {})
+                    return config.get("gl_file_downloader", {})
             except Exception as e:
                 logger.warning(
                     f"Error loading file downloader config: {e}. Using defaults."

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Script to run the file downloader for Growth Lab publications.
+Script to run the Growth Lab file downloader for publications.
 """
 
 import argparse
@@ -11,7 +11,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from backend.etl.utils.file_downloader import download_growthlab_files
+from backend.etl.utils.gl_file_downloader import download_growthlab_files
 from backend.storage.factory import get_storage
 
 

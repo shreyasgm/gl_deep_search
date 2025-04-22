@@ -1,5 +1,5 @@
 """
-Tests for the file downloader module.
+Tests for the Growth Lab file downloader module.
 """
 
 import logging
@@ -10,7 +10,7 @@ import aiohttp
 import pytest
 
 from backend.etl.scrapers.growthlab import GrowthLabPublication
-from backend.etl.utils.file_downloader import DownloadResult, FileDownloader
+from backend.etl.utils.gl_file_downloader import DownloadResult, FileDownloader
 from backend.storage.local import LocalStorage
 
 # Configure logger

@@ -25,8 +25,8 @@ sources:
     redownload_existing: false
     remove_outdated_files: true
 
-# File downloader configuration
-file_downloader:
+# Growth Lab file downloader configuration
+gl_file_downloader:
   download_delay: 1.0
   max_retries: 5
   retry_base_delay: 1.0
