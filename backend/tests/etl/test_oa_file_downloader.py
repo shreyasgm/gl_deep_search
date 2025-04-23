@@ -6,9 +6,8 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import aiohttp
 import pytest
 
 from backend.etl.models.publications import OpenAlexPublication
@@ -105,9 +104,7 @@ async def test_check_open_access(file_downloader):
     )
 
     # Patch the session
-    with patch.object(
-        file_downloader, "_get_session", return_value=mock_session
-    ):
+    with patch.object(file_downloader, "_get_session", return_value=mock_session):
         # Set up context manager returns
         mock_context = MagicMock()
         mock_context.__aenter__.return_value = mock_unpaywall_response
@@ -182,8 +179,11 @@ async def test_download_file_with_aiohttp(file_downloader, tmp_path):
     # Mock HTTP response for successful download
     mock_response = AsyncMock()
     mock_response.status = 200
-    mock_response.headers = {"Content-Type": "application/pdf", "Content-Length": "1024"}
-    
+    mock_response.headers = {
+        "Content-Type": "application/pdf",
+        "Content-Length": "1024",
+    }
+
     # Mock the content
     mock_content = MagicMock()
     mock_content.iter_chunked = AsyncMock(return_value=[b"%PDF-1.5\nTest PDF content"])
@@ -200,7 +200,7 @@ async def test_download_file_with_aiohttp(file_downloader, tmp_path):
     mock_file.write = AsyncMock()
     mock_file_context = MagicMock()
     mock_file_context.__aenter__.return_value = mock_file
-    
+
     # Mock the file validation
     mock_validation = {
         "is_valid": True,
@@ -209,24 +209,29 @@ async def test_download_file_with_aiohttp(file_downloader, tmp_path):
         "format_check": True,
         "file_size": 1024,
     }
-    
+
     # Patch the required functions
-    with patch("aiofiles.open", return_value=mock_file_context), \
-         patch.object(file_downloader.storage, "ensure_dir"), \
-         patch.object(file_downloader, "_validate_downloaded_file", AsyncMock(return_value=mock_validation)), \
-         patch.object(Path, "exists", return_value=True), \
-         patch.object(Path, "stat") as mock_stat:
-        
+    with (
+        patch("aiofiles.open", return_value=mock_file_context),
+        patch.object(file_downloader.storage, "ensure_dir"),
+        patch.object(
+            file_downloader,
+            "_validate_downloaded_file",
+            AsyncMock(return_value=mock_validation),
+        ),
+        patch.object(Path, "exists", return_value=True),
+        patch.object(Path, "stat") as mock_stat,
+    ):
         # Setup stat for file size
         mock_stat_result = MagicMock()
         mock_stat_result.st_size = 1024
         mock_stat.return_value = mock_stat_result
-        
+
         # Call the function
         result = await file_downloader._download_file_with_aiohttp(
             mock_session, url, dest_path
         )
-        
+
         # Check the result
         assert result.success is True
         assert result.url == url
@@ -242,29 +247,30 @@ async def test_download_file_with_scidownl(file_downloader, tmp_path):
     """Test download using scidownl."""
     dest_path = tmp_path / "test_scidownl.pdf"
     doi = "https://doi.org/10.1234/example"
-    
+
     # Mock subprocess.run to simulate scidownl behavior
     mock_run_result = MagicMock()
     mock_run_result.returncode = 0
     mock_run_result.stdout = "Downloaded successfully"
     mock_run_result.stderr = ""
-    
+
     # Create a mock PDF in the temp dir that scidownl would create
     # This will be used in the test as if scidownl downloaded it
-    with patch("tempfile.TemporaryDirectory") as mock_temp_dir, \
-         patch("subprocess.run", return_value=mock_run_result), \
-         patch.object(file_downloader.storage, "ensure_dir"), \
-         patch.object(file_downloader, "_validate_downloaded_file") as mock_validate, \
-         patch("shutil.copy2") as mock_copy:
-        
+    with (
+        patch("tempfile.TemporaryDirectory") as mock_temp_dir,
+        patch("subprocess.run", return_value=mock_run_result),
+        patch.object(file_downloader.storage, "ensure_dir"),
+        patch.object(file_downloader, "_validate_downloaded_file") as mock_validate,
+        patch("shutil.copy2") as mock_copy,
+    ):
         # Setup tempdir
         mock_temp_dir.return_value.__enter__.return_value = str(tmp_path)
-        
+
         # Create a "downloaded" file in the temp dir
         test_pdf = tmp_path / "downloaded.pdf"
         with open(test_pdf, "wb") as f:
             f.write(b"%PDF-1.5\nTest PDF content")
-        
+
         # Mock the validation result
         mock_validate.return_value = {
             "is_valid": True,
@@ -273,28 +279,29 @@ async def test_download_file_with_scidownl(file_downloader, tmp_path):
             "format_check": True,
             "file_size": 100,
         }
-        
+
         # Patch stat to return a file size
-        with patch.object(Path, "stat") as mock_stat, \
-             patch.object(Path, "glob") as mock_glob:
-            
+        with (
+            patch.object(Path, "stat") as mock_stat,
+            patch.object(Path, "glob") as mock_glob,
+        ):
             mock_stat_result = MagicMock()
             mock_stat_result.st_size = 100
             mock_stat.return_value = mock_stat_result
-            
+
             # Make the glob return our created file
             mock_glob.return_value = [test_pdf]
-            
+
             # Call the function
             result = file_downloader._download_file_with_scidownl(doi, dest_path)
-            
+
             # Check the result
             assert result.success is True
             assert result.url == doi
             assert result.file_path == dest_path
             assert result.file_size == 100
             assert result.source == "scidownl"
-            
+
             # Verify scidownl was called correctly
             subprocess.run.assert_called_once()
             args = subprocess.run.call_args[0][0]
@@ -302,7 +309,7 @@ async def test_download_file_with_scidownl(file_downloader, tmp_path):
             assert args[1] == "download"
             assert args[2] == "--doi"
             assert args[3] == doi
-            
+
             # Verify file was copied
             mock_copy.assert_called_once_with(test_pdf, dest_path)
 
@@ -312,10 +319,12 @@ async def test_download_file_doi_handling(file_downloader, tmp_path):
     """Test downloading a DOI with the two-step approach."""
     dest_path = tmp_path / "test_doi.pdf"
     doi = "https://doi.org/10.1234/example"
-    
+
     # Mock check_open_access to simulate finding an open access version
     with patch.object(
-        file_downloader, "_check_open_access", AsyncMock(return_value=(True, "https://example.org/open-access.pdf"))
+        file_downloader,
+        "_check_open_access",
+        AsyncMock(return_value=(True, "https://example.org/open-access.pdf")),
     ):
         # Also mock _download_file_with_aiohttp for successful download
         mock_http_result = DownloadResult(
@@ -327,26 +336,27 @@ async def test_download_file_doi_handling(file_downloader, tmp_path):
             open_access=True,
             source="http",
         )
-        
-        with patch.object(
-            file_downloader, "_download_file_with_aiohttp", AsyncMock(return_value=mock_http_result)
-        ), patch.object(
-            file_downloader, "_get_session", return_value=MagicMock()
+
+        with (
+            patch.object(
+                file_downloader,
+                "_download_file_with_aiohttp",
+                AsyncMock(return_value=mock_http_result),
+            ),
+            patch.object(file_downloader, "_get_session", return_value=MagicMock()),
         ):
             # Call the function
-            result = await file_downloader.download_file(
-                doi, dest_path, is_doi=True
-            )
-            
+            result = await file_downloader.download_file(doi, dest_path, is_doi=True)
+
             # Check that open access was used
             assert result.success is True
             assert result.file_path == dest_path
             assert result.open_access is True
             assert result.source == "http"
-            
+
             # Verify check_open_access was called
             file_downloader._check_open_access.assert_called_once_with(doi)
-    
+
     # Case 2: No open access, fallback to scidownl
     with patch.object(
         file_downloader, "_check_open_access", AsyncMock(return_value=(False, None))
@@ -360,17 +370,18 @@ async def test_download_file_doi_handling(file_downloader, tmp_path):
             content_type="application/pdf",
             source="scidownl",
         )
-        
-        with patch.object(
-            file_downloader, "_download_file_with_scidownl", return_value=mock_scidownl_result
-        ), patch.object(
-            file_downloader, "_get_session", return_value=MagicMock()
+
+        with (
+            patch.object(
+                file_downloader,
+                "_download_file_with_scidownl",
+                return_value=mock_scidownl_result,
+            ),
+            patch.object(file_downloader, "_get_session", return_value=MagicMock()),
         ):
             # Call the function
-            result = await file_downloader.download_file(
-                doi, dest_path, is_doi=True
-            )
-            
+            result = await file_downloader.download_file(doi, dest_path, is_doi=True)
+
             # Check that scidownl was used
             assert result.success is True
             assert result.file_path == dest_path
@@ -389,7 +400,10 @@ async def test_download_publications(file_downloader, sample_publication, tmp_pa
         title="Another Publication",
         authors="Jane Smith",
         year=2022,
-        file_urls=["https://doi.org/10.5678/another", "https://example.org/files/another.pdf"],
+        file_urls=[
+            "https://doi.org/10.5678/another",
+            "https://example.org/files/another.pdf",
+        ],
     )
 
     # Publications list
@@ -407,7 +421,7 @@ async def test_download_publications(file_downloader, sample_publication, tmp_pa
             if "example.5678" in url:  # First publication's DOI
                 open_access = True
                 source = "http"
-                
+
         return DownloadResult(
             url=url,
             success=True,
@@ -432,7 +446,7 @@ async def test_download_publications(file_downloader, sample_publication, tmp_pa
     assert results[2]["publication_id"] == pub2.paper_id
     assert results[0]["success"]
     assert results[2]["success"]
-    
+
     # Check the sources
     assert results[0]["source"] == "http"  # First DOI is open access
     assert results[2]["source"] == "scidownl"  # Second DOI needs scidownl
@@ -442,14 +456,14 @@ async def test_download_publications(file_downloader, sample_publication, tmp_pa
 async def test_integration_with_real_dois(storage, tmp_path):
     """
     Integration test with actual DOIs.
-    
+
     This test attempts to download a real open access paper.
     If it fails, the test is skipped rather than failed.
     """
     # Skip if CI environment or network is known to be unavailable
     if os.environ.get("CI") == "true" or os.environ.get("SKIP_NETWORK_TESTS") == "true":
         pytest.skip("Skipping network-dependent test in CI environment")
-    
+
     # Create test publication with known open access DOI
     pub = OpenAlexPublication(
         paper_id="W12345678",
@@ -467,10 +481,11 @@ async def test_integration_with_real_dois(storage, tmp_path):
 
     # Set timeout to a more reasonable value
     downloader.config["retry_max_delay"] = 10.0
-    
+
     # Patch the scidownl download to avoid actually using scidownl in tests
     with patch.object(
-        downloader, "_download_file_with_scidownl", 
+        downloader,
+        "_download_file_with_scidownl",
         return_value=DownloadResult(
             url="https://doi.org/10.1371/journal.pone.0230416",
             success=True,
@@ -478,7 +493,7 @@ async def test_integration_with_real_dois(storage, tmp_path):
             file_size=1000,
             content_type="application/pdf",
             source="scidownl",
-        )
+        ),
     ):
         try:
             # Download the files
@@ -490,16 +505,16 @@ async def test_integration_with_real_dois(storage, tmp_path):
 
             # Check results
             assert len(results) > 0
-            
+
             # Check if any download was successful
             successful = [r for r in results if r["success"]]
             if not successful:
                 pytest.skip("All downloads failed, skipping validation")
-                
+
             # Verify at least one file was downloaded successfully
             assert len(successful) > 0
-            
-            # For successful downloads using open access (not scidownl), verify file exists
+
+            # For successful downloads using open access, verify file exists
             oa_downloads = [r for r in successful if r.get("open_access")]
             if oa_downloads:
                 for result in oa_downloads:
@@ -507,10 +522,11 @@ async def test_integration_with_real_dois(storage, tmp_path):
                     assert Path(result["file_path"]).exists(), (
                         f"File {result['file_path']} does not exist"
                     )
-                    
+
                     # Verify file size is reasonable
                     assert result["file_size"] > 1000, (
-                        f"File {result['file_path']} is too small: {result['file_size']} bytes"
+                        f"File {result['file_path']} is too small: "
+                        f"{result['file_size']} bytes"
                     )
         except Exception as e:
             logger.error(f"Exception during test: {e}")

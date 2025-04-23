@@ -72,15 +72,20 @@ def parse_args():
 def setup_logging(verbose=False):
     """Set up logging configuration."""
     log_level = "DEBUG" if verbose else "INFO"
-    
+
     # Configure loguru
     logger.remove()  # Remove default handler
     logger.add(
         sys.stderr,
         level=log_level,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        format=(
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+            "<level>{message}</level>"
+        ),
     )
-    
+
     # Configure standard logging to use loguru
     class InterceptHandler(logging.Handler):
         def emit(self, record):
@@ -94,21 +99,21 @@ async def main():
     """Main entry point for the downloader script."""
     args = parse_args()
     setup_logging(args.verbose)
-    
+
     # Get storage
     storage = get_storage()
-    
+
     # Resolve paths
     input_path = Path(args.input) if args.input else None
     config_path = Path(args.config) if args.config else None
-    
+
     # Log configuration
     logger.info("OpenAlex File Downloader")
     logger.info(f"Input file: {input_path or 'default'}")
     logger.info(f"Publication limit: {args.limit or 'none'}")
     logger.info(f"Concurrency: {args.concurrency}")
     logger.info(f"Overwrite: {args.overwrite}")
-    
+
     try:
         # Run the downloader
         results = await download_openalex_files(
@@ -119,14 +124,14 @@ async def main():
             concurrency=args.concurrency,
             config_path=config_path,
         )
-        
+
         # Count successes and failures
         successes = sum(1 for r in results if r["success"])
         oa_downloads = sum(1 for r in results if r.get("open_access", False))
         scidownl_downloads = sum(1 for r in results if r.get("source") == "scidownl")
         cached = sum(1 for r in results if r.get("cached", False))
         failures = sum(1 for r in results if not r["success"])
-        
+
         # Log summary
         logger.info("=" * 50)
         logger.info("Download Summary:")
@@ -137,11 +142,12 @@ async def main():
         logger.info(f"Used cached files: {cached}")
         logger.info(f"Failed: {failures}")
         logger.info("=" * 50)
-        
+
         return 0
     except Exception as e:
         logger.error(f"Error running downloader: {e}")
         import traceback
+
         logger.error(traceback.format_exc())
         return 1
 
