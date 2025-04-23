@@ -978,6 +978,7 @@ all = [
     { name = "qdrant-client" },
     { name = "requests" },
     { name = "ruff" },
+    { name = "scidownl" },
     { name = "scrapy" },
     { name = "seaborn" },
     { name = "sentence-transformers" },
@@ -1027,6 +1028,7 @@ etl = [
     { name = "pandas" },
     { name = "qdrant-client" },
     { name = "requests" },
+    { name = "scidownl" },
     { name = "scrapy" },
     { name = "seaborn" },
     { name = "sentence-transformers" },
@@ -1112,6 +1114,7 @@ requires-dist = [
     { name = "requests", marker = "extra == 'etl'" },
     { name = "requests", marker = "extra == 'frontend'" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.11.0" },
+    { name = "scidownl", marker = "extra == 'etl'", specifier = ">=1.0.2" },
     { name = "scrapy", marker = "extra == 'etl'" },
     { name = "seaborn", marker = "extra == 'etl'" },
     { name = "sentence-transformers", marker = "extra == 'etl'" },
@@ -3183,6 +3186,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pysocks"
+version = "1.7.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/11/293dd436aea955d45fc4e8a35b6ae7270f5b8e00b53cf6c024c83b657a11/PySocks-1.7.1.tar.gz", hash = "sha256:3f8804571ebe159c380ac6de37643bb4685970655d3bba243530d6558b799aa0", size = 284429, upload_time = "2019-09-20T02:07:35.714Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8d/59/b4572118e098ac8e46e399a1dd0f2d85403ce8bbaad9ec79373ed6badaf9/PySocks-1.7.1-py3-none-any.whl", hash = "sha256:2725bd0a9925919b9b51739eea5f9e2bae91e83288108a9ad338b2e3a4435ee5", size = 16725, upload_time = "2019-09-20T02:06:22.938Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "8.3.5"
 source = { registry = "https://pypi.org/simple" }
@@ -3614,6 +3626,25 @@ torch = [
 ]
 
 [[package]]
+name = "scidownl"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "click" },
+    { name = "loguru" },
+    { name = "pysocks" },
+    { name = "requests" },
+    { name = "setuptools" },
+    { name = "sqlalchemy" },
+    { name = "tablib", extra = ["cli"] },
+    { name = "wget" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/c6/bb30f88c4640ee18f47024ba6136135d0234d03f0e2a1f95c9b7d1be8b94/scidownl-1.0.2-py3-none-any.whl", hash = "sha256:580d30a71fd10444eec29128c2fb57bb8357bb957e947d142b45a26ed0cd5ec8", size = 24073, upload_time = "2023-04-02T03:13:33.207Z" },
+]
+
+[[package]]
 name = "scikit-image"
 version = "0.25.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3949,6 +3980,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/90/e9/0b671516825d7993d5956c6cd2d4828cdbf68d0e799329002816d8095057/tabled_pdf-0.1.4.tar.gz", hash = "sha256:23af02dd04f64fcbda3c5fe67fbee740ab7cf12277e3fd949c40000c5b63a30d", size = 28889, upload_time = "2024-10-23T17:35:08.15Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/74/0e4f79f3e7d6900521c19f77b462548ffae118f1a70f64db795cf5f7735b/tabled_pdf-0.1.4-py3-none-any.whl", hash = "sha256:f2a9ff97ebe9cb09b66178f2036d4a396cd36fddc4841acf6c93440ff9056eeb", size = 31587, upload_time = "2024-10-23T17:35:06.484Z" },
+]
+
+[[package]]
+name = "tablib"
+version = "3.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/cc/fe19d9c2ac1088794a51fc72f49b7226f88a0361f924fb3d17a9ec80e657/tablib-3.8.0.tar.gz", hash = "sha256:94d8bcdc65a715a0024a6d5b701a5f31e45bd159269e62c73731de79f048db2b", size = 122247, upload_time = "2025-01-22T15:29:27.276Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5c/95/6542f54ebd90539b12ed6189cb54a6550a28407b1c503c2e55190c29a4c9/tablib-3.8.0-py3-none-any.whl", hash = "sha256:35bdb9d4ec7052232f8803908f9c7a9c3c65807188b70618fa7a7d8ccd560b4d", size = 47935, upload_time = "2025-01-22T15:28:44.499Z" },
+]
+
+[package.optional-dependencies]
+cli = [
+    { name = "tabulate" },
 ]
 
 [[package]]
@@ -4459,6 +4504,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/6c/63/53559446a878410fc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/84/fd2ba7aafacbad3c4201d395674fc6348826569da3c0937e75505ead3528/wcwidth-0.2.13-py2.py3-none-any.whl", hash = "sha256:3da69048e4540d84af32131829ff948f1e022c1c6bdb8d6102117aac784f6859", size = 34166, upload_time = "2024-01-06T02:10:55.763Z" },
 ]
+
+[[package]]
+name = "wget"
+version = "3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/6a/62e288da7bcda82b935ff0c6cfe542970f04e29c756b0e147251b2fb251f/wget-3.2.zip", hash = "sha256:35e630eca2aa50ce998b9b1a127bb26b30dfee573702782aa982f875e3f16061", size = 10857, upload_time = "2015-10-22T15:26:37.51Z" }
 
 [[package]]
 name = "win32-setctime"

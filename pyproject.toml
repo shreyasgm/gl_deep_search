@@ -46,6 +46,7 @@ etl = [
     "asyncio",
     "aiohttp>=3.8.0,!=3.11.14",  # Avoid yanked version 3.11.14
     "aiofiles",
+    "scidownl>=1.0.2",
 
     # PDF processing and OCR
     "langdetect",
