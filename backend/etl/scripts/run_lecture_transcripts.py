@@ -48,3 +48,45 @@ class LectureTranscript(BaseModel):
                 raise ValueError(f"Summary is too long. Expected no more than {max_length:.0f} characters.")
                 
         return summary.strip()
+    
+def clean_transcript(transcript_text: str) -> str:
+    """
+    Clean and improve the raw lecture transcript using OpenAI API.
+    
+    Args:
+        transcript_text (str): The raw transcript text to be processed.
+    
+    Returns:
+        str: A cleaned and improved version of the transcript.
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are an expert assistant helping to clean up lecture transcripts from the 'Development Policy Strategy' class taught by Ricardo Hausmann (Director of Harvard's Growth Lab).
+                    
+                    Your task is to create a cleaned lecture transcript with the following improvements:
+                    - Remove filler words, false starts, and repetitions
+                    - Only preserve the content of the main speaker, excluding questions from the audience
+                    - Organize content into logical paragraphs
+                    - Fix any obvious transcription errors
+                    - Maintain the full content and detail of the lecture
+                    
+                    Return only the cleaned transcript text with no additional commentary.
+                    """
+                },
+                {
+                    "role": "user",
+                    "content": f"Here is a raw lecture transcript from the Development Policy Strategy class. Please clean it according to the instructions:\n\n{transcript_text}"
+                }
+            ],
+            temperature=0.3
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        print(f"Error cleaning transcript: {str(e)}")
+        raise
