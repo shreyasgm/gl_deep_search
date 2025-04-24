@@ -1,0 +1,1267 @@
+[Auto-generated transcript. Edits may have been applied for clarity.]
+Yes. You know. Okay.
+
+What? Uh, talk about, uh, recruiting.
+
+Uh, anyway, you know what I mean? And.
+
+Uh. So.
+
+Yeah. Okay. Okay.
+
+Good to see you.
+
+About. All right, Norris, let's get going.
+
+Um, so we're in, uh, section of the course where we're thinking about volatility.
+
+What are the, um, structural things that may make an economy more unstable?
+
+So before we go there, let me some housekeeping.
+
+Uh, so you submit the problem set forth.
+
+Congratulations. Problem set five is going to be, um, macro diagnostics.
+
+And it's due November 26th. Wrong sized.
+
+Um. Uh, you can.
+
+I strongly recommend that you request, uh, office hours maybe with me to for the micro diagnostic, uh, for the overall projects.
+
+And also during your group hours on Monday and during your assigned time slots.
+
+It's getting closer to November 9th, which is December, which is when you present your final report.
+
+Seven. Okay. You know, you want to do a good job in them.
+
+So last week we discussed how many developing countries are much more volatile across many different measures.
+
+Um. Uh, and that in the presence of some market imperfections, volatility is bad for welfare.
+
+We also discussed the one source of volatility which you see shocks to your terms of trade or your access to to aid or finance,
+
+which would have moved in some sense the curve up or down.
+
+Today we will discuss another source of volatility, which is the difficulty that countries have in running counter-cyclical fiscal policies.
+
+They tend to run cyclical fiscal policy.
+
+So if you are expansionary and expansions and contractionary and contraction of them, you won't be surprised that you are very volatile.
+
+So the government is kind of like an amplifier of shock.
+
+Ehm, in the review session and we will talk about fiscal sustainability and how to measure fiscal sustainability.
+
+And that's going to be important for your assignment and so on. So don't miss the review session.
+
+And on Tuesday I'm going to talk about the budget institutions and uh kind of
+
+political economy distortions that may be behind problems in fiscal policy.
+
+Okay. So that's where we're going. So. A.
+
+So we'll start with the question of what should fiscal policy look like in theory and how does it look like in practice?
+
+Okay, so if you take, uh, Keynesian view of the world, uh, you know, you think of fiscal policy as a business cycle management tool, right?
+
+So aggregate demand is not necessarily at full employment.
+
+You want aggregate demand to be at full employment. And so if the economy is depressed you want to stimulate it.
+
+And if the economy is is overheating you want to slow down.
+
+So you're playing this Nintendo game with BBN. And fiscal policy is what moves you to the left and to the right of that bank.
+
+Okay. So in a you know, there is an argument that fiscal policy might be particularly effective when monetary policy is not effective.
+
+And those are in cases when you're, you know, in what Keynes called a liquidity trap.
+
+It's not a very frequent phenomenon in developing countries, but for reasons that we will discuss next week,
+
+monetary policy tends to be particularly weak in developing countries, and also has often plays on parasitical rather than a countercyclical role.
+
+For reasons that I will elaborate on, which are not unrelated to the reasons, I will elaborate today.
+
+Now, the problem with fiscal policy. Is that it suffers from long and variable lags.
+
+So you decide that the economy is in recession. You decide you want to spend more money.
+
+So you have to. You are the Minister of Finance.
+
+You want to spend more money. So you first you have to convince the cabinet.
+
+Then you have to go to Congress to ask for money.
+
+Then Congress approves it. You allocate it to ministries.
+
+Ministries have to contract it out. Government procurement is typically complicated.
+
+So by the time the government is spending the money, you decided it might be nine months down the road.
+
+And then until it takes effect, it might be six more months or or so.
+
+So you're talking about a year and a bit. And by then maybe the economy is no longer in a recession.
+
+Right. So it's a little bit like you've probably had this experience of controlling the temperature of the shower when there's a lag between,
+
+you know, when you turn the thing and when the water changes temperature.
+
+So you're constantly scalding yourself and freezing yourself because you know,
+
+you cannot anticipate how long it will take for for the response to happen.
+
+So this is all in theory.
+
+So in theory you should observe ex-post the fiscal policy looks and basically go that's what you should observe.
+
+I'm going to tell you in a while if it does. Okay.
+
+And then came in the 1970s and 80s.
+
+This a new classical critique of Keynesian approach that was related to the rational expectations revolution in macroeconomics.
+
+I, you know, started to see agents as forward looking, a people that are looking ahead, what's going to happen and,
+
+and government and people do not see government debt that they may own as a source of wealth.
+
+So they think, you know, the government, the private sector was running a surplus.
+
+They use that surplus to buy government bonds. These government bonds pay an interest rate.
+
+So it's part of your wealth. But the critique was yeah, it's part of your wealth.
+
+But how is the government going to pay you? The government is going to pay you by taxing you.
+
+So if you incorporate the fact that the government will have to tax you more in order to serve a bigger debt,
+
+yes, you're making money on the debt, but you're paying more. You are expected to pay more money on the taxes.
+
+Okay. So the Ricardian equivalence.
+
+And this is not me. Okay.
+
+Says that, you know, an increase in current spending. I interpreted as an increase in my future taxes, and so I don't feel any better.
+
+Um, so it's useless from the point of view of demand management.
+
+So let me show you very simply, sort of like the logic.
+
+So you have a simple model with two periods.
+
+And to make things simple, let's take the interest rate to be zero.
+
+So when you look at the future you don't have to discount anything.
+
+Okay. The government is going to have two periods and the government wants to consume in this period and the next period.
+
+But the government only taxes in the second period.
+
+Okay. So it means it's going to run the deficit this period.
+
+It's going to tax you in the next period. And the private sector has uh, an income say y1, y2 for each period.
+
+So if the government balances its budget it means that.
+
+A it has to collect in the next period enough taxes to pay for two years of spending.
+
+Okay. So that's the government budget constraint.
+
+The private sector budget constraint is they have Y1 in income in this period.
+
+The first period. In the second period they have one minus p y2.
+
+Because in the next year they will be taxed by the government.
+
+And with that they are supposed to consume C1 and C2 because they are optimizing intertemporal utility.
+
+Right. They are going to equate C1 to C2.
+
+They're going to spend equal amounts in this period. And next year they're going to smooth consumption.
+
+Right. And. And so that's going to be private sector consumption.
+
+And once you substitute the taxes from the balanced budget equation of the government, which is this one, right.
+
+So the taxes is just two g over y2.
+
+You get that an increase in government spending causes a decline in government and private consumption of the same amount.
+
+Okay. So. The way it works is the government spends more money.
+
+The people looking forward realize that they will have to pay the taxes for it.
+
+So they they don't and they don't they don't.
+
+They cut their spending now. So it doesn't even the idea that fiscal policy is ineffective at affecting how much the private sector spends.
+
+Okay. That's the Ricardian critique. However, the Ricardian framework gives you a rationale for tax moving.
+
+And the idea is that all taxes are distortion free so that they generate the loss in this case.
+
+To make it simple, I'll make the loss quadratic. So when you take derivatives A the distortion is linear.
+
+All right. Okay. So because of this, this quadratic loss function, the government has this budget constraint,
+
+spends in the two periods, taxes in the first period, and in the second period you can choose the tax rate.
+
+The optimization is going to lead to a having a constant tax rate, because if you have a lower tax rate than one period,
+
+then in the other period you're you're paying a higher tax rate than one period, you're going to square that.
+
+If you're squaring things the minimum square you can have, the minimum rectangle you can have is a square round.
+
+So so it's going to want you to smooth tax rates.
+
+So optimal policy is going to be that we're going to choose a single tax rate a stable to smooth tax rate.
+
+That makes the intertemporal budget constraint of the government for the two periods solvent.
+
+So the government has enough to pay everything in the two periods.
+
+So how would it look? Well, it would look like governments running deficits in bad times.
+
+They don't want to raise taxes in bad times. They want to smooth the tax rate to reduce the.
+
+So we've lost and and in good times they don't want to lower tax rates.
+
+They want to keep the tax rate, collect more money and just save it okay.
+
+So it's going to look enormously similar to Keynesians.
+
+So you would not be able to tell the difference if the government is inspired by um, by.
+
+Um. What's his name? Robert, uh, our professor here of mackerel in the yard.
+
+Robert Barrow. You want to know if they're inspired by Barrow or by King's?
+
+It would look. Both would look. Countercyclical. Okay.
+
+Yes. When we came. Students be okay with having different tax rates.
+
+Well, yeah, you could, um. I think Keynesians would easily accept the argument that stable tax rates would be better.
+
+So. This is I look across the world at the largest recessions in low income countries and middle income,
+
+low and middle income countries in high income countries. And ask myself, what did they do with their fiscal deficit?
+
+And you see that essentially the fiscal deficit does not compensate for the recession.
+
+This is another way of looking at these are recessions in OECD countries.
+
+These are recessions in Latin American countries. In the dollar, falling GDP is the red bar.
+
+The worsening of the fiscal balance is the green bar.
+
+Okay. And I want to make two points, which I'm going to prove to you using eyeball econometrics.
+
+The first one is that these red bars look smaller than these red bars.
+
+You buy that argument. And the second one is that these green bars are more or less of the size of the red bars, if not bigger.
+
+Well, here the green bars are small and if anything all over the place, sometimes they,
+
+you know, they you reduce the fiscal deficit in, in, in the middle of a recession.
+
+Okay. So. This looks kind of like anti cyclical.
+
+This doesn't. In addition.
+
+Um. This is the volatility of countries.
+
+And this is the cyclicality of their policies. And there tends to be a positive correlation between how volatile you are and how parasitical you are.
+
+So fiscal policy seems to be legal in many countries.
+
+I want to know if it is cyclical in your countries.
+
+So I want you to run a correlation of government spending and GDP or government spending growth and GDP growth.
+
+And if that correlation is negative and you're countercyclical, if that correlation is positive then you're appropriately.
+
+Okay. In addition, countries have very precarious access to finance.
+
+Okay. This is the bond spreads.
+
+It's a measure of country risk by emerging markets.
+
+And this is how much more than the US Treasury.
+
+Uh, an emerging market bond pays on average. Each country is going to have a different, uh, country risk.
+
+But I'm showing you here the average. And notice that this is 200 basis points more than the Treasury.
+
+And this is 1200 basis points more than the Treasury, say treasuries are these days are around four, usually were around two so or three.
+
+So you know, at best they pay 202% more than U.S. treasuries, sometimes 12% more than restrictions.
+
+Now, it would be one thing for you to tell me that, you know, emerging markets are risky.
+
+You tell me emerging markets are risky. I would expect to see a high spread or you tell me, you know, emerging markets are not risky.
+
+And then I would expect to see a low spread. But the thing is that sometimes it looks like a high spread.
+
+Sometimes it low spreads. So the spread is the volatility in the spread is orders of magnitude, the changes in the interest rate of U.S. treasuries.
+
+Okay. So it means that the financial markets look at Mexico and one day they see in Mexico, a country that is just south of the US.
+
+The next day they wake up and they think of Mexico as a country just north of Guatemala.
+
+And they they have trouble making their so their minds as to what's the relevant comparator.
+
+So ay, ay, when there is a shock, you know, the increase in the perception of risk goes up enormously.
+
+So there's, for some reason, precarious access to finance.
+
+Why the [INAUDIBLE] would be a feature of the world that you would like to understand?
+
+And, um, the final thing that you might want to say about fiscal policy is that it shows some signs of being political.
+
+If you run, um, a regression of all the, um, uh, fiscal deficits in the world.
+
+You put, um, a country fixed effect that captures, uh, characteristic, constant characteristics of a country.
+
+You put a year fixed effects that puts something about what's happening in the world in that year,
+
+and then you put a dummy for whether this year is an election year or a post election year.
+
+These are the dummies. It says that in the election year you spend more money in the post election year.
+
+You you you spend less.
+
+Okay, so you say, well, gee, apparently, you know, when we were talking about kings or or the Ricardian equivalence, there were no elections.
+
+So why the [INAUDIBLE] would elections have anything to do with fiscal policy?
+
+Right? We'll have more to say about this on Tuesday.
+
+Yes, it is true for non Latin American countries as well, like other countries I would suggest in this I did only for Latin American countries.
+
+I encourage you to to redo it for more countries.
+
+I you have to collect the data on elections and decide if these elections are meaningful or not.
+
+But you know so. So.
+
+Some questions we would like to ask is why do developing countries face precarious access to borrowing?
+
+Is it because they borrow too much? Is it because they tax too little?
+
+Yes. Yes. So how?
+
+I mean, potentially stupid question, but how is this different from a country without going into an election,
+
+changing tax rates from one year to another for other reasons? Well, I I mean, countries may make decisions whenever they want.
+
+And for whatever reason, I'm only showing that on average and over time,
+
+they seem to be making different fiscal decisions when there's an election than when there isn't.
+
+Uh huh. On average. So one question we want to ask is why is access to finance precarious?
+
+Number two is why do they observe cyclicals rather than cyclical fiscal policy.
+
+And why is there an electoral budget cycle. So I'm going to try to answer those the first two questions in this lecture.
+
+Okay. So the first thing that you would a m want to ask is, have countries borrowed too much?
+
+And and the reason why they can't access finance is because the there's their spend through their spend.
+
+Spendthrift is the right word or is it the opposite. They are irresponsible.
+
+They just spend too much. Not like us. Not like you know.
+
+Maybe they're just irresponsible people.
+
+So actually that ratios in developing countries tend to be smaller than that ratios in industrialized countries.
+
+So the first thing that people look at is this debt to GDP ratio.
+
+So you can look at the debt to GDP ratio. And you will find that this are the debt to GDP ratios for all the countries in the world.
+
+And this is their credit rating. So 100 is triple A.
+
+And you know where these countries are essentially in default.
+
+Okay. And you have everything in between. What do you observe is a clear linear relationship between debt to GDP ratios and credit ratings.
+
+Right. Not at all.
+
+Right. Not at all. You have the Netherlands at the same debt to GDP ratio as Georgia or Ghana or whatever.
+
+And you see Canada with a bigger debt to GDP ratio than in Salvador and at completely opposite ends of the credit rating.
+
+So, so there's very little if you tell me a debt to GDP ratio, it doesn't inform me at all about your credit rating.
+
+Not at all. Okay. So so if they have a low credit rating, it's not because of the high debt to GDP ratio.
+
+So it's not because they borrow too much. Yes we can help with something like that.
+
+And I think that probably when Greece got all the debt it was probably a better rating or like Lebanon or any kind of at some point cut some rating.
+
+So that's a change when we see their rating, when they go to debt for like something you can um.
+
+I mean, you could do this. Uh, I did it for 2020.
+
+You're asking about the time series and a I can't I can't say anything about the time series.
+
+Eventually, they downgraded Japan after Japan got to 260% of GDP.
+
+Um, you know, but at 260%.
+
+But all of these countries are in default, right? Uh, way before they got to 260% of GDP.
+
+Right. And they only downgraded to here now.
+
+So. Yes. Oh, sure.
+
+Oh, the. Um, this is a greeting.
+
+Um, like before the adoption or before they adopted Bitcoin.
+
+Uh, well, a bitcoin was very young in 2020, so yeah, it was before Bitcoin.
+
+So you might say I would expect you to say because to say because they're smart people to say hey one second, one second.
+
+Don't go that fast. Because who told you that you paid public debt with GDP?
+
+Maybe you actually pay public debt with a part of GDP the government can grab.
+
+And maybe poorer countries have a lower capacity to tax than rich countries.
+
+So what matters is your capacity to service.
+
+And that has to do not with GDP, but with a part of GDP that the government gets its hands on with the tax revenue.
+
+So maybe we should measure things as debt to tax revenue ratio.
+
+Okay. Where is the tax rate and why is GDP so in the denominator.
+
+Have tax revenue. So it's in some sense how many years of tax revenue is your debt.
+
+Okay. So this this would have, uh, a measure of multiples, multiples of yearly tax revenues.
+
+Well, maybe this is the explanation, right? It's convincing explanation.
+
+Uh, so this is what you get. Also super predictive, right?
+
+And you have countries like the US, uh, had the same debt to GDP ratio as Argentina and completely different, um.
+
+So. Not the answer.
+
+Okay, good. So the plot thickens. Now, what else could be missing?
+
+You're going to tell me? I understand it's because what matters is not what is your debt relative to your tax revenue?
+
+What matters is what is your debt service relative to tax revenues?
+
+Right. So what matters is something like this. It's really how much does the debt cost?
+
+Vis-a-vis your tax base. Right. And once you do it this way, then yes.
+
+You know, Latin American countries are spending more of their tax revenue and interest than all OECD countries.
+
+Or if you want to look at this way, no country, this is public debt.
+
+And this is interest payments a share of GDP. And the slope of this curve is the interest rate.
+
+So here you have Japan. It has a huge debt but at a very very low interest rate right.
+
+While Brazil Turkey have a much smaller that but a much higher interest rate.
+
+So the reason why countries in and have trouble borrowing is not because they have too much debt, but because the debt is more expensive.
+
+Okay. So now you feel completely satisfied with that answer.
+
+Right. Yes or no.
+
+So I've convinced you. I found the answer.
+
+Yes. I'm going to wait for him.
+
+Yes. No. Because, um, the fact that it's the interest rate itself is a reflection of the credit ratings.
+
+We've kind of on some circular logic here.
+
+You are? That's what I was. Thank you. Thank you. You saved your cohort.
+
+I'm being completely circular. Completely circular.
+
+I'm asking myself why the interest rates are. Why are interest rates high in developing countries?
+
+And I'm answering it because interest rates are high in developing countries.
+
+And because interest rates are high in developing countries, they have trouble servicing their debt because interest rates are high.
+
+But why are interest rates high? Okay, so the plot thickens further.
+
+Good. So. And.
+
+So I'm going to assume I'm going to develop a little model of fiscal risk okay.
+
+And the model is a m is going to start with this variable here x okay.
+
+It's this interest burden as a share of tax revenues, which I'm going to assume is a stochastic variable.
+
+So X is going to have an expected value and a standard deviation around that expected value.
+
+Okay. Um, now I'm going to assume that if X goes above a certain X bar level,
+
+countries are going to have enormous pain in servicing their debt and they're going to rather default.
+
+Okay. A little bit like, you know, the way they analyze mortgage lending, they ask, you know, what's your monthly income.
+
+And they want to know what's the interest burden or the as a share of your monthly income.
+
+And up above a certain threshold, they think it's too heavy.
+
+They're not going to be able to pay. Okay. So so I'm going to have a model.
+
+Just two equations. The first equation is the one I already presented.
+
+It's x is by definition the interest burden as a share of tax revenue.
+
+That's my first equation. My second equation is going to come from an assumption that, um investors are risk neutral and they are buying.
+
+They have the option of buying a risk free bond that has a rate of return.
+
+Wrong. Okay. Um, they can buy your bond and your bond has an rate of return, ie,
+
+which is going to make them indifferent between buying your bond or buying the risk free.
+
+Okay. Now it just so happens. That you are going to pay the interest rate with probability.
+
+Say bye. Okay.
+
+But with probability one minus pi you're going to pay zero.
+
+So for Rome, the risk free rate to be equal to I pi plus zero times one minus pi.
+
+So this goes to zero, right? I has to equal rho divided by the probability that you pay.
+
+Okay. And the probability that you pay is the probability that x doesn't get higher than a certain x bar.
+
+Okay. So the interest rate is compensating investors for the risk that you might not pay.
+
+If the probability that you pay is one, you pay the risk free rate.
+
+If the probability that you pay is less than one, you're going to pay more than the risk free rate,
+
+because that means this probability is less than one and it's in the denominator.
+
+Rabin. Good. So that's it.
+
+That's it. You find those two assumptions. One is just the definition.
+
+The other one kind of makes sense right. Okay.
+
+Now remember that x is the probability that x is below x bar is is is is a probability over a distribution of x.
+
+This is the stochastic variable that is going to have a distribution.
+
+So if X has this distribution and this is x bar, there is no part of the distribution that goes above x bar.
+
+So the probability that you pay is one. But if X has this distribution, it's a much faster distribution.
+
+Then there's this probability here that you default.
+
+Okay. So suddenly volatility is going to matter for risk premium.
+
+Ramani going to that okay.
+
+So we're going to solve this model in the space of the interest rate Vis-a-vis this variable x.
+
+Okay, I'm going to put some stuff here. The first thing I'm going to put is I'm going to put the risk free rate.
+
+That's the risk free rate. Okay. The second thing I'm going to put is this x bar at which you know, you don't pay.
+
+Okay. So the next thing I'm going to put is my first equation.
+
+And my first equation is this equation here. That is just the definition of x.
+
+Since I'm solving it for a space in which this is x and this is I,
+
+then it's just x equals d over t y I, which means that it's a rate starting from the origin.
+
+It has no intercept right. Which has a slope equal to the debt to tax revenue ratio.
+
+Robin Hood. All right.
+
+The other equation is interesting because if if if x is very low, the probability that x goes above x bar is zero.
+
+So the probability that you pay is one. So you pay the risk free rate.
+
+But if x is very high then you are not going to pay.
+
+So the probability that you pay is zero. So the interest rate necessarily to compensate is the fact that you're not going to pay anything.
+
+It has to go to infinity. So it's going to be something like that.
+
+All right. Simple.
+
+Simple. Barebones. Now notice that this has something that economists always worry about.
+
+What do they worry about? They worry about. You know the model having the curves cross twice.
+
+Because there's means that there's an equilibrium here, that if the interest rate is low, then X is low.
+
+But if X is low, then the interest rate is low. But if the interest rate is low, X is long right.
+
+But if x is high then the interest rate should be high.
+
+But if the interest rate is high then x is high. So this is multiple equilibrium.
+
+Okay. So which goes to my argument before, why is the interest rate high in in Latin America?
+
+Because that service is high, X is high. And why is X high in Latin America?
+
+Because the interest rate is high. Okay. That's kind of like this bad equilibrium here.
+
+Now a. Your country.
+
+So here Mexico is a country right next to the US.
+
+And here Mexico is a country right next to Guatemala. Right.
+
+Both are equilibria. So one day you look like the US.
+
+When they look like what they're Marla. Right. Both are equilibria okay.
+
+This might also explain why if you have these multiple equilibria and a guy like Mario Draghi comes out and says, Matthias, what did Mario Draghi say?
+
+Three words. Whatever it takes, whatever it takes.
+
+So the market got scared. You know these countries that are known as the pigs.
+
+You know who the pigs are. Right. Portugal, Italy, Greece and Spain.
+
+Right. So they say, you know, the German investors say, oh, these are all Latinos.
+
+They are irresponsible. So but then come Mario Draghi and says whatever it takes us having boom interest rates come here.
+
+Whatever it takes. So it's multiple equilibria. If you are able to coordinate the market in the good equilibrium, everybody's happy.
+
+Because if interest rates are low then that service is low.
+
+And if that service is low they're in high risk. So interest rates should be low.
+
+Right now this model has also ehm other potential equilibria.
+
+This one is that, you know, there's no bad equilibrium.
+
+There's only good equilibrium. Right. So this is a country that never goal is never at risk of problems.
+
+But this is a country that is bankrupt, that there is no combination of interest rate and x that that match.
+
+So there's no market. You're out of the market.
+
+There's no equilibrium. There's no market. Okay, so you see, with a super simple, simple model you get a lot of rich outcomes, rich results.
+
+Good. So suppose we have a country like this one that's sort of like a fragile country.
+
+It's a country that, you know, has a good equilibrium, has a bad equilibrium.
+
+You know, it's, uh, it's fragile.
+
+I'm going to compare it with another country that's just more volatile.
+
+If a country were more volatile, how would I graph that country in this space?
+
+You know, all of these questions have to do with I have to shift the curve.
+
+Okay. So what is the curve? That depends on the volatility of x.
+
+Well it's definitely not this curve. The volatility of X does not come in.
+
+But the volatility of x comes in the denominator here right.
+
+Because the more volatile. The x it means the fatter this distribution the more of the tail is going to be on the other side of the X right.
+
+So if. If I have a country that has a higher X.
+
+Then this curve is going to shift out. And if it shifts out this way, it's a bankrupt country.
+
+There's no longer a place where, you know, there's a market.
+
+So this model has the possibility of multiple equilibria because if interest rates are high, X is high.
+
+And if X is high, interest rate should be high. And if X is low, if interest rates are low, X is low, and if X is low, interest rates are low.
+
+Keep us all. So not as I don't know.
+
+The question is what what makes ex volatile. Okay.
+
+So what would make ex volatile. First let's look at the denominator.
+
+Maybe you know GDP is volatile. And so tax revenues are volatile.
+
+And we know that developing countries are more volatile than industrialized countries on average.
+
+So we already have a more volatile ex. Okay.
+
+And this is GDP per capita.
+
+This is the standard deviation of GDP. And this is a standard deviation of government revenues okay.
+
+So you see all the rich countries have very low volatility of these things.
+
+And these countries have humongous volatility right.
+
+Multiples of volatility right. So it's volatility.
+
+Call it you know something around two or less than two. And this is you know ten eight six or multiples.
+
+And this is call it I don't know three.
+
+And this is. Ten, 20, 30, 49 so much, many orders of magnitude bigger volatility.
+
+So the volatility of these things is going to matter.
+
+Now we have a model that would explain why volatility would matter before interest rates okay.
+
+But I'm going to introduce something that's going to be just a hypothesis here.
+
+And I hope to have enough time to tell you more about it. Yes.
+
+Or question. Sorry. Um you know like on Tuesday we discussed the issue between the starboard side of the VHF, the GDP or the euro.
+
+Right. And in this case, the GDP growth.
+
+In this case, the radio shows GDP or GDP growth.
+
+This is standard deviation of GDP growth. But in the data X.
+
+Well I mean it's something that's going to make uh, the GDP growth is going to make the obviously it's going to translate into a volatility of GDP.
+
+Right. But the standard deviation excludes average growth because it's going to be the growth minus the mean of growth which is average growth.
+
+So it's going to count only the deviations from trend.
+
+Good. So now I'm going to introduce.
+
+A the original sin hypothesis.
+
+And the original sin hypothesis simply says that some countries when they borrow abroad,
+
+they have to denominate their obligation in dollars or in some foreign currency that when they borrow abroad,
+
+they don't issued that in pesos, a local currency.
+
+Huh? Why? Because they said so.
+
+Okay, so just a fact of life.
+
+I'm going to elaborate on that fact of life later on.
+
+Okay. And so you cannot borrow abroad in your own currency.
+
+Now, if in addition, for reasons that will become more obvious next Thursday,
+
+you do not have long term fixed that markets in local currency and most countries have debt markets that are very short in duration.
+
+Right. So there's very little long term damage.
+
+And it's going to be related to the fact that the longer the debt, the more uncertainty you have as to what's going to happen between here and there,
+
+and the higher the interest rate that they want to charge you and they want to charge you such a high interest rate that you don't want to issue that.
+
+At that rate, you'd rather take the risk, the rollover risk.
+
+Okay. So you're condemned to choose between the short term debt in pesos and long term, potentially longer term debt in dollars.
+
+Okay. If that were the case then your X becomes like this.
+
+Now, I know that this looks a little bit ominous, but it's really trivial.
+
+It says you have a stock of debt at the beginning of the year.
+
+T minus one to say December 31st. S stands for short.
+
+So this is your stock of short term debt that you are going to pay an interest rate.
+
+That is going to be repriced several times during the year. You're standing on December 31st looking at the year ahead.
+
+You don't know what interest rate you're going to pay on that debt.
+
+Okay. The second stock of that is the stock of long term debt in local currency.
+
+Okay. So t minus one means you're standing at t minus one.
+
+You know all the variables at t minus one. So here you have no uncertainty.
+
+You know everything. You know how much debt you have issued and at what interest rate you've issued the debt.
+
+You have it okay. And then this term is your long term dollar debt and your long term dollar that was issued in the past.
+
+So you know, this variable out of interest rate, fixed rate.
+
+You know that variable.
+
+But you just don't know the exchange rate that you'll have to at which you are going to have to buy the foreign exchange to service.
+
+That, that. Okay. So now in order for you to service that, there's going to be not only volatile revenues, which I showed you were very volatile,
+
+but on top of it, there's going to be volatility in the short term interest rate and volatility in the exchange rate.
+
+Now, since we are going to talk about foreign debt, let's think about volatility in the exchange rate.
+
+Okay. Now one way to capture those.
+
+The logic of the volatility in the exchange rate is that you want to ask you know I don't know if you remember your high school algebra.
+
+But if you wanted to put this exchange rate in the denominator how would you do that.
+
+Mhm. I'm not blind to it.
+
+I scared you so much that you have lost your knowledge of algebra.
+
+Multiply and divide by right. You want to put this below this denominator, right?
+
+So it wouldn't be, would it? I can either multiply the numerator by e or divide the denominator by right.
+
+But if I divide the denominator by e is sort of like y t divided by e, that's what is that.
+
+That's GDP measured in U.S. dollars.
+
+So another way to think about it. If you're servicing debt in dollars out of a GDP, what's the value of your GDP in dollars.
+
+Because you're going to service that in dollars with the value of your GDP in dollars.
+
+So why don't we measure the GDP in dollars. Why don't we measure the volatility of GDP as measured in dollars.
+
+Okay. So in.
+
+This is the standard deviation of real GDP growth.
+
+And this is a standard deviation of your GDP measured in U.S. dollars.
+
+And the blue line is the 45 degree line. So what does this tell you.
+
+This tells you that the volatility of your GDP, measured in U.S. dollars, is much bigger than the volatility of your GDP.
+
+Um, okay. So.
+
+A. And this is.
+
+This is the ratio of the volatility of your GDP in dollars relative to the volatility of your GDP at constant prices.
+
+And since the volatility of your GDP in dollars is no.
+
+Two, four, six, eight times, almost ten times the volatility of your real GDP.
+
+So it's going to make your, uh, the base with which you're going to try to service that, that that much more volatile.
+
+Okay. So for the same numbers I showed you before and this example, the volatility of industrialized countries is 2.7% in real terms.
+
+Suppose they borrow only in local currencies. So the exchange rate doesn't come in to the relevant volatility.
+
+But compare that to a country that would borrow in in dollar terms.
+
+Well then it would be perceived as much more volatile.
+
+Okay. And in particular GDP in dollars tends to collapse in bad times.
+
+So here I put the biggest collapse in GDP in dollars.
+
+And I show you here what happened to actual GDP. So I don't know.
+
+In Vietnam GDP and GDP fell 82.8% between 87 and 89.
+
+But actual real GDP was growing. Uh, you know, even there's no case in which this number is smaller than this number.
+
+Okay. So on average, you know, in all of these crises that I've identified in, dollars fell 55% in real GDP, only from 12 in back in crisis.
+
+Yeah. So again,
+
+also the problem here is that like the world is like seeing the currency of this country that's just like not strong enough or not trustable.
+
+Well, they say because I don't trust you, I'm going to lend you in dollars.
+
+But it says when I'm assessing your risk, I have to ask myself your capacity to service dollar debt.
+
+And for that, I want to know the value of your GDP measured in U.S. dollars.
+
+But it just so happens that your exchange rate moves and it tends to weaken in bad times.
+
+So in bad times, not only does your real GDP decline, your dollar GDP declines by multiples of the decline in the real GDP.
+
+Okay. And I already showed you last lecture that the real exchange rate is much more volatile in developing countries.
+
+So. This comes from a paper I did with, um, Roberto Rico on a for the world Bank Group,
+
+where we were trying to convince them that they should land in CPI,
+
+index, local currency debt to their to their countries because lending in dollars dumps a lot of risk to the borrowing country.
+
+You say you know you're supposed to be trying to help these countries.
+
+Why don't you lend to them in CPI index terms instead of lending to them in dollars?
+
+And so the CPI index in Chile is called what?
+
+What WiFi. Um, yeah. From Intel.
+
+So that's why we titled the paper I got enough.
+
+No. So and so actually made it to this lecture today.
+
+And it's going to make it to the lecture on on Tuesday also.
+
+So I should read a little bit.
+
+But you see that because the exchange rate is so much more volatile than, than real GDP.
+
+Um, this is what would happen to the debt to GDP ratio if you started at 55% and you just let the economy be shocked by standard shocks over a decade?
+
+Yes. So two questions. First, if you can go back to the, um, slide before or this one, the um, the difference between real GDP and uh,
+
+GDP in dollars is GDP is one conversion rate only change with inflation and GDP in dollars is you put two conversion rates with two.
+
+Okay. That's on the show. Uh, second question, I think it's kind of an agent's problem because, um,
+
+the country have a very good incentive to print money and assume impact counts for money.
+
+Much of this, um, difference. And why does a central bank of a country should be an institution within the realm of the country?
+
+If we'd have, like IMF, central banks or something like these outside from the government,
+
+it doesn't impact at all by these countries would be much safer.
+
+And it's very property to some extent.
+
+So I'm going to go there, especially next Thursday.
+
+Okay. When we talk monetary policy about them, and I will get to you in a few minutes.
+
+But but your logic, um, resonates with something, but with some caveats.
+
+Thanks. So. And so why are why do countries get into trouble at levels of debt that are manageable for other countries now?
+
+Kind of like it's obvious the debt to GDP ratio is not important.
+
+That tax revenue ratio is not determinant. It's everything determined on this underlying volatility in your capacity to spend in your capacity to pay.
+
+And that has to do with the exchange rate, with short term interest rate and so on.
+
+And typically in these countries, bad times are characterized by low GDP, a depreciated currency and high interest rates.
+
+So bad things tend to happen together. So in bad times your ex shoots up, making you suddenly, if you were perceived as relatively stable,
+
+you now look horrible in the middle of a crisis, right?
+
+So the reason why that is, it's because debt structure makes exchange rates and short term interest rates matter for debt service.
+
+And these variables are not only volatile, they also are correlated in the wrong way.
+
+It's not that, you know, in in bad times Jeep goes down, but interest rates also go down.
+
+So one compensates the other.
+
+No, in bad times, GDP goes down and interest rates go up and the exchange rate goes up and everything moves in the wrong direction in bad times.
+
+And then in good times, they are moving in the good way.
+
+And now you look super great.
+
+Okay, so why are countries trapped in a pro cyclical response to shocks is because their capacity to borrow in bad times is very limited.
+
+So they borrow when they can and they can borrow in good times.
+
+So you know, so you borrow it's a little bit like the game of skin diving.
+
+You know, your skin diving. You're going underwater without a tank right.
+
+So you have to wait until your next chance to get your head out of the water to breathe.
+
+So when finally you have you head out and breathing a lot, so you borrow in good times.
+
+And then in bad times you're underwater. You cannot borrow. Yes.
+
+Um, like for the countries with like high volatility,
+
+it's impossible for them to increase their fortunes or a good time so that they can come off of a real depreciation in the back time.
+
+What do you do in good times? Just to increase foreign reserves.
+
+Forex foreign exchange reserves? Yes.
+
+So then in good times, you get your head out of the water, you borrow a lot and you keep it in reserve.
+
+You don't spend the money so that you have pre borrowed for bad times.
+
+So you a precautionary borrow.
+
+So your you remain super liquid to be able to self insure against future shocks.
+
+And that's what we're going to see in a couple of slides. Why countries tend to have much higher levels of of reserves than rich countries okay.
+
+So you know sometimes it's important for you to go long term in your debt and your domestic debt.
+
+But typically many countries cannot go long term in their domestic that because people fear that that
+
+will give the government an incentive to inflate that the way right will reduce the value of that,
+
+that through inflation. So in order to tell them, don't worry about that, I'm going to if I do that, I'm compensating you for it.
+
+Then you might want to sell index that where the index is to, to the price index or CPI index.
+
+Right. In that case A you go to to to index that.
+
+And that's what Chile did for a very long time before they were able to issue long term nominal debt.
+
+Okay. So. Uh, and so you might want to think that, you know, debts are not equal,
+
+that we are just adding the dollar value of that or the peso value of debts, but each type of that carries with it a different risk.
+
+In banking, we use risk weights for different kinds of loans.
+
+Maybe in debt we should do the same thing. So.
+
+So that's what I wanted to say about some of the financial reasons why countries are vulnerable.
+
+Yes. Right. Isn't one of the problems of countries with a high interest rate?
+
+If the international community doesn't uncover statistics like they would a controversial CPI index, because they might change it.
+
+For different purposes. Well, everybody trusted the CPI index until the Argentinians came along.
+
+And then they sort of like stole something like $15 billion in debt by lying about the price index that gave that gave a very bad name to,
+
+to those price indices. I just tried to make it clear, even in Israel, which is developed countries, um,
+
+we had problems of like the finance minister who try to impact how and the Bureau of Statistics change the index.
+
+It was 1% change to here and there. But like I assume that smaller countries has a huge incentive to make it to bigger.
+
+Yeah. So that's, uh, an important consideration of how credible is your price index calculation.
+
+And and as Stalin famously said, what matters is not who votes but who counts the votes.
+
+Right. So, um, so this is a regression where on the y axis you have the credit rating and the, the dependent variable is the credit rating.
+
+And, and and controlling for GDP per capita, debt to GDP ratio and the external debt to GDP ratio and so on.
+
+And you see that the debt to GDP ratio comes in a little bit.
+
+But the bigger explanation is original sin okay.
+
+And original sin say in these regressions, uh, laws were between 4 and 5 notches of credit ratings.
+
+So if you go from zero original sin, you borrow in local currency to one in original sandwiches,
+
+you only bar one dollars, uh, for the same level of income, same debt to GDP ratio, same everything.
+
+You you pay a hefty cost. Okay.
+
+So what, um, what is this original sin business?
+
+Yet in the end, the term I coined this term in a paper in 1998, than we did a second paper with Eichengreen in 1999.
+
+As a situation in which the domestic currency is not used to borrow abroad.
+
+Okay. Now, in it you might ask yourself, why did we call it original sin?
+
+Because the original sin is a theory of why women give birth with pain, and why men work with the sweat of their brow.
+
+Right. Because. In the Bible it says that because Adam and Eve committed this original sin, the punishment was we were kicked out of Paradise.
+
+And those two things men have to work with a bracket, with the sweat of their brow, and women have to give birth with pain.
+
+That's in the Bible. Catholic theologians defined that as the original sin, fall from grace,
+
+etc. so we are asking ourselves, why the [INAUDIBLE] are countries suffering from these pains?
+
+And the answer that this theory gives is somebody ate an apple.
+
+I didn't eat an apple. You didn't eat an apple. Somebody ate an apple.
+
+And because of that, we have to suffer this pain.
+
+What the [INAUDIBLE] is that? Apple. Why why why is there so much pain?
+
+And the apple happened to be this technical thing that, gee, when you borrow broad,
+
+you don't denominate your debt in local currency, you denominated debt in foreign currency.
+
+And that is enough to generate help. That's the reason why you're not in Paradise.
+
+Why are we not in Paradise? Because of this technicality.
+
+Okay, that was the origin of the term. No original sin has declined marginally in in a few countries.
+
+So we wrote a book and then two updates to the calculations and so on.
+
+In this book, we keeping the religious terminology.
+
+We had a chapter called The Pain of Original Sin, which is, you know, what are the consequences of original sin?
+
+Another one on the causes of original sin, which we called the Mystery of Original sin.
+
+And the third one on policy solutions that we called redemption from original sin.
+
+Okay. Right. So aim aim is a.
+
+So the first argument, Roy, would have been the reason why they don't lend to you in local currency is because they don't trust you.
+
+They think you're going to inflate away the thing. So maybe it has to do with average inflation.
+
+So here in these regressions I put original sin as the dependent variable.
+
+And I'm trying to explain original sin. And here I put my average inflation a maximum inflation the volatility of inflation.
+
+Inflation nothing. And that's not because high inflation countries can borrow and borrow local currency.
+
+It's because there are too many low inflation countries that cannot borrow on local currency.
+
+We put a bunch of other things. So this is the way the data looks okay.
+
+This original sin. There's just too many countries here that have full original sin with very low inflation.
+
+So inflation doesn't do the work. And we put, you know, fiscal solvency.
+
+So that to GDP ratio, debt to tax revenue ratio whatever you borrow.
+
+Nothing nothing nothing. The only thing that consistently across all of the things come it comes in is size.
+
+If you're big they lend you in your currency.
+
+If you're small, they don't. It doesn't matter if you are, you know, Monaco or you know, whatever.
+
+It's your size matters. And they suggested to us that the problem was more of a network problem in the financial architecture of the world.
+
+That is, if you are a Korean investor and you want to invest in Brazil.
+
+There are no direct flights between Korea and Brazil.
+
+You have to go through JFK. Right.
+
+So you have to convert from Korean Wong to dollars and then from dollars to three hours.
+
+And when you want to get back, you have to learn from reals to dollars and from dollars back to one.
+
+So your transaction costs get multiplied by the fact that there are very few bilateral markets.
+
+If you look at most countries, there is only a liquid market for pesos to dollars.
+
+There might be a smaller market of pesos to euros, but that's it.
+
+So it's really about something about the nature of the financial architecture of the world.
+
+Nothing to do with things you have done yourself.
+
+Okay. So that's our our explanation there in.
+
+And. On the pain of original sin.
+
+What we found out? Yes. Uh, given that, uh, lately, um, China has increased a lot of freedom and influence.
+
+There's a lot of countries. The main partner is China, the US.
+
+Why? Countries are still borrowing in, in, uh, um, well, in, in dollars and not in, like, in the currency of their main trade partner.
+
+It wouldn't matter. It's not important. The currency of your main trade partner.
+
+The point is that it's not your currency.
+
+Because if it were your currency, you know, maybe your currency strengthens in good times and weakens in bad times.
+
+But in good times, if it strengthens, you have to pay more.
+
+But that's okay, because it's good times. And in bad times your your currency would weaken.
+
+And then you have to pay in real terms less because you know you have less money, you have to pay less.
+
+So it would be correlated in the correct way with your capacity to pay.
+
+But if it's with in euros and in Chinese renminbi or in, it doesn't change the picture.
+
+So China also lends in foreign currency if they don't lend in local currency.
+
+So what we find is that if you have original sin, you have what they call fear of floating.
+
+You don't let the exchange rate move too much. And the reason why you don't let the exchange rate move too much is because
+
+saying you want to use monetary policy as a stimulus as for for macro mana,
+
+for aggregate demand management. You want to lower the interest rate than bad times.
+
+You want to raise the interest rate in good times, right? But if you lower the interest rate, the exchange rate tends to weaken.
+
+And if the exchange rate weakens the dollar value, the value of their debt goes up.
+
+It becomes harder for you to service the debt. Right.
+
+And it becomes a harder for your companies that have borrowed abroad to service their debt.
+
+So expansionary monetary policy can actually be contractionary.
+
+A reduction in interest rates might actually make people worse off.
+
+Through this balance sheet effect on the dollar. That's okay.
+
+And that's why they don't let the exchange rate fluctuate too much.
+
+So this is. And on the on the dependent variable, we have some measure of exchange rate flexibility to let the exchange rate fluctuate.
+
+And depending on your, you know, GDP or external debt or whatever, original sin seems to matter a lot.
+
+Okay. So there's a lot of impact of original sin on your willingness to let the exchange rate float.
+
+So a there's also a original sin tends to limit your ability to run countercyclical policies.
+
+Um, and as a consequence you end up getting more volatility.
+
+This is the volatility for GDP growth. This is a volatility of capital flows is a volatility of what is this volatility.
+
+Uh this is dropping financial centers. Um in.
+
+A of your um uh GDP and of your capital flow volatility.
+
+And the argument is original sin is a major determinant of how volatile you are.
+
+So if you suffer from original sin and you have borrowed abroad,
+
+your chances of being very volatile go up because of the nature of your structure of that.
+
+Um, so fiscal policy may be prosecutorial because governments lose access to finance in bad times and regain it in good times.
+
+So they borrow in good times because they can and not in bad times because they can.
+
+This is because deaths are either long term in dollars or short term in local currencies.
+
+This makes ex dependent on the short term interest rate and on the exchange rate, and these tend to have the wrong correlation with a business cycle.
+
+So amplifying everything. So they go up in bad times and they go down in good times.
+
+Having dollar denominated that. That has important implications for the ability of a country to stabilize against shocks.
+
+If you can't borrow in your own currency, you shouldn't be borrowing too much.
+
+And and you may want to demand a much higher level of international reserve so that you can use them as self-insurance.
+
+This is not a first, best solution of not borrowing and holding a lot of reserves.
+
+These sound like inefficiencies sound, but you know, things are second best at best.
+
+So this makes me a very prudent from a fiscal point of view,
+
+because I think that the risks of carrying dollar denominated debts are quite significant.
+
+Let me stop there and see if you have any comments, questions, remarks.
+
+Yes. The response to the world Bank proposal that you said to give the loans and local currency.
+
+Was there any response from the bank? That's it.
+
+So we started by suggesting that we do it with either because I doubt it, because the typical argument is we have to lend in dollars,
+
+because we borrowed in dollars, and we want to match our liabilities to our assets.
+
+So that means in some sense you're dumping that risk on your, of your borrowers, right.
+
+But then it became fashionable to say, no, you know, I should be give grants not loans.
+
+And we say, okay, why don't you do it with your ordinary capital loans?
+
+They say no because, you know, we don't want to hold the exchange rate press.
+

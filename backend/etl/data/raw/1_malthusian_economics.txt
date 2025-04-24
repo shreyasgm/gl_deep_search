@@ -1,0 +1,1349 @@
+[Auto-generated transcript. Edits may have been applied for clarity.]
+There's. It's not that.
+
+We're not doing. I'm sorry. Oh, yeah.
+
+Your job. All right. Um. And I think it's for the whole job.
+
+Yeah. Which is what? I'm doing.
+
+Oh. That's great. I. Think that would be true.
+
+I think I am. Yes, sir. I'm sorry. I'm sorry if I.
+
+Had so much to do, because. I wanted to ask.
+
+You. I wish you.
+
+Tell us about this.
+
+It's. Just a few months.
+
+Ago, I was be.
+
+On the purchase again? Huh?
+
+Well, if we don't make sure.
+
+It's just not for the personal.
+
+Reasons. Oh, my know.
+
+It's like. I.
+
+Don't know this guy. And I realize that I don't like.
+
+Basketball. Oh, I think it's okay.
+
+Hey. Good morning everyone. This is our second class.
+
+Um, going to be doing some early announcements.
+
+Um, first the first problem set is up. Um, I would recommend everyone take a look at it.
+
+Uh, the objective of this problem set is for you to get familiarized with, uh, because they said we're going to be using in the course.
+
+Um, so just curiously, you know, toggle through it and see what variables are in the data set and what can you do with it.
+
+Um, and it's going to be pretty straightforward, but we're going to have, uh, office hours, um, available if anyone has any questions.
+
+Um, complete the, uh, getting to know your survey by the end of today.
+
+Um, we want to have the results ready to show you guys next class.
+
+Um, and the first review session will be this Friday.
+
+So anyone panicking a little bit about the problem said com and Friday, uh, review sessions are you usually have new content.
+
+Um, so they're not mandatory, but, you know, it should really come with you.
+
+Uh, but they are mandatory when I teach on Friday. Yeah. So 2 or 3 times during the semester, we're going to have Ricardo teaching on a Friday.
+
+So have that space open in your in your schedule. Um, and our office hours.
+
+Well, mine were yesterday and next Monday, but Johan has office hours on Wednesdays and Fridays, uh, from 12 to 1 p.m.
+
+That's a typo. Um, so this Wednesday and Friday at 12.
+
+Uh, you can go to your and, um, if you click on the link below.
+
+Um. Um, if you click on the link below, uh, you can start submitting your groups.
+
+And if you're trying to find a group, um, you can go and post on slack or, um, you can put your name here.
+
+Uh, and try to see who has a three person group and with, uh, interesting country.
+
+That's. All right. So today we're going to talk about Malthusian economics.
+
+And then a, I must say that the I kind of discovered, rediscovered Malthus personally in 2005 visiting Bihar in India.
+
+So I'll tell you the story later on. But, uh, um, a you know,
+
+Malthus was probably the unluckiest economy economist in history in the sense that he uncovered
+
+a model that explained millennia of human history just in time for the world to change on him.
+
+Right. So, so, um, a, you know, the underpinnings of the model suddenly disappeared in the subsequent century.
+
+But the logic of, of of his model was really, uh, you know, powerful.
+
+And his work actually was super influential in the 19th century.
+
+Uh, Charles Darwin, he cites him, you know, profusely because he last class,
+
+we figured out that something must explain why we are not up to our ears in the bacteria.
+
+Right, because equally, bacteria have the capacity to replicate.
+
+Right. So something must be checking that. Right.
+
+And humans have the capacity to replicate that.
+
+And we saw it with Adam and Eve. So something must be checking that.
+
+Right. So things have the capacity to grow beyond what, you know, ecologists would call the carrying capacity of the environment.
+
+If you ask yourself what determines a population of elephants?
+
+Or what determines a population of tigers, or what determines a population of squirrels,
+
+you know they have the capacity to to grow like equally bacteria a little bit slower, right?
+
+Why are we not up to our ears in them? Right. So something must be checking the process.
+
+So, um. Why why does this matter?
+
+Well, if you look at human history, this is a population of the world in millions.
+
+Uh, now, apparently from the year 10,000 B.C., there was probably around 4 million humans, and they grew over 10,000 years to 170 million.
+
+Now, from 4 to 170 million. Over 10,000 years.
+
+That's just the rate of growth of 0.04%. So that's almost zero growth.
+
+So but it's sufficiently long time for it to uh.
+
+And then you have this, this very, you know, this acceleration of, of population growth worldwide from 0.1%, 2.58% and then to above 1% only recently.
+
+Right. Uh, this is a, um, a in the in the century between 19, the 120 years between 1800 and 1920, it grew by less than 1%.
+
+So these rates of 1% are only seen in, uh, in the 20th century.
+
+Okay. And that's more or less how it looks. Um, I mean, it's quite impressive.
+
+It took, uh, it took, um, what is this, 32 years to go from, to add 1 billion people, and it took 15 years to add another billion.
+
+Then it took 12 years to add another billion. Right. So, so, but for a very, very long time, population growth rates were really, really low.
+
+So why the [INAUDIBLE]. So something must have been checking environment because by the way in this time a births per woman were probably above six.
+
+So how do you get zero population growth with birth for women above six?
+
+Huh? Yeah. Hi. Child mortality rates.
+
+Yeah, well, somebody must be dying, right? So there must be a lot of churn in the population.
+
+Right. So. Yeah, absolutely. So when we see GDP per capita, it has sort of like the same shape.
+
+And you would imagine, gee, this is kind of weird because I would have expected that if now a population accelerated,
+
+then it would be hard for GDP per capita to grow because there are more people right to.
+
+And now we know that the rate of population growth worldwide is declining, and it's declining,
+
+in part because fertility rates globally are declining and they're now globally not too far from replacement rates.
+
+Which is about 2.1%. Now you might say, okay, but why?
+
+Why should we care about this, these long term processes?
+
+Let me give you the short answer. The short answer is that these demographic processes are very slow.
+
+They take they happen across generations.
+
+And so the structure of the population today in the countries you might be looking at are
+
+going to reflect sort of like the time since a the Malthusian trap has stopped operating.
+
+And I'll show you some tricks about how to know where your country is and what does it imply for your country today.
+
+So while this is going to talk about history, my concern is how can you transform it into a time of diagnostic today?
+
+Okay. So we also know that what happened in the last 200 years is that in this period in which, you know,
+
+global income started to rise, that this happened differentially in some parts, in others.
+
+So one possible explanation or interpretation is that these guys escape the Malthusian trap, and these didn't.
+
+So Malthus might be alive and kicking over here while he might have, you know, passed away over there.
+
+Okay. So the story of the escape from the Earth, who's going to drop a mic might not be over.
+
+So a first question.
+
+That the model tries to explain is why were incomes mostly stable for so long around subsistence levels?
+
+Now, mouth's used language that we're going to, uh, translate a little bit, but he used a bit confusing language.
+
+You said population grows geometrically, so it's an exponential, and agriculture grows arithmetically.
+
+Doesn't make too much sense because it's also an exponential.
+
+It's just a different exponential, um, or a lower exponential.
+
+But in any case, the point is that your ability to have E coli bacteria or children or rabbits for that matter,
+
+exceeds the current capacity of the environment. Okay.
+
+And so population growth will outpace food production until population stabilizes at something that checks the level of of population.
+
+Okay. And that's what he called the iron law of wages. So and it's the reason.
+
+So he was in some sense really thinking that he was explaining population growth.
+
+He was not explaining income per capita growth because there was no income per capita growth to be explained.
+
+It was not kind of like the question. Okay.
+
+And in. A now given what we know happened later to population growth, we can ask ourselves why was population growth so low for so long?
+
+Why do you think population growth was so low for so long? Yes, Mohammed.
+
+Uh, I think, uh, because of, uh, economic development and society, uh, rationale that the norms related to family size have changed.
+
+That's why didn't work. So it was it was about social norms restricting fertility, uh, having the number of families, reducing the size of family.
+
+And sort of like the age of marriage or something. If you believe the age of marriage from.
+
+Yeah, I think mainly the economy has been stuck in agricultural base until you ran out of like spaces or arable land.
+
+And at that point chicks out of the population. That's number one.
+
+But, you know, the US has seen a reduction in the labor force in going to agriculture.
+
+The share of the labor force going to agriculture. But you haven't seen a reduction in agricultural output.
+
+That's productivity has gone up. Uh huh.
+
+So yes, one, uh, I would say that, uh, food production is not the only factor that allows the population to survive over time,
+
+like also improving conditions or having better life from being in cities like increases your book.
+
+Put your microphone on. Uh, I do I repeat what I said.
+
+Uh uh, I wanted to say that food production is not the only factor that increases the likelihood of population surviving.
+
+Uh, we can also think about medical advances.
+
+So my question is, why was population growth so low for so long?
+
+I think they didn't have that like the carrying capacity of the environment.
+
+Do you think how old those factories that on the overpass there.
+
+Well other factors that condition us down.
+
+Uh, I would say probably.
+
+Uh, what about technology like of, of, uh, increasing their volume that maybe disable the increase in population growth?
+
+Okay. So I like that. So if there had been productivity growth, there would have been more population growth.
+
+So it must be that there was very low rate of growth of productivity in agriculture.
+
+Okay. So the model is going to be super simple.
+
+I'm going to reduce it to to the minimum.
+
+On the one hand I'm going to have this space here where there's birth rates death rates and income per capita.
+
+Okay. And and the idea is that a if you have higher incomes you survive.
+
+You know, if you have lower income, say, if you have a drought in Ethiopia, you don't survive.
+
+Right? So income means more resources with which to survive.
+
+The higher the resources you have, the less likely you are to die. Okay.
+
+So a declining area of death rates is I mean, income.
+
+And and maybe you have, uh, a rising birth rate with income.
+
+Oh, and part of it is biological.
+
+When you are starving, the first thing that happens to a woman's body is that it shuts down its reproductive capacity to save energy and so on.
+
+So in. So maybe the birth rates are upward sloping.
+
+And that means that if you are to the right of a certain income, per capita population grows.
+
+If you are to the left of some income, per capita population falls.
+
+Okay. Now we're going to see that this logic doesn't translate well to the present,
+
+because as I said in a slide in the first lecture, uh, the rich get rich and the poor get children, right?
+
+So anyway. The second piece of the argument is that most people are in agriculture and in agriculture.
+
+The amount of output you can generate on a fixed amount of land.
+
+Declines with a marginal product declines with labor inputs because you have a fixed factor.
+
+So we have a declining marginal utility, marginal productivity of labor and agriculture.
+
+So you have uh uh downward sloping curve in this graph okay.
+
+So the higher the income, the higher the population, the more people try to live off the same stock of land,
+
+whether you are a hunter gatherer or an agriculturalist.
+
+Um, um, this is kind of like the carrying capacity of the environment idea, right?
+
+Now, interestingly, this model, as simple as it is, it's going to lead to an equilibrium.
+
+Ending in the equilibrium means that there is going to be a level of income in which population stagnates.
+
+If population, if you're at this higher level of income, then birth rates exceed death rates, population grows.
+
+And as population grows, we return to the equilibrium point. If income per capita is too low, people die.
+
+Population declines unless population declines, income per capita goes up.
+
+Okay. So that's the essence of the model right now.
+
+And the model predicts that population will go to an equilibrium level in which
+
+population does not grow and at sufficiently low level of income per capita.
+
+That assures that. So this is the only law of wages.
+
+And that's the reason why Malthus is not because of Malthus.
+
+We are called the dismal science. Right. So and it's going to be very dismal.
+
+Is that so? In a couple of examples. So let me do some comparative statics in the model.
+
+Um, the first question is what would happen if there was a green revolution that made agriculture more productive.
+
+So you know, you are Bill gates. You say all the development problems are about technology.
+
+We need to fund, you know, a new green revolution.
+
+There was already one, right? So let's do a green revolution.
+
+What are the equilibrium outcomes? Yes.
+
+And efflorescence of population. Until there are so many people that GDP per capita goes all the way back down to where we started.
+
+So? So the prediction would be that you won't get development, that you will get population growth.
+
+Right. So let me let me do this.
+
+You know, smart people can figure things out. Others use models.
+
+Okay. So you know.
+
+A if you a if you are asked the question in economics, you always ask yourself in your head, what is the model and what is the curve that moved?
+
+Okay. What is the curve that moved in the comparative static?
+
+Okay, so if you tell me that there was an agricultural revolution, a green revolution, which is the curve that's going to move.
+
+They performed well in capitals everywhere.
+
+Uh, the lower line. The lower line? The lower line would move to the right.
+
+Good. So the lower line would move to the right. What will happen?
+
+Well, um, you know, you will get higher incomes per capita, but at that,
+
+higher income per capita population will grow until you get back to the original level of income, but with more population.
+
+So. Under these this mechanism a, you know, uh, a green revolution is not going to to do it.
+
+So, you know, so now that the, um, Bill gates has been chastened, maybe Bill gates will have another idea.
+
+Um. Um, so.
+
+What would happen if there were better health services. So, you know, Bill gates is all about health, you know, and a lot of global health and stuff.
+
+So I want you to think through what would happen if there is a health improvement.
+
+Yes. Yes. Um, perhaps same level of income, but lower population.
+
+Um, because birth rates would tend to increase with better services.
+
+Mhm. And Thatrillionate also tends to decrease. So what what will decrease.
+
+Death rates would tend to drop. Uh huh. So so how so what will happen.
+
+So tell me what will happen to population? Um, it will remain the same.
+
+It will remain the same. What will happen to incomes? I think so, so it will lower population, but lower.
+
+But the income population will lower and income will remain the same.
+
+How about you? The population increases.
+
+Uh huh. Um, yeah. Then income might decrease.
+
+Might decrease. Why?
+
+Um, because if the productivity level remains the same or constant, for the more people, it's going to crowd out resources and things.
+
+Very good. So you see, smart people can answer the question.
+
+Others use models. Right. So let me use a model.
+
+So what's the comparative static. I'm moving the death rate down.
+
+Right. So mental health care implies death rate moves down.
+
+It means the equilibrium point moves to the left. It means that now you get more population and lower incomes, more population and lower incomes.
+
+Why do you get lower incomes? Yes.
+
+Productivity of the economy. The overall productivity of the economy remains the same.
+
+So the more number of people for the same production capacity it gets.
+
+But why don't they die? Because the health services is better.
+
+Uh, so now, thanks to the health services, you can be poorer and still survive.
+
+Okay, so that's why I say this is dismal science.
+
+Indeed. This is really the dismal science. You you are now enabling the ability for for people to to survive while being still poorer than before.
+
+Okay, so. So, yeah.
+
+Just saying. What? Uh. So again.
+
+Yes. Quincy. Oh, yeah.
+
+Yeah. Uh, in real life, I'm just curious. Like, how would poor people be able to afford high quality healthcare to make them survive?
+
+Well, maybe say, suppose you you give them, uh, uh, tuberculosis vaccine or a polio vaccine or something,
+
+or better water services, something that improves, uh, health conditions in general.
+
+Uh, and they say, say you did that.
+
+Okay. So it's like the minimum level of survival.
+
+Well, whatever. Whatever lowers the death rate. Okay?
+
+Whatever intervention lowers the death rate would have this effect, you know.
+
+So. So, um, you know, population growth was so low for so long because agricultural productivity growth was so low for so long.
+
+So, so in some sense, what you're seeing there is a history of relative stagnation in technological progress.
+
+Um, now, when it started to accelerate the after the year 1000 in Europe, mainly a all of the productivity increases went into population growth.
+
+Okay. So this is let me tell you the reason why I suddenly, you know, it hit me in the face when when I went to Bihar in 2005,
+
+for the Indians in the group, in 2005, um, the, uh, the chief minister called it the governor of Bihar have been kicked out for corruption reasons.
+
+This was a guy called Lalu and there was direct rule from the national government on Bihar and the national government.
+
+There was um a monte Carlo.
+
+Wala was an old friend and the father of an MP idea of, I don't know, over a decade ago.
+
+And uh, and he, he asked me to go to be hired and see, you know, what would you do?
+
+So I went to be ha. And, you know, it's very, very useful as an economist, I must say that you always have a benchmark in your fate,
+
+in your head when you look at something, if you don't have a prior, you don't learn.
+
+When you have a prior. It helps you see surprises and you learn when your priors are falsified.
+
+So it's super useful to have priors when you go to a place.
+
+Okay, so my prior state is Venezuela.
+
+It's, uh. Uh, so it's it's my default.
+
+So I say Bihar. Venezuela, Bihar has three times the population of Venezuela.
+
+Um, and it has one ninth of the surface area of Venezuela.
+
+So it has 27 times the population density of Venezuela.
+
+Okay. You say, well, there's a lot of people in Bihar. How do you fit so many people in such a small place?
+
+Okay. 27 times the population density of Venezuela.
+
+So? So you say, well, you know, you might stick them all together because the capital city of Venezuela is Caracas,
+
+my hometown, and it has about 5 million people.
+
+So about a sixth of the population. So if you say, okay, capital of Bihar is Patna, so one sixth of 90 million is going to be 15 million.
+
+Okay. So the reason why I have so many people is because they have a city of 15 million, right?
+
+Wrong. Patna has 1 million. It doesn't have 15 million.
+
+And the population is essentially mostly rural while the population of Venezuela is mostly urban.
+
+Right. So the question I asked myself is, why are there so many poor people in Bihar?
+
+And I would ask you, why are there so many poor people in Bihar? By the way, he competes with Orissa as the poorest state in in India.
+
+Right. So why are there so many poor people in Bihar? Siddharth.
+
+Primarily dependent on agriculture now industries.
+
+Okay, but why are there so many? Why are there 27,000 more people?
+
+And. Yes. Maybe the health care is too good.
+
+Very good for him.
+
+Maybe in the rural, uh, places, there's more, like, easy to have local population.
+
+If you're in a city very concentrated, it's a lot harder to achieve than a.
+
+Well, I mean, and usually if you're going to survive on agriculture, you need more land.
+
+In cities, you need less land. So you can put a lot of people in Hong Kong or a lot of people in, in, in England and in Singapore.
+
+Um. Because you know you need less land in urban areas to sustain the population or, you know, to live.
+
+So, yes, uh, maybe governance with the poor state government.
+
+So even though the high agricultural capital capacity allowed for population to grow, what is the higher?
+
+Why is there higher cultural capacity? Or is it just because I'm assuming they have higher agricultural capacity, right?
+
+Uh huh. Because of the very high population that they have. Uh, okay.
+
+Okay. So what you're saying is that the reason why there are so many poor people in Bihar is because there's so much land to farming.
+
+You know, there's 27 times less land than in Venezuela.
+
+It's the administrative jungle. Well, you can always cut it down.
+
+Uh, there's so many poor people in Bihar because the land is so fertile, so there's so many poor people in Bihar because the land is so fertile.
+
+If the land was less fertile, there would be fewer poor people in Bihar, right?
+
+So the fertility of the land gets expressed in higher population.
+
+It doesn't get expressed in higher income. It gets expressed in higher population.
+
+So there are so many poor people in Bihar because the land is so fertile.
+
+Yes. Are you saying that, um, if your economy is really heavily agriculture based, then kids, then having lots of kids is more useful if you're in?
+
+No, I'm saying if this is an equilibrium phenomenon, everybody's having the same number of kids.
+
+And the question is how many survive? Right. So I'm not I'm not I'm not delaying marriage, I'm not constraining, etc.
+
+This is an equilibrium outcome. Okay. Let me show it to you more starkly.
+
+You have Burundi and you have Somalia.
+
+Have you seen pictures of Somalia? What does it look like?
+
+Yes. It's a desert, right? Have you seen pictures of Burundi?
+
+This is a lush highland. Super green.
+
+Okay. Which country is richer?
+
+Poor only or Somalia? You can check your Somalia.
+
+Huh? Somalia is about 38% richer than plan B, but Burundi is much more fertile than Somalia.
+
+So which country is more densely populated? Somalia has 15 people per square kilometers and Burundi has 890.
+
+Okay. So while these differences are, you know, percentages these differences are orders of magnitude.
+
+So we have orders of magnitude differences in density.
+
+And you know, maybe it is more convenient to be near the coast than to be, you know, landlocked.
+
+And maybe, you know, for that reason, Somalia has other possibilities that Burundi doesn't have, etc.
+
+But the fact that the land is fertile only gets expressed in how many people you have not on how rich you are.
+
+Okay. All right. Good.
+
+And so how would you know if a country is affected by Malthusian dynamics?
+
+Well, in principle, we have this idea that any good news goes into population.
+
+Okay. Health improvements. Population.
+
+Green revolution. Population. Fertility. Population. Yes.
+
+Coffee. Uh, before that, I just kind of good question.
+
+Um, isn't suppose like fertility of the land to be decreasing?
+
+Let me guess. Like the more you cultivate the land is not like a constant factor.
+
+We are attributing that to like that population size, fertility, land.
+
+Is it like have you so ask yourself the question how many calories can you produce in a hectare in a year?
+
+So anybody here from Indonesia. Yeah, well, in Indonesia, Java is the most densely populated place on Earth.
+
+Why? Uh, I think because of, uh, job opportunities.
+
+Because of what opportunities? Job opportunities.
+
+But historically. Why why why are there so many poor people?
+
+So many people in Java? Uh, historically.
+
+Because I think, uh, most of the base. Can you put your.
+
+Yeah, yeah. Uh, most of the business activities are concentrated in Java.
+
+Right, right. That's why I said before urbanization. I mean, there were many, many people living in Java way before, you know,
+
+everybody moved to Jakarta because, uh, the fact of the land cause a lot of volcanoes in Java.
+
+Well, it's it's the volcanoes I haven't paid attention to.
+
+But you have three rice crops a year in Indonesia.
+
+It's the only place that has three crops a year of rice.
+
+So you just can produce many more calories per hectare.
+
+And if you think I need 2000 calories per capita, how many hectares do I need to generate that capital?
+
+So the more fertile land you need less less land to generate enough food for a person.
+
+So the more fertile the land, you just get more persons. Right.
+
+So so again, the idea is that if you are under Malthusian dynamics, good news go into population.
+
+They don't go into income per capita. So here is uh, the average rate of population growth.
+
+And here is the average rate of total GDP growth.
+
+And this is the 45 degree line where GDP per capita is constant.
+
+So, you know, all of the countries that are close to the red line in some sense, you might say, you know, they seem to be.
+
+It's all good news. Go into population. GDP per capita doesn't move if God knows.
+
+So some countries say Gambia, Kenya, etc. they're growing a lot, but population is growing a lot.
+
+So a lot of the population, a lot of the GDP growth just goes into maintaining people at the same at the same level.
+
+So so it means that for some people, for others, for example, all of the countries here, there's much more GDP growth than population growth.
+
+So you have rising incomes per capita. Okay. Good.
+
+Here I'm going to take the ratio of population growth to total GDP growth.
+
+And the Malthusian equilibrium would say you're at one.
+
+So countries here sort of around one would have uh, you would,
+
+you would say they look like I'm not choosing from countries above that have more population growth and GDP growth.
+
+So they are actually getting poorer.
+
+So all the countries above one are getting poorer. And all the rich countries are kind of down here.
+
+And by the way, can anybody tell me why you have in Saudi Arabia and the United Arab Emirates declining GDP per capita?
+
+This actually is a it's an interesting factoid in it will.
+
+Yes, it's a net migration. Is it net migration.
+
+But why would they why would people want to go there if, if, if you know, if the stuff is not growing,
+
+why why why why are people moving there to maybe work in service industry or other why jobs are available.
+
+Why? Because you have already you have to think more general equilibrium in general.
+
+You have to understand, you know, think more general equilibrium.
+
+Yeah. Um, basically they have two classes of people, and the marginal utility of one is different from another.
+
+So going from a poor country with lower and marginal income, let's say, uh, to uh, UAE increases very marginal income.
+
+One, it doesn't hurt to those of the higher class. Let's call. But okay.
+
+But a when does the process stop or what the what checks the process when you get to labor.
+
+And what happens is. So, so let me, let me.
+
+I have a lot of material to cover, so I'll tell you the answer.
+
+It's a bit tricky, but if you have one sector which is oil that produces a lot with almost no people.
+
+So the productivity in oil is infinite. Super high right?
+
+And oil generates income. You want to spend that income.
+
+What do you want to spend that income in. And restaurants and houses in in amenities and.
+
+No. Right okay. All of these things have average productivity, which are a small fraction of productivity in the oil sector.
+
+So if the price of oil goes up, you're richer.
+
+And because you're richer, you want more people driving you around, cooking for you, a building, a bigger house, and so on.
+
+Just the average productivity in those industries are a fraction of productivity in oil.
+
+So you simply get a composition effect where you get an expansion of low productivity sectors.
+
+And so total productivity growth declines. I worked for a long time both in Saudi and in the United Arab Emirates.
+
+And these guys both have productivity councils and they wanted to increase.
+
+GDP per worker to increase productivity. I say, look you're set up to measure declining productivity.
+
+If you're going to do it at the aggregate level, you're not going to see anything useful.
+
+This is just a composition effect. It's just what a healthy economy does.
+
+It's not a sign of something bad. It's just a.
+
+You know just how life is. Yes. So this is super exciting to me.
+
+Um, in the in the 19th century, when all these new technologies came in, in England,
+
+you also have this massive expansion of people going into domestic service.
+
+Um, which sounds sort of similar to me, almost like just this huge number of people going into service off the farms, into service.
+
+And so simultaneously, again, you have a super high productivity and low.
+
+Um, so I'm wondering what your views are on how we get out of that,
+
+how how jobs end up being because people eventually moved out of all those domestic service jobs.
+
+What's the what's the move for an economy to go from being this super polarized to higher per capita everywhere?
+
+By the way, I'm not sure. I'm not sure that, um, these height differences in productivity should translate into differences in wages,
+
+because everybody would get paid their marginal wage, the marginal product and wages would tend to equalize across sectors.
+
+So but what we're saying is that the past of the UK, of Britain, England looks a little bit like the present of, uh, India or Peru,
+
+where I have a friend who spends most of the time like nine months of the year in British Columbia and three months of the year in Peru.
+
+Okay. Um, he just went back from the summer vacations in Peru, back to British Columbia.
+
+And I asked him yesterday, so how's life? I said, well, you know, getting used to a no, no family help, no.
+
+No nannies, no stuff. Right. Because in in British Columbia, the, um, opportunity cost of labor is just too high.
+
+You cannot afford nannies, but in India, in Peru, you can afford a nanny.
+
+So your consumption basket radically changes because of this relative price.
+
+So I would say England would look a little bit like Peru. And that's why in, in, you know, Downton Abbey, you had so many cooks in.
+
+I mean, what what do we call it from what, what are these men call them?
+
+Uh, footmen. Footman, footman. Anyway. Okay, so so let me show you a anybody here from Pakistan?
+
+Yes. So. And Korea. Yes.
+
+Okay. So so this is something that has happened over the course of my lifetime.
+
+Okay. Whenever we talk demographics, you need a certain time perspective.
+
+Okay? I was born before 1960. So this happened in my lifetime.
+
+This is an index of rural population.
+
+Over the course of my lifetime, rural population in Korea declined by half.
+
+Rural population in Pakistan quadrupled over the course of my lifetime.
+
+Okay, so we can ask ourselves, what are the economic consequences of these two factors?
+
+If we think Malthusian, you know, the amount of land in Korea, the amount of land in Pakistan is fixed right by the international borders.
+
+You can get more out of the land you have. But, you know, in short of a war, you're not going to have more land per capita overall.
+
+Okay, so here I have the rate of growth of rural population.
+
+And here I have the rate of growth of agricultural output per rural person.
+
+Okay. So this is like GDP per capita, but I'm not doing it per capita nationally but per capita rural.
+
+Okay. Of the people living in rural areas. And this curve is a 2% rate of growth of agriculture per rural person.
+
+Okay. So notice here you get zero agriculture per cup.
+
+I mean not per world person per. Per hectare 2% productivity growth per hectare.
+
+So you see that countries here get all their population all their productivity growth go to population growth.
+
+Right. But the countries I mentioned were first India and China.
+
+Notice here in India in a, you know, population grew by 150% in rural areas.
+
+And in China, it it's kind of like back to 1960.
+
+So the growth rate is kind of zero. It went up for a while then down for a while okay.
+
+And nothing as dramatic as Korea. So.
+
+India this is 2% growth right.
+
+So in India productivity growth per hectare was kind of like a little bit lower than that of China.
+
+But a lot of the difference is the fact that in in this period of 40 years a to 2018, between 1978 and 2018,
+
+population growth in rural areas in India was growing, while population growth in rural areas in China was falling.
+
+So that's why you got higher GDP per capita growth in China than in India, just because of of the lower population growth.
+
+This is Pakistan and this is Korea.
+
+Pakistan actually had productivity growth per hectare in excess of 2%, while Korea had essentially productivity growth of 2%.
+
+But GDP per capita, our GDP per rural person in Korea was much faster than in India, 100% of it,
+
+150% of it because of different demographics that people in Korea were working with more land per capita because population declined by half.
+
+And and while in Pakistan, you have to fit four times more people in per unit of area.
+
+Okay. So you see that these dynamics are present okay.
+
+You know. Quick. So let me ask now, what would it take analytically to get a country out of the Matthews equilibrium?
+
+Okay. And how did countries get out of the Matthews in equilibrium?
+
+Okay. So so again this is the common fusion model.
+
+How do I transform the Matthews model into a non Malthusian model.
+
+It's simple. You only have three curves. Yes.
+
+And if you add, um, concentration of energy through time.
+
+And so people get, um, more productive through the use.
+
+Well, but that's like, uh, that's like the green revolution.
+
+You get more people. Right.
+
+We already played with them. Yes. You need to decouple.
+
+You need to decouple. You need to decouple population from agricultural production.
+
+Uh huh. And that does what to me, that allows me to increase income.
+
+Both coverage of it, uh, increasing, uh, the chance of farmland.
+
+So you're smart. I'm not. So I use models.
+
+You tell me, what do I need to do in this model? When?
+
+When you, um. If you like, uh, another curve on the graph, um, below, you will get its own equilibrium, and it may not match the previous example.
+
+Okay. Can you put your. So you want me to add another curve?
+
+What would that curve be? Um productivity.
+
+Right. But productivity is just is reflected in this in this curve.
+
+Oops. Productivity is reflected in this curve.
+
+And we already move that curve out. And we got the Green revolution and it all went to population growth.
+
+Yeah. What I was going to say.
+
+But there was that when I was thinking about making population exogenous independent, at least from incomplete evidence,
+
+that maybe if you like, make the, the lower curve, uh, horizontal if I make it or is untrue, why would I make it horizontal?
+
+What will be the logic? So population is like, uh, income precarious?
+
+Uh, I don't actually know choice. Horizontal or vertical, but but that way you will they will not be like, affected by the other, um, parallel.
+
+Yeah. Something similar. You can change the slope of the population income per capita because of marginal costs.
+
+Okay. So I can switch this curve now I can always switch this curve in PowerPoint and I can tell you how to do it in PowerPoint.
+
+The question is what does this mean in real world. What does this mean in real world.
+
+Increasing marginal include with the increasing population your income is also increasing.
+
+Look at that somehow.
+
+If I get more people together is better than they have fewer people together.
+
+But that means like kind of like agglomeration economies, right?
+
+So it probably means that you have something like a division of labor and a division of labor.
+
+That means that now the whole can sort of be better than the parts, and that means that economic activity will want to concentrate.
+
+It's not that people want to spread apart so that I can have more land.
+
+So I want to move to the Midwest. I want to move west. I want to move to California.
+
+I want to be away from other people so I can have more land.
+
+No. People are going towards each other. Right?
+
+They're trying to get together because, you know, the more the merrier.
+
+So? So you need something that generates a payoff to having more people interact.
+
+Okay. So it's a production process where land is not important, but human interaction is.
+
+Human interactions and that those. Human interaction is going to lead somehow to productivity growth.
+
+We're finishing a project in Wyoming. The largest city in Wyoming has 63,000 people.
+
+And then we calculated what are the industries that exist in cities of 63,000 people,
+
+and find that most industries cannot survive in a city of 63,000 people because they need,
+
+you know, a more diverse labor force, and you can find it in 63,000 people.
+
+Right. So anyway, so so while mathematically this is enough to get you out of the Malthusian trap,
+
+because now you get this positive feedback that as income per capita grows, population grows.
+
+As population grows, income per capita grows as income per capita grows, population grows.
+
+And this is what we saw in the last period. We saw a boom in population growth and a boom in income per capita growth in the last two centuries.
+
+Especially in the rich countries. Thank. Gordon.
+
+Now you might say, okay, it only took to shift in the slope of a curve.
+
+Why did it take millennia? Why did it take millennia?
+
+Right. Why? Why was. You know, whenever you have an equilibrium.
+
+It is an equilibrium. And an equilibrium means that you can kick it and wants to go back to where it started.
+
+Right? So there must be something that makes an equilibrium.
+
+An equilibrium, right? It must. There must be deep forces that are.
+
+You say oh, no. Just, you know, just interact with more humans, right?
+
+Well, you can't, you see, just, you know, put people together and stuff will harmony.
+
+So. So this is a little bit the, the, the thing that makes it stable that if people are poor, poor people spend most of their income in food.
+
+Right. But food comes out of agriculture, and agriculture is intensive in land.
+
+So if you're going to produce food, you need to spread out, right?
+
+So the majority of the people have to be in rural areas, and there are forces for them to spread out, not to come together.
+
+Okay. And agriculture has this thing that it produces less per capita, per unit of hectare as population growth.
+
+So if you keep hectare constant and you put just more people in the same hectares, you get less per person.
+
+And rural areas are not ideal for the division of labor.
+
+I mean, the whole point of the division of labor, as we will see in the course,
+
+is that within a certain catchment area, you can get a lot of different workers to go to a certain place,
+
+and people are attracted to go to that certain place by just looking at how much
+
+time they spend in traffic and how horrible and unpleasant are those traffic jams.
+
+And still they they still want to do it.
+
+No, there must be some attractive force to make them do it.
+
+Okay. So now that we understand why, you know, it is an equilibrium, right?
+
+That that a, you cannot have the division of labor, you cannot have much interaction because people have to spread out because they need to use land.
+
+And and so they are far away from each other. Right.
+
+So how did the world escape the massive trap?
+
+And the idea is that there must have been something that caused an increase in agricultural productivity.
+
+Okay, but maybe an increase in agricultural productivity,
+
+in part due to some urban craftsmen that could produce tools and materials that would increase agricultural productivity.
+
+Okay. So now you're having things that are done in cities that increase productivity in rural areas,
+
+and they're going to buy from cities, but what are they going to pay with?
+
+We're going to pay for these. These tools and materials that they're buying from cities, huh.
+
+With food. Because that's what they produce.
+
+And directly, you know, with food. So now suddenly they are generating an agricultural surplus that is sustaining a city.
+
+Right? And then the city is going to be able to start exploiting these agglomeration economies.
+
+But the city needs food. And for the city to be able to have the food.
+
+Right. Something somebody must be able to produce more food than they are eating in exchange for something that they find valuable.
+
+So you need to generate this dynamic between, uh, city and its agricultural hinterland.
+
+Okay. So why was there so much violence in ancient times?
+
+Let me change it. Why is there so much violence in Ethiopia today?
+
+Anybody here from Ethiopia? We've worked a lot on Ethiopia, and actually we were derailed by a civil war in the middle of the project.
+
+Why? Yes.
+
+They were not big states, you know, they were people competing for power over something.
+
+But. Well, I don't know.
+
+It was the Roman Empire. And so there were some big states here.
+
+Yes. I think because of lack of resources, it was like a survival mechanism to resort to violence, to capture the most resources when you.
+
+We did this or it hasn't. Is it because they're landlocked and so that trading potential is lower with other economies?
+
+Well, I think essentially because the source of wealth is land controlled.
+
+If you control the land, you control the wealth. So if you are in control, the land is for you.
+
+If I'm in control, the land is for me. The source of wealth is land.
+
+Right. What's the source of wealth today? It's not land control.
+
+So it's, you know, big. You know, the US is a megalopolis around between Boston and D.C.
+
+It's another megalopolis between, I don't know, San Diego and San Francisco, maybe in a megalopolis around Chicago.
+
+And the rest is a national park. Right. Right.
+
+So? So who cares, right? That's not where.
+
+That's not where the action is. Where Silicon Valley. Right. So it's not land control.
+
+It's control over the source of wealth is something different.
+
+But if the source of wealth is land and land control and you're fighting over control of land,
+
+and in the case of Ethiopia, land, there are no private property rights on land.
+
+You have use rights which are allocated by your tribe.
+
+So if your tribe has more land, a, you probably get more allocation.
+
+So you want your tribe to expand and, you know, kick out the other tribes from land.
+
+And so that's and that's in some sense what the Pax Britannica brought to India.
+
+That's maybe the Mongols brought to India too, or that's what.
+
+So so it's it's kind of telling each one of these maharajas and you're fine if you don't mess up with your neighbor,
+
+if you mess up with your neighbor, you mess up with me. And so you kind of try to maintain some equilibrium.
+
+Don't you dismiss the importance of culture and love because there was still many wars after the 1000 drop the 1945,
+
+and then it started to go down as far as, you know where.
+
+It was called the World War. So. I didn't understand that.
+
+I understand the question. Like, uh, we talk about like international like between countries violence and intra country gun violence,
+
+but I don't know, I would assume I don't know, I haven't checked the data, but we found world wars.
+
+Things tend to get better on the international level, even even with civil wars.
+
+I think I saw some that I what actually.
+
+So don't you dismiss kind of I mean, I don't want I don't want to make a whole theory of, uh, the reduction of violence.
+
+This guy Steven Pinker has a book on arguing that there's this long trend reduction in violence.
+
+But the bulk of the violence historically was this, uh, call it civil war, local wars, and and actually the idea of the Leviathan,
+
+the idea of the state was precisely to stop these, to have somebody say, look, uh, no, no conflict here.
+
+You don't mess with your neighbor. Uh, I am, you know, you do what I say so that somebody has to impose a monopoly on violence.
+
+But the monopoly on violence is hard to impose.
+
+If, you know, you can grab some resources from your neighbor, and.
+
+And it's okay. Well, you know, in a, in a more urban setting.
+
+So, uh, where, where the source of wealth comes from human networks, you know, if, uh, if Putin gets Mariupol,
+
+he gets, uh, a piece of land that is worthless without any of the human networks that made it valuable.
+
+So you get, you know, you get, uh, it's not a it doesn't it destroys a lot of value, but it doesn't make Russia rich.
+
+Right? So, uh, anyway, so, um, so we're going to get out of this process because of the Industrial Revolution.
+
+And the Industrial Revolution has something to do with manufacturers.
+
+Now, what does that word manufacture?
+
+Where does it come from? What's the etymology of manufacturers?
+
+Hmhm hand. So manufacturers means handmade.
+
+Have you stopped to think about that? Because we think of manufacturer as the opposite of handmade like you think.
+
+Artisans do things by hand and manufacturers do things by machine.
+
+But historically, manufacturers in the 18th century was something super labor intensive, which was done by hand.
+
+Right? Now the steam engine was introduced.
+
+Do you know when the steam engine was introduced and why the steam engine was introduced?
+
+And and you can answer because you're a historian.
+
+Yeah. Egypt. Uh, 3005. Uh, the steam engine, not the wheel steam engine.
+
+I think they used it first for some kind of temples in Egypt.
+
+In Egypt? Maybe. Maybe. Um, let me then change.
+
+Why did what introduce a an improvement to the steam engine?
+
+Okay. So yes, Vincent in in England, they had a lot of coal and they needed a thing to reduce the water inflow in the coal, um, uh, mines.
+
+So, so energy basically that they could generate.
+
+But it's the engine. Right. So you think that steam engines were produced because we wanted to introduce them
+
+in manufacturing or because you want to put locomotives and so on and so forth.
+
+That happened like 50 years later or 30 years later.
+
+The original motivation was that you were extracting coal as means and cents, and as you extract coal, you know, it rains in the UK.
+
+I don't know if you've noticed. Yeah. That's why it's so green.
+
+Right. Um, and, you know, you extract something from the land, the water will try to seep in.
+
+So you have to be pumping a water out of them, uh, out of the mine.
+
+And that's why that was the original motivation. But then obviously, they discovered a way to transform coal into energy through, um, a steam engine.
+
+And then you had a process whereby people thought, gee, where else can I use this innovation?
+
+Right. Um, now this, uh, this idea of, of putting, mixing, manufacturing, which was already happening,
+
+by the way, Adam Smith talks about manufacturing before the steam engine.
+
+He published his book in 1776, which was more or less the same time at which what was publishing his patent?
+
+So if Adam Smith is reflecting on a world without steam engines, with manufacturing,
+
+without steam engines, and this manufacturing is going to need some source of energy,
+
+and I have a home in the Berkshires, which is about two hours west of here, and this is about a mile from my home.
+
+It's, uh, it's a very old plant that makes and paper.
+
+And why is it here? Yes.
+
+Was it using water as their source of energy?
+
+It was using water as the source of energy. It's right next to here.
+
+This is a dam and it's trying to use water.
+
+And there are a bunch of of towns here that are all around the Housatonic River.
+
+And they all developed in the 18th century to exploit the energy of the Housatonic River, when suddenly they invent the steam engine screw rivers.
+
+Who cares about rivers? And this went into decline in the 19th century.
+
+They started abandoning all of the manufacturing that had developed, because now what you need is proximity to coal,
+
+and, you know, you're closer to call if you're in a port where you can ship it in, and so on and so forth.
+
+So. So the, um, the Industrial revolution, some people argue,
+
+had something to do with a marriage of something you might want to call science with, something you might want to call technology.
+
+Okay. In a this is Voltaire and this is Pasteur.
+
+Now, Voltaire wrote a, you know, he was super funny and witty,
+
+and he noticed that the Brits used vaccines in his time, 18th century, middle of the 18th century.
+
+Uh, and and the French would not because the Brits were empiricists and the French were Cartesian.
+
+The Cartesian wanted to do things from first principles, and they didn't understand the principle under which vaccines would work.
+
+But the Brits had an ambassador in Turkey, and in Turkey they learned that, you know, if you infect somebody, they become immune.
+
+They don't use those languages. So this ambassador brought the idea from from Turkey.
+
+It just kind of it works. But I don't have a theory of why it works.
+
+But then obviously, Pasteur a century later developed the theory of microbes and germs and so on,
+
+and how it works and why it would work, and what would you need to do to make it work and whatever.
+
+Right. So, so this is sort of like this is empirical knowledge of, you know, this works in practice.
+
+And this is sort of like this is the theory of why it works in practice.
+
+And and you see this in, in, in a lot of the development in, in, for example, in electricity.
+
+Faraday and Edison were tinkerers. They did not really understand deeply what it is that they were doing, but they were just tinkering.
+
+Right. Relative to Maxwell, which, you know, is going to write the Maxwell's equations of electromagnetism and so on,
+
+that is going to unify not only electricity with magnetism, but also with light and, and and stuff.
+
+Right. And eventually with chemistry if you want. And.
+
+So the role of the Industrial Revolution is that suddenly you have the marriage of a prescriptive knowledge.
+
+If you have knowledge on how to do things in the world, call it technology with propositional knowledge,
+
+which is knowledge about the nature of the world, that there are such things as germs out there.
+
+And maybe there's a germ theory of disease that the disease about something being infected by germs and so on.
+
+And it's very interestingly reflected in the history of education, uh, in, in the 1860s.
+
+Uh, there was a lot of scientific development that was being used in, in production.
+
+And so the question was, what was the right training for an engineer?
+
+What should an engineer be? And in those days, an engineer was an apprentice.
+
+Who worked with another. So it was not a university degree and there was a big discussion.
+
+Should engineers be in a university degree or not?
+
+Well, the Brits decided no, this is you know, the people who do well in high school should go to get their A-levels and then go to college and so on.
+
+But those that don't do too well but not good enough, you know, then they will go to, you know, these apprenticeships, it'll become engineers.
+
+Okay. Mind you, they are trying to do aerospace, nuclear power generation and so on with the more feeble minded.
+
+That debate happened here in this area when in the 1860s, somebody came knocking at Harvard's door saying, you have to open a school of engineering,
+
+because now the economy needs these people who understand chemistry or understand electricity or understand these things.
+
+And Harvard said, over our dead body, we are not going to tarnish our brand.
+
+Right. We're not going to tarnish our brand with these, you know, ideas.
+
+Right. And that's why MIT is where it is.
+
+It's on the same Massachusetts Avenue, but not the same brand, because they didn't want the brand to be tarnished.
+
+And so so it's this marriage that is going to happen in the 19th century.
+
+It's going to also happen with with them, an energy revolution.
+
+And the energy revolution is going to substitute human energy for, you know, mechanical energy.
+
+And if it was human energy, then the average male has more capacity to exert force than the average female.
+
+Uh, but if it's the machine that's putting the force, then that gender difference kind of goes out the window.
+
+Right. And, um, if now there is more use for human capital, there's more use for human capital then,
+
+by the way, Adam Smith wrote about the boredom of manufacturers because you were in his mind,
+
+you were cutting the production process and everyone was just doing a little step and it was hyper boring.
+
+So he argued that people should have access to education to increase in some sense the, uh,
+
+the quality of their leisure so he could read books in their free time and do other things in a free time,
+
+had nothing to do with applying education to a production process.
+
+Because the production process had been dumbed down.
+
+You had eliminated these artisans that had a lot of knowledge and substitute them for these people.
+
+I mean, the good thing about the Industrial Revolution, one thing is that you could use children and women and not just, you know, artisans, right?
+
+So so it was a dumbing down revolution, what he was worried about.
+
+But in the 19th century, it was more important that, you know, that these people could maybe use knowledge.
+
+And this is going to have implications for fertility, because now if you want to educate your children,
+
+children in some sense become more expensive, right?
+
+And this is what Gary Becker calls the trade off between quantity and quality of children.
+
+Right now you want to have educated children, but if you are going to have educated children, you need to have fewer children.
+
+Okay. So in some sense, let me, um, let me see if I have another one.
+
+Um, so do all countries need to have an agricultural revolution to start the process?
+
+So do they all need to go through this process where you have a town that's providing them with services,
+
+and then you get agricultural improvements, and that allows the town to expand, etc., etc.
+
+And the idea is that not really because a what you need, um,
+
+you don't need to generate your own agricultural surplus if there's going to be a global market for,
+
+for food, what you need to do is to be able to buy it.
+
+So your city has to be able to buy the food, not necessarily by selling to its hinterland, but by selling something.
+
+Right? So, for example, how did Venezuela become urbanized?
+
+And here I'm taxing your knowledge of Venezuela, which is not necessarily your comparative advantage, but.
+
+How did Venezuela do it? How did Venezuela become so urbanized or.
+
+Was it done related to the discovery of oil? Uh huh.
+
+And what does oil mean? If you lost money, you can buy stuff with.
+
+So now you're trading oil for food so you don't have to generate your own food.
+
+You just buy your food, right?
+
+So you have to have something that you can export in exchange for the food, whatever it is that you can export, then you can get the process going.
+
+Okay. Why has Bihar remained the rural?
+
+Because it didn't have an agricultural revolution and they didn't have anything to trade, um, to get the process going.
+
+Where if you don't have a surplus because you're mostly, you know, you're poor and at subsistence,
+
+you, you don't really have a surplus, but maybe a, a, you know, had there been,
+
+for example, the kind of manufacturing process in, in partner that had, you know,
+
+demanded labor, maybe people would have gone to partner to, to produce, say, garments.
+
+Ehm. And then they would have left the rural areas and they would have left more land per capita to those remaining in rural area.
+
+So they might have gotten the process going. But partner was never connected.
+
+I mean, to go to ports in, in Calcutta or to so the infrastructure was not there for partner to be integrated to, uh, to the broader Indian market.
+
+So maybe that's what happened. So it's exports are going to play an important role in these transformations.
+
+Exports is what allows you to make independent the life of the city from the constraints on the things that the city needs to buy,
+
+because you can always import things with your exports.
+
+Yes, yes. Um, one thing I would add is I need to be able to capture the rents from what you're exporting.
+
+So I just looked in Sierra Leone and they export a lot of diamonds and so on.
+
+But the government gets to.
+

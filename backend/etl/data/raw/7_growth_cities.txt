@@ -1,0 +1,1397 @@
+[Auto-generated transcript. Edits may have been applied for clarity.]
+I usually go at night.
+
+I do not feel like, you know, for two, which.
+
+I don't work for the government.
+
+That creates what we like. Having small appointment volume.
+
+So that, you know, we didn't get the last minute.
+
+Right? Uh, this email. Okay. Okay.
+
+Uh, I think the not right, and I didn't. Know.
+
+What he was like. Oh, well.
+
+Uh, yeah. Yeah, I guess the mindset is at some point.
+
+Yeah, yeah, yeah. So that news that you don't have a choice.
+
+Between that and. I was right.
+
+First of all the time, I do. I do know that you went to Harvard and you know how much know my stuff.
+
+That's that's nice. Are you going to say yes, I was.
+
+Like. Yes.
+
+I think. Yeah.
+
+The best part about this, you know, it's like you say, it's like you said I was going to go.
+
+To school. Okay.
+
+This is this is a brand new lecture.
+
+So the first time I, I teach on this subject.
+
+But you'll see why. It's kind of obvious.
+
+You know, the growth lab has been working mostly, uh, for a long time with national governments and the state governments.
+
+And then we started to work with city governments. We started in Buenos Aires.
+
+We only put them up here and then to a bunch of other cities.
+
+So, um, a and the question you would ask yourself is, you know,
+
+what's the difference about growth in countries and growth in cities, countries and states and cities?
+
+What how would you need to adjust your mental framework to understand these phenomena?
+
+Okay, so before we do that, some housekeeping, you want to tell us you're still eight students without a group?
+
+Yeah. Um, so try to match this lecture is kind of about matching so that um,
+
+and feel free to talk to you in slack or you or to write your name and your interest in the worksheet,
+
+uh, so that we can help you guys start working on problem set two is due October 7th.
+
+October 7th is next. Um, yeah, it's next Monday.
+
+So, um, you know, if you haven't started yet, start said.
+
+And if you have a lot of questions, which will you will, uh, you slack or write me.
+
+That can join the slack. Okay.
+
+So so we know a few things about, um, about growth.
+
+We thought that growth is a growth of knowledge. And knowledge takes to be forms and body knowledge and tools.
+
+Codified knowledge includes recipes, formulas, algorithms and pass it knowledge or know how in brains know how behaves like letters of Scrabble.
+
+It is that there are genius and combinatorial. Different words require different letters.
+
+It is what makes knowledge hard to diffuse, right?
+
+The tools and codes are easy to move around but know how. It's not.
+
+Production possibilities grow up combinatorial with a number of capabilities a country has or a place has,
+
+and poor countries are poor because they have few capabilities.
+
+And, you know, low development means few lenders and development means the accumulation of letters.
+
+Okay. And poor countries stay poor because they have no incentives to acquire new letters.
+
+And that has to do with this convexity and the relationship between what fraction
+
+of the alphabet you have and what fraction of the dictionary you can write.
+
+Okay. Now when.
+
+You look at a global development, okay.
+
+You think of it sort of like in these terms is that, you know, some countries are rich and other countries are.
+
+Right. But if you actually look at the world, it looks more like this, right?
+
+That you don't see borders there, but you see a lot of structure.
+
+Right. And this structure is the consequence of the fact that economic activity tends to concentrate enormously in space.
+
+Okay, so something is causing a economic activity to concentrate in space.
+
+And a, you know, if you look at the concentration of economic activity in the U.S., this is the way it looks, right?
+
+It's extremely concentrated in space. It's not the it's not you know, the U.S. is homogeneously whatever or.
+
+No, it's a it's a bunch of of agglomeration.
+
+So why do people want to gather together and why what is this centripetal force that,
+
+that instead of people wanting to spread out, they want to, uh, to join together.
+
+And we have a theory for that and the theory for that. Is this right that.
+
+If this is the fraction of the alphabet you have, and this is the fraction of a dictionary you can write as presented this in the past, right, right.
+
+That if words are very short, like one letter long,
+
+there's a very linear relationship between how many letters you have and how many words you can put together.
+
+Know one letter, one word, ten letters, ten words. But if words are long, say ten letters long with five letters, you make nothing.
+
+With nine letters you make nothing with ten letters. Maybe you can make one, but with 11 letters you can make 11, and so on.
+
+So it. When we try to estimate what is the nature of the world we live in, it tends to look like this.
+
+And this means that if you have a moderate number of letters, you get very little.
+
+Or if you have a lot of letters, you get a lot. And any extra letter here pays a lot.
+
+Here an extra letter pays very little. Okay.
+
+So that's that's the force that's causing these agglomerations.
+
+Okay. Good. So if you want, uh, symphonic orchestra, you better not locate in a small town.
+
+Right. Because there won't be the variety of skills that the symphony orchestra will need.
+
+So complex production will need to locate in, in deeper, deeper markets.
+
+So that's why you get structures like this. The metropolitan area of Tokyo has 37.1 million people.
+
+Right. And if you look at it in Tokyo, in the in the industry space, they're all over it all.
+
+So they're super diversified in industry space.
+
+Now, if we apply the Economic Complexity Index, a what we find is that in a, you know,
+
+complex places have a lot of population and less complex places have less population.
+
+And that complex places have, on average, higher wages.
+
+And the highest one here is in Silicon Valley.
+
+These are Silicon Valley. And, well, if you want to feel proud that you.
+
+Know many activities, only locate in very large towns or tend to locate more complex activities tend to locate in very large towns,
+
+while other activities like mining tend to locate mostly in smaller towns right in mining towns.
+
+Okay. Now in. There are a set of a.
+
+Issues that are. Uh, have been elucidated by my, you know, work with a complexity paradigm.
+
+So this is work by Frank nephew. Frank nephew. It was for many years the academic director of the growth Lab.
+
+He's now, um, a professor at the, uh, complexity Science hub in at the University of Vienna.
+
+And he's now co-chairing our growth colab in Vienna.
+
+Sorry, bro. Flap has metastasized into Vienna and London, and so.
+
+So, um, he was wondering, why is it that, um, um, you know, large places pay higher wages.
+
+Okay. And the question of what allows them to pay higher wages, why can they pay higher wages?
+
+And and the argument is that so what he did is he got a data set of Swedish workers and that data set,
+
+he had a very detailed classification of the education of each worker, like in 700 different categories.
+
+And then he had the social security data, which means employer employee match data set.
+
+So he knew in every firm all the workers and the education of all the workers.
+
+And the question he was asking is, can we observe complementarities?
+
+For example, if an anesthesiologist works alone, he's not much better than a bad lecturer.
+
+[INAUDIBLE] put you to sleep, right? But, uh, anesthesiologist.
+
+Working with a surgeon is a different story, right?
+
+And a surgeon without an anesthesiologist. It's not a very pleasant experience.
+
+Right. So, a these complementarities mean that you get a lot of payoff if you work with somebody that complements your knowledge that,
+
+you know, you make it into a good syllable, right? That intuition.
+
+And he went into measuring a, a the, the complementarity between two occupations.
+
+Call that like distance in complexity. Right.
+
+And then the complementarity between a worker and not another occupation, but between a worker and the whole rest of the firm.
+
+And he developed measures of complementarity, that is, two people who study different things but tend to work together versus substitute ability,
+
+which is people who studied formally different things but typically perform the same occupation.
+
+Yes. Uh, the difference in wages between large cities and smaller cities cannot be explained by the classic, uh, assumptions.
+
+Uh, elaborate on mean. And that's a Samuelson.
+
+Yeah. You have, like you say, like wages in one city could be like higher than in city.
+
+And. Yeah. So, so some of the non-tradable goods in a.
+
+Well you would still have to explain why tradable good trade the tradable industries pay higher wages.
+
+So what would allow the tradable industry to pay higher wages.
+
+Now the tradable industry would locate a level of employment where the wage is equal to the marginal product of labor.
+
+So if they're paying higher wages, they have higher marginal products of labor.
+
+So here I'm going to ask the question why the [INAUDIBLE] would they have higher marginal product rates.
+
+What allows them to pay higher wages. Okay. And and and so so he's going to have measures of how complementary is a worker to each firm.
+
+Okay. So how come so am I the anesthesiologist that is missing in this medical team.
+
+Okay. Versus. This team is full of anesthesiologists and I'm one more honest astrology.
+
+So I have a lot of substitutes in that team. So complements are people who study different things but tend to work together.
+
+Substitutes are people who study different things but tend to work in the same occupation.
+
+Okay. And he finds that if you work, if you are more of a substitute to other people in the firm, you tend to earn less.
+
+If you're more of a complement to people in the firm, you tend to earn more.
+
+Now the point is. That in, in the more um in the more complement complementary you are to the workers, the higher the urban wage premium.
+
+So what happens is that larger cities allow for, in some sense better matches,
+
+better complementarities, because you have more options to put people together.
+
+So you end up with more complementary teams.
+
+And that complementarity explains a good chunk of this urban wage premium.
+
+Yeah. Okay. So so this is complementarity in size.
+
+Larger cities allow for greater complementarity and greater complementarity allows for higher wages okay.
+
+And he also has this very beautiful graph where he divides people by an educational level.
+
+So that's these are the educational levels 123456 okay.
+
+So these are PhDs college postsecondary etc.
+
+Okay. And then within that educational category he divides people into five quintiles.
+
+In terms of how complementary they are to other people.
+
+Okay. And what this says is that complementarity doesn't help much at the lower levels of education, but at the higher levels of education,
+
+you know, if you end up working in teams that are not very complementary, you get nothing relative to secondary education.
+
+But if you work in teams of highly complementary, then you get along okay.
+
+So those returns to education are very dependent on how complementary you end up.
+
+Your job ends up ends up being relative to others. Okay.
+
+So so this suggests that, you know, if you're a letter, you know, very educated letter,
+
+if you find an ability to participate in a very long word, then your letter is super valuable.
+
+But if you end up participating in a very short word, you know you're not that complimentary.
+
+You don't get that much of a payoff. So these complementarities of letters are key to kind of like the magic of agglomeration economies.
+
+So so what makes cities productive and larger cities more productive is the possibility of sharing,
+
+the possibility of matching and the possibility of learning.
+
+Okay. And I'm going to elaborate each one of them.
+
+Okay. So cities in terms of sharing cities allow for concentrated public goods provision.
+
+So you know, you have a larger city provide public goods.
+
+More people can benefit from public goods. Okay. So it's easier to provide public goods cheaper per capita.
+
+Yeah. And if there are non-tradable inputs.
+
+You know, we've argued that not a non-tradable are a very important determinant of things,
+
+where things can locate if you require an input and it cannot be brought from outside.
+
+Then either you make it locally or the industries that rely on that input cannot exist.
+
+Okay. And and urban amenities you share.
+
+You know, you share the Boston Commons, you share the Charles River, you share, you know, the Museum of Art, etc.
+
+Okay. So so you share public goods.
+
+You share private goods like a greater division of labor, a more diverse workers,
+
+greater availability of intermediate private inputs, you know, more, uh, risk sharing.
+
+It's a more diversified economy. So you share more things matching.
+
+Well, you can match workers to jobs.
+
+Um, a lot of the literature just thinks that there's, you know, vacancies here and workers here, and, and the quality of the match goes up.
+
+If you have a larger pool with which through which to match.
+
+I like to think that it's not just matching existing vacancies,
+
+but that the possibility of firms being more complex depends on the labor force being more diverse.
+
+So you can achieve these these better matches, um, matching suppliers and customers.
+
+And one of the founding is seminal papers in this literature.
+
+You know, states this an increase in the number of agents trying to match improve the expected quality of each match.
+
+Right. If you are if you're working in a village where there's only one vacancy and you take that job,
+
+the likelihood that that vacancy is close to your skill set is going to be very low.
+
+The bigger the number of vacancies in some heterogeneous space, the better the match.
+
+And then finally there is learning. Uh, imitation is easier at closer distance on the job.
+
+Learning is easier. You know, the more a diversity of jobs are available, you cannot have experience in industries that don't exist.
+
+If in a city there are many different kinds of industries, there are many different kinds of on the job learning that you can acquire.
+
+And worker mobility is easier at close distance because if you lose your job,
+
+you know, it would be great if to get another job, you don't have to move home.
+
+You don't have to move your kids from school. Right?
+
+So you would really want to have kind of opportunities relatively close to you.
+
+Those are going to be much more abundant in a larger city than in a smaller city.
+
+And then there's a possibility of knowledge generation, right, that you can, um,
+
+combine, um, you know, the idea that that products are new combinations of ideas that,
+
+you know, a bicycle is, is, um, you know, is a wheel combined with a paddle combine with a chain combine.
+
+So it's a combination of ideas, and cities have more ideas that can be combined.
+
+So it should be innovation tends to also be very skewed towards very large places.
+
+Okay. Good. So.
+
+Um, so why do people want to live together?
+
+You know, a I don't know if I in last Friday's lecture, I talked about public goods in the metaphor I did not use, I think I forgot, um,
+
+is that, you know, production requires public goods, and private goods, and public private goods have the invisible hand of the market.
+
+Public goods doesn't have the invisible hand of the market. They have to be provided by governments.
+
+But the governments don't possess a the thing that the market provides and the market provides information, incentives and resource mobilization.
+
+Right.
+
+The market provides information through the price system, provides incentive through the profit motive, which is just a calculation on prices, right?
+
+The price of inputs, the price of the output minus the price of the inputs.
+
+Right. Um, but it's not just a calculation. It's an incentive.
+
+Right. Because you get to pocket the money. And capital markets,
+
+financial markets tried to give money to those that are expected to be profitable
+
+because they are seen as correctly responding to the information that is in prices.
+
+So public goods, the problem is that they have no price, so no information about what's.
+
+No profit motive, so no incentive to particularly respond to information even if you had it.
+
+And no decentralized capital markets allocating resources.
+
+You have centralized budgets and so on. So because of that, public goods are an issue.
+
+No, I'm supplying the right combination of public goods is a challenge.
+
+And that's that's why many times the constraints to growth have something to do with public goods.
+
+The metaphor I did not use is the idea that private goods are like continents, and public goods are like vowels,
+
+and every word tends to have consonants and vowels, except maybe in Polish, where it's all consonants.
+
+Yeah. So, um, so you are you to make long words, you need many consonants or a great variety, say,
+
+of workers and so on, many vowels, many different kinds of public goods and public amenities.
+
+So cities, large cities are going to allow people to participate in more complex in production.
+
+Okay. So so now we have kind of married an understanding of the city with our complexity framework.
+
+Okay. Now, you might ask yourself, what determines the size of a city?
+
+And I'm here. What I'm going to argue is that, um.
+
+You know, when you think of balance of payments, you think of countries, right?
+
+And it all ends up being, you know, the balance of payments ends up.
+
+Balancing with changes in international reserves at the central bank.
+
+Right. And so you think it's a typically national measure.
+
+I'm going to put it to you that you can do the balance of payments at any scale you want,
+
+at the scale of a neighborhood that the scale of a village at the scale of a town, Cynthia, etc.
+
+But every city wants to consume things it does not make.
+
+All cities are incomplete in terms of being able to produce what they want to consume.
+
+Most cities don't produce cars. Most most cities don't produce antibiotics.
+
+Most cities don't produce x ray machines. But all cities want to have cars, antibiotics, and x ray machines.
+
+Right. So if it needs to import the things it doesn't make and it needs to pay for those imports with some money it got from outside, right.
+
+So it needs to bring money in in order to be able to pay for the things that it wants to bring in.
+
+Okay. So it needs to export in order to import. Okay.
+
+So the size of a city is proportional to the size of its export sector.
+
+Now notice that I'm putting exports in quotation marks.
+
+Because what I mean by export is things that I can do here and sell outside of here.
+
+It doesn't mean that it has to cross a border, right?
+
+So I make it in Bogota and it doesn't have to go to Miami.
+
+It can go to key, I can go to margin. It can go anywhere outside of a city.
+
+It's going to be bringing money into a city. Okay. So if your export sector gets in trouble.
+
+And here again this is Detroit. So Detroit had a boom in its export industry which was cars right.
+
+And when the export industry gets into trouble Detroit gets into trouble.
+
+And it ends up looking like this. Oh. So.
+
+So the size of a city is proportional to the size of its export sector.
+
+So in some sense, a city is a much more open economy than a country.
+
+There's much more quote unquote, international trade in a sense, than a country.
+
+Now cities can only import tradable. They cannot import non-tradable because by definition, non-tradable cannot be moved.
+
+Right. So, you know, under existing technologies, A, the barber needs to be sufficiently close to the hair to be able to cut it.
+
+Right. You cannot cut hair at the distance. Right. So, um.
+
+So the city can import all the tradable.
+
+It is unable to make. But it needs to make all the non-tradable that it needs.
+
+Okay. Now the foreign customer of your trade, Ables is somebody who's not here.
+
+So if you're wanted to sell a hot espresso in stock in Starbucks.
+
+You cannot be too far from the customer. That's why there are so many Starbucks.
+
+There's not that there's a Starbucks in the Boston area.
+
+There's a Starbucks in every other block.
+
+Right? So if you're selling to somebody in Ohio.
+
+Presumably that person in Ohio is not forced to buy from you.
+
+They could buy from some other supplier. But maybe if you live, you know, if you're here, maybe you only have one Starbucks nearby.
+
+So if you are in the non-tradable sector, you're kind of like you have market power over your local guys because they don't have too many options.
+
+But if you're selling in Ohio. You know, anybody could be selling in Ohio, right?
+
+So tradable are going to face much more competition.
+
+Yes. Hillary, I'm just wondering, in the United States, are most, um,
+
+towns that are really remote, made up primarily of like government jobs and non-tradable?
+
+Um. I want to delay the detailed answer to a question to the next lecture on remoteness.
+
+So what? So you'll need to have and I'll, I'll deal with that in a couple of slides actually.
+
+I'll deal with that in a couple of slides. So what what what makes.
+
+So how do remote places exist or how do very small places exist?
+
+Because by this logic, they shouldn't exist. Or how do they survive? Yeah.
+
+Um, so the point is that your tradable sector needs to be competitive.
+
+Like, for example, the thing that killed Detroit was the fact that not only BMW and Toyota could sell cars in the US,
+
+but that they could make the cars more cheaply in South Carolina.
+
+So and part of it is was the loss of, you know, American made cars,
+
+but also the loss of Detroit make cars because some other places in the US started to make cars.
+
+So your exports need to be competitive. So your city has to be particularly good at some things.
+
+Right. So your your tradable sector is much more vulnerable.
+
+Okay. And it's a complement of your non-tradable.
+
+But it's probably the hard one to get. Also it's very rare that you are particularly good at tradable and bad.
+
+And non-tradable tradable is are harder to survive.
+
+Okay. So historically, many towns got started because some locational advantage justified people to move there.
+
+So Johannesburg in San Francisco, Denver started because it was a mining boom.
+
+They discovered a mine and people started to move there because of the mine and then because of the mine,
+
+there were workers, because there were workers. They had needs.
+
+They needed food, they needed, housing, they needed, etc. And so a bunch of other letters gathered.
+
+Okay.
+
+And so in Buenos Aires, it was, you know, it was a port city next to, you know, the the most fertile land in, in the world, apparently in the Pampa.
+
+So, eh, so, you know, the city grew because it had that locational advantage, by the way.
+
+It's an interesting point that in Argentina was one of the most the least populated countries in the Americas.
+
+It was super unpopulated until the 1850s, 1860s, 1870s when, you know, Mexico had millions of people, Peru had millions of people.
+
+The Indians were not able to kind of survive in Argentina.
+
+They they prefer to live at 4000m high in Bolivia.
+
+But also, you know, but but not in Argentina, when the Pampa is the most fertile land in the world.
+
+Why the [INAUDIBLE]? Should I give you the answer now or the truth?
+
+Well, the Pampa is the most fertile land in the world if you plant wheat.
+
+If you plant and and soybeans if you if you want to grow cows.
+
+And the Indians had no wheat, no soybeans and no cows.
+
+Right. So, uh, before, before, uh, the Spaniards arrived.
+
+So when the Spaniards arrived, now, you could have cows. But what are you going to do with a meat?
+
+So in Argentina, in olden times. Cows were for free.
+
+You could kill a cow if you needed, if you were hungry. But you had to leave the hides because the hide was the valuable thing.
+
+Because you could try the hide and make it into leather and so on. And so while the meat, it rots.
+
+So Argentina started to develop when they brought in first the, um,
+
+the rail system and then refrigerated ships and with refrigerated refrigerated ships and,
+
+and uh, and the rail system, they could make meat into a tradable.
+
+So suddenly you could export meat to Europe. And suddenly all the Europeans went to Argentina because, you know, the more fertile land, etc.
+
+So. So you see that, eh, things are going to be valuable conditional on what technologies exist.
+
+Okay. So that's I remember that it's an important little thing.
+
+You say, oh, natural advantage. No natural advantage combined with some particular technology and changes in technology means that,
+
+you know, things that were worthless now become super valuable.
+
+People thought that desert deserts were useless because there was no water, and there's no water because there is no rain,
+
+and there's no rain because there are no clouds and no clouds means there's a lot of sun.
+
+So a solar panel now, it's super valuable. So desert land is now super valuable.
+
+Thank God, the desert, because it never rains. So we get, you know, full solar power, right?
+
+So it's always conditional on some technology in.
+
+Anyway, some cities get started with low complexity industries because they start with few letters,
+
+and they may increase their complexity as they accumulate letters over time.
+
+Okay. So a city is a little bit forms a little bit like a crystal in crystals.
+
+The way they grow is by this thing that they call preferential attachment.
+
+You have some atoms that kind of like each other.
+
+So if there's a crystal that has a bunch of these atoms and some another atom comes along,
+
+it finds a crystal and once attached to the crystal, then the crystal starts growing.
+
+All right. That's a way. For example, snowflakes grow. Okay, yes I think.
+
+So, professor, when, uh, a city grows beyond a certain level, there is no land left.
+
+So there are many multinational corporations. Many say, for example, uh, manufacturing industries, which will have their, uh,
+
+headquarters in the city, but the manufacturing units will be set 100km or 200km away from the city.
+
+So in those cases, uh, where would you attribute the exports to the center where the headquarter is or the place where the manufacturing takes?
+
+No, you would, uh, you would attribute it to the place where activity takes place.
+
+So and that's a headache we have empirically that we need to, uh, you know, if, if, if a firm has multiple plant,
+
+many plants, uh, you need to attribute the production to the plants, not to headquarter.
+
+And that's why, you know, we worked hard in, in the Mexican for us to, to make sure if you don't make this correction,
+
+uh, Mexico City's main export is oil, because that's where the headquarters of the oil company are.
+
+But but you said something that I kind of disagree with, that you said that the city runs out of space.
+
+Cynthia Priore doesn't run out of space, but there's something that is going to force some activities to live.
+
+I'm going to get there in a little while.
+
+Okay, so the point I want to make is that crystals grow because no atoms like to attach to other items of their kind,
+
+and that's how the crystal grows. But how does the crystals start?
+
+And the idea is that the crystal starts with a seed.
+
+So that's why they call this idea of seeding the clouds.
+
+They put some some small material there in the clouds that facilitates the formation of of of crystals.
+
+Okay. So you need a seed on which the crystals are going to form.
+
+And sometimes the seed this transitory and disappears.
+
+But once the crystal gets going the seed is no longer important.
+
+Sometimes this the crystal is not big enough.
+
+And if the seed disappears, the crystal disappears.
+
+Okay. So, um, I would put it to you that the growth of, uh, city resembles the growth of crystal.
+
+Okay. That, uh, letters want to be there because there are other letters there.
+
+Okay. But they start forming around the seed,
+
+and the seed has to have some characteristic that compensates for the initial disadvantage, that there's nothing there.
+
+And if there's nothing there, nobody wants to be there because nobody's there. Right.
+
+So, you know, if you're a letter, there's nobody there. Who are you going to combine with?
+
+So you don't want to be there. So nobody wants to be there because nobody's there. So how do you break that chicken and egg problem?
+
+Well, there has to be an excuse. And the excuse has to be this.
+
+This seed has to be some activity that is there that can a be exported and allow for this place to start importing.
+
+Okay.
+
+So um, and then once, once this export activity is there, you're going to have a lot of other letters being you'll have demand for the non tradable.
+
+So the letters that make the non-tradable will have to go there.
+
+And then there'll be more letters. And there are other people that come in might be able to make more things and so on.
+
+So let me give you an example from the city of Denver. Um, the city of Denver got started because of the Pikes Peak Gold Rush.
+
+They found gold and silver in in those mountains in 1858.
+
+The city was surrounded by the fertile plains of the South Platte River.
+
+Um, so farming became attractive.
+
+It's, you know, out there in the boondocks. Who would ever go there to make food?
+
+Who are you going to sell the food? Well, you would sell the food because now there are miners that need to eat, right?
+
+And then maybe you want to process a little bit of food. So you have some agro industry and stuff.
+
+And manufacturing got started to process the food and to produce tools for the miners.
+
+You know, the guys who made the money were not the guys. Uh, you know what we're gonna see soon?
+
+Because with the pickaxes. Pickaxes.
+
+But the guys selling them the pickaxes. Oh, so somebody had to make the pickaxes.
+
+And then finance developed, you know, to find the guys making the pickaxes or to sell the pickaxes or whatever.
+
+So, uh, and then, by the way, in 1870 or so, they got connected to the rail system.
+
+Okay. But by 1892, the mining collapsed.
+
+So they had a good 20 years of mining, but then 30 years of mining, and then it collapsed.
+
+But by then you had the food processing industry that could export beer, for example.
+
+You could take the wheat.
+
+It's very cumbersome to export wheat or barley, you know, process it locally, um, transform it into something that's more valuable.
+
+And by then they had the rail system, so, so you could ship it through the rail system.
+
+In 1938, Denver was chosen to put the North American Air Defense Command so big a military thing,
+
+and many other federal agencies located their agencies there, for example, the Environmental Protection Agency.
+
+In fact, Denver is the second largest city in terms of the number of federal employees.
+
+Okay, now, because you have, you know, the Defense command, the Air Defense Command there, then the aerospace industry wanted to move there.
+
+Okay. And Raytheon, Northrop Grumman, Ball helicopters, they all have their headquarters in Denver.
+
+Okay. Now, if you have a bunch of companies with headquarters in Denver, they'll want to to be able to travel to other places.
+
+So they developed the Denver Airport. And the Denver airport is now the fifth largest in the world, the third largest in the US.
+
+Not because Denver is such an important city, but because you need you need a hub somewhere.
+
+And, well, they put the hub in Denver. So it's people going from San Francisco to to Atlanta.
+
+But, you know, United has its hub in Denver and southwest has its hub in Denver.
+
+And many other companies then are attracted because if you locate in Denver, you have all of these direct flights to so many other places.
+
+So I think the moral of the story is the seed was the gold.
+
+But who the [INAUDIBLE] cares now? There's enough letters there that A and all of these letters have to do with export activities.
+
+One export activity is federal services, right?
+
+So, you know, the whole military thing or the EPA and all these other agencies,
+
+they it's money that came from taxpayers from outside of the city that paid wages inside of the city.
+
+So it's like an export. Okay. Okay.
+
+Now, cities in oil rich countries a typically don't export anything.
+
+Yes. I had a quick question.
+
+So you said the seed was the call, that somehow there was also some sort of public seed, right.
+
+Like was this new industry that was created, um, and maybe like in Detroit, for example, didn't have this chance of having this new,
+
+you know, government agency to install themselves, like to, to spark this additional growth.
+
+So I was just wondering, so the government would probably, for example,
+
+not decide to go in Wyoming because there's not enough basic grounds that they
+
+would go to a city like Denver because it was already like surplus seed.
+
+So I was just wondering if this is a pattern that you see, I'm here. It was the government.
+
+It could be at something else, right?
+
+Um, I mean, you make a very good point and we'll discuss it also, the next lecture on remoteness, um, Brasilia would not exist,
+
+you know, had the government decided to move the capital out of Rio de Janeiro, right, to, uh, a new part of the country, right?
+
+I mean, you might say the same thing. So, so many places, for example, Albuquerque, San Diego and so on.
+
+They grew because of federal. The first thing that they did was export federal services, if you want.
+
+And that's an example, you know, so you get the see, for example, in Wyoming, one of the things that grew was health care.
+
+Now is health care or non-tradable or is health care of tradable.
+
+Is health care or non-tradable or is health care of tradable in our language here?
+
+Is it an export? Yeah, it could be.
+
+You know, it depends on the procedure. It depends on the procedure.
+
+Suppose you are treating only local people. Um.
+
+Well, if those local people are poor, then Medicaid pays.
+
+If all all or if those people are old, then Medicare pays.
+
+So it's a service that it's paid by Washington, delivered in Wyoming.
+
+Right. So if suddenly Wyoming, you know, the government becomes more generous in health care to the poor,
+
+in health care that allows for the growth of the health care industry and a lot of money coming into town.
+
+So you have more doctors, more this. And now the doctors have to get their haircut and they have to buy their groceries,
+
+etc., etc. and you get the multiplier effect on all the other non traders.
+
+Okay. So it's not important now in oil exporting countries and most cities don't export anything.
+
+So you have to ask yourself the question how do they live.
+
+Well they live because some other place where oil happens to be on the ground exports a lot.
+
+But this thing gets taxed a lot because it contains a lot of rents.
+
+And those rents get spent in in your city.
+
+So if you do the balance of payments of the city, the city will get all these unrequited transfers.
+
+They're called in balance of payments jargon. They get these transfers.
+
+There's money that's being sent from outside like a remittance. If you want that then becomes like an export.
+
+If you think of the balance of payments of of a suburb, they're basically exporting labor services to the central business district,
+
+and they're getting wages compensated that they bring to spend in their locality.
+
+So the export of uh, suburb is, is the workers that go work outside of that suburb.
+
+Okay. Now. So you'll get that the cities in oil exporting countries and they don't export anything.
+
+They live off these off of these rents.
+
+But these rents are going to make this export is going to make the city relatively more expensive through this Dutch disease.
+
+And in a couple of weeks we'll talk about Dutch disease and more in, in more detail.
+
+So it's going to make your non-tradable more expensive. So that makes them uncompetitive.
+
+And as a consequence they never diversify. So it's not.
+
+If they don't become steppingstones into something. Because they were never competitive.
+
+So when oil rents decline, they can get into serious trouble because there's no other export industry to take this space.
+
+Okay, so far, so good. So we now have a little bit of a way of thinking about cities.
+
+Now I'm going to introduce a really, really important concept that is due to Ed Glaeser.
+
+Yes. Yeah. I have a question in terms of cities. Now that you used that example of Wyoming, people outside of the city goes to a city,
+
+for example, or to retain, uh, restaurants like people go into city.
+
+Is that an expert? Yes. So in tourism also, it's it's things you make in the city that you sell to people from outside the city.
+
+So it brings money into the city. That's not what happens to a goods.
+
+Where does the money come from? Okay. So for example, universities and tertiary hospitals are export.
+
+So, you know, the Boston health care system provides services to to a bunch of people.
+
+And so now I'm going to introduce the concept of spatial equilibrium.
+
+Have you seen this before. Okay.
+
+So the idea is that countries have places that interact with each other.
+
+And also they uh and. So we think of the economy at a country level as composed of a set of cities.
+
+Each city is a small open economy. It's, uh.
+
+So think of it as an open economy, right? But it's a super open economy because the labor market is also open.
+
+So people are free to move in and out of the city to other cities in the country.
+
+So we typically when we write small open economy model of the labor, that the labor supply is kind of exogenous, it's given.
+
+Right. Or it responds very slowly through migration.
+
+But in a in a city, a air human flows are going to be much more important.
+
+And because of this, this is going to create spatial equilibrium in the sense that it can be that if you lived in Santiago,
+
+you'd be much better off than if you lived in Puerto Monge, because then everybody would leave Puerto and go to Santiago.
+
+So at some point in time, this thing is going to equilibrate. And when it equilibrate, it means that the utility of living in Santiago,
+
+the marginal utility of living in Santiago, will have to equate the marginal utility of living in Puerto.
+
+Okay. So you can ask yourself the question, would successful cities pay higher wages?
+
+You say? Well, it's a successful city is a more productive city.
+
+They can pay higher wages. But if you're an entrepreneur, why the [INAUDIBLE] would you?
+
+Would you pay higher wages? Right. If if you can attract people from other places.
+
+So one way to think about it is suppose that there is nothing, no complications.
+
+I'm going to add a set of complications in a little while. I'm going to add housing.
+
+I'm going to add amenities. I'm going to add more complications.
+
+But let's take the complications away. And let's assume that the only thing people care about is the wage.
+
+Okay. And and suppose there are two cities in this country.
+
+One city is is successful.
+
+So my teaching team called it Victoria from victory.
+
+And the other city is really lousy. So they called it Lousiana.
+
+Okay. No, because Victoria is very successful.
+
+It has a marginal product of labor that is very high sold.
+
+So by the way, the population of of Victoria is, is measured from here.
+
+And the population of Lousiana is measured from here.
+
+Okay. And and this is, is the total population of a country.
+
+So a Louisiana is a Victoria is very it's very successful.
+
+That's why it has a marginal part of labor way out there okay.
+
+And Louisiana is lousy. So it has the marginal product of labor not very far okay.
+
+So it's much, much lower. The equilibrium is going to be at a place where these wages get equalized because otherwise people would be moving.
+
+Right. And what adjusts is the relative size of Victoria to Lousiana okay.
+
+Now this has a little bit the flavor of the Malthusian model.
+
+In the sense that all good things go into population growth.
+
+Remember? You know my fusion motto. You have to do something good.
+
+It goes into population growth. It doesn't go into income per capita growth.
+
+Here, if you move this curve out, you're going to move a little bit the wage up,
+
+but a lot of it is going to go into into Victoria being bigger and Lousiana being smaller.
+
+So the reason why the wage goes up is because now you can reallocate people to to the better place.
+
+So. This this model is going to have this kind of like a malthusian flavor to it.
+
+Okay. That good things go into population growth.
+
+That's going to mean that the rate of growth of a city, or the relative rate of growth of the population in the city,
+
+is likely to be related to the relative rate of productivity growth of the city vis-a-vis the rest of the country.
+
+So the cities that grow faster tend to have faster productivity growth in the cities
+
+that grow more slowly because they're competing for labor and they're attracting labor.
+
+But what labor cares about is, is really welfare, you know, call it quality of life.
+
+And that depends not only on the wages. So your tradable industries are going to care just only on the wages.
+
+What's the wage you need to pay to attract the labor force that you need.
+
+Right. And if you're in downtown Santiago, maybe you have to pay them more to attract them because it's more expensive to live.
+
+So that means that they care not only about the wages, but about the cost of living of those wages.
+
+Okay. And one of the things that's going to make a cost of living particularly different across cities,
+
+one of them is the cost of housing, which is going to be related to the cost of land.
+
+And I have not introduced land. And was it, uh, was it Prateek that mentioned we ran out of land?
+
+So I haven't mentioned land.
+
+And, you know, a if the city becomes bigger or it's very sprawling, then people are going to live very far from where they work.
+
+And how do they go from where they live to where they work.
+
+So there's a transportation cost or commute cost that you have to factor in in terms of quality of life, and then you have amenities.
+
+Maybe you have a beautiful Central Park. It's a super congested place or or you know, it has good schools.
+
+So people are going to be adding and subtracting all of these things to decide.
+
+I'd rather live here. I'd rather live there. Okay. So, um, if there's a gap, say if if a, if a city has, for example.
+
+So let me ask you if a city has. Lower crime.
+
+Other things equal. Other things equal. If a city has low crime, good public transportation, high quality schools, what will that do to wages?
+
+Laura. Huh? Try to become Heather rich.
+
+And why would the wage be lower? Because you got more leisure workers.
+
+You to be. Why do you have more supply of workers? Migration.
+
+Because you have better quality of life. So. Right.
+
+So a good competitive city is a city that can attract workers at a lower wage because it has great things.
+
+So you know again this is you know, very non it's very malthusian in spirit.
+
+It's very counterintuitive. You would think that all good things go together, right.
+
+If you have good schools and good things and good soil you'll also have good salaries.
+
+Now if you have all these good things, your wages are going to go down in spatial equilibrium.
+
+Okay. And maybe because your wages go down your tradable sector becomes more competitive.
+
+So the tradable sector becomes more competitive because now it can pay lower wages because workers don't care so much about the wage,
+
+but they care about the quality of life, quality of a school system, etcetera, etcetera.
+
+Right. Good.
+
+So if there is a gap, say, for example, the only difference between a city and city B is that in city A commute costs are higher than in city B.
+
+Okay. Then city will have to pay a higher wage to compensate for the commute costs relative to city B, right.
+
+And in there's going to be, uh, a reallocation of, of workers to, um, between the two cities to,
+
+to pay for this higher in order to allow for wages to differ enough to pay for the commute, the difference in the commute cost.
+
+Okay. Okay. Now, so the idea of spatial equilibrium is that people are free to move within a country.
+
+So they may choose or stay where they go.
+
+They will balance some attributes like income, the wages that they can get, a, you know, the unemployment rate in that city,
+
+meaning the probability that you will find a job, um, costs, housing, transport, taxes, utilities, etc. amenities.
+
+You know, these amenities like crime, congestion, bad weather, etc. for example,
+
+a good predictor of whether a city in the US grows or doesn't grow is temperature in
+
+January that the the colder the temperature in January is the lesser of a growth.
+
+But I'm going to guess that with global warming it's going to be temperature in August.
+
+Okay. So cities cannot improve their competitiveness by just lowering wages because people would leave.
+
+But places that have better amenities and lower costs can pay lower wages and people would still stay.
+
+This makes them more competitive. So good things about the city makes it more competitive.
+
+Not because necessarily it's going to make them more productive.
+
+That's a different argument. That's a different policy. But because if you can attract workers at a lower wage.
+
+Okay. But okay, so that has led in a Glaeser to propose something that he calls consumption cities, which are really a confusing term.
+
+But what he says is make your city as attractive as possible so that people come to live.
+
+And now that they're here, they're electors and they can go and do other things.
+
+They will do other things. So so you attract people by being a super cool city.
+
+Okay. Now suppose some things have an inelastic supply.
+
+Suppose things have an inelastic supply. So labor is free to move.
+
+But suppose housing is completely inelastic.
+
+Completely inelastic. Okay.
+
+So the number of units is already predetermined.
+
+Um so a if if housing is completely inelastic, then the population of the city cannot grow because there's nowhere to live.
+
+So if you have if you get hit by a positive shock, like, you know, somebody comes and creates a new firm,
+
+a new monkey jumps to a new tree and it's a very sexy tree and so on.
+
+So it tries to grow, okay.
+
+And this new, more complex thing, what's going to happen? So funding will go up somewhat.
+
+Cost of housing will go up because more money is chasing that same budget.
+
+Okay. So what will happen to the size of the city? Limits of size to some extent, right?
+
+Because of housing growth and the cost of living is too high, you know, or not.
+
+Well, I mean, why why, why does the price of housing go up?
+
+Because there's no more housing, right? So the same you'll have the same number of people living there.
+
+Right. So it just the price goes up. And what happens when the price goes up?
+
+How does. So why do you get an equilibrium demand.
+
+Because okay. Because demand goes out. And why did the man go a go down prices.
+
+Yeah. So where are the where are people living under the bridge.
+
+So they left. So this is what they call gentrification, right.
+
+When there's an inelastic supply of labor, then, you know, a positive shock means that the people, more people want to be there.
+
+So the guys who can afford it are going to pay the higher price of housing.
+
+And the guys who can't afford it leave. So this is going to make growth super controversial.
+
+You say, oh, the city growth grows, but I won't be able to afford the city anymore.
+
+I'll have to leave. But that's really a consequence of inelastic supply of housing.
+
+And it's not just inelastic supply of housing, but it could be an elastic supply of infrastructure.
+
+Right. So more people come in the same number of roads, the same number of everything.
+
+And so now it's just more congested and it makes it less attractive for everybody else.
+
+So you don't get kind of like the full benefits of of the story.
+
+Maybe the tax revenues of the city don't grow proportionally with the growth of the city.
+
+Okay. So there are more people, more activity, more stuff.
+
+But the city government doesn't have more money to have more police, more garbage collection, more, you know, whatever.
+
+And as a consequence, you can get, um, the government cannot come and accompany the growth process.
+
+You get congestion, you get crime, you get electricity shortages, worker shortages, for example.
+
+Okay. And and so spatial equilibrium will imply different wages between cities to compensate for differences in the other things.
+
+And important if you want to do growth diagnostics of a region or a city.
+
+Okay. You can you know, is a city have a productivity problem.
+
+Well, let's look at their population growth.
+
+If the city has a, you know, and if our wage is going up and employment going up or our wages going up and employment going down,
+
+you know, in our is, is crime related to the wages of the city needs to pay and so on.
+
+So for example, San Francisco is a super expensive city.
+
+This is compared to the national average.
+
+And it has, you know, a triple the housing prices that than the national average.
+
+And in San Francisco. Yes. Marcelo. Yeah. Sorry. I just have a question.
+
+Back to gentrification. Does it mean that gentrification is a consequence of loss of attractiveness, or is that because something else is happening?
+
+No, no. Gentrification is is the fact that a place becomes more attractive, right.
+
+And um, so there's more something increases the demand for the place where productivity, labor productivity went up.
+
+So firms want to hire more people, etc. And as they try to hire more people, more people try to come in and they bid up the price of housing.
+
+So housing becomes scarcer. So the higher wage earners are going to be able to afford the housing, and the lower wage earners will have to leave.
+
+That's the mechanism. But it all goes back to this inelastic supply of housing.
+
+So in elasticities of supply are going to dramatically change the size of growth and the political economy of growth,
+
+because inelastic supplies are going to cause very large redistributive effects.
+
+Okay. So it's something now cities are leaving markets and it's going to I strongly recommend that you read this book.
+
+Okay. And. This is probably the best book I read like three years ago.
+
+And you know, there are three moving pieces in the city.
+
+Households locate them in space, firms locate in space, and infrastructure connects them.
+
+Okay, now people move to cities in order to interact with other people and enjoy the amenities of the city.
+
+The well connected parts of the city are going to be more attractive because you have more access, cheaper access to more things.
+
+So centrally located, things become more attractive and people want to live there.
+
+And little bit of the price of land. Okay, so space is not homogeneous.
+
+Whenever there's an accumulation, there's a place that's more central. The more central place is going to be more attractive.
+
+Now if you have to pay more money for land, maybe you want to build higher.
+
+Because that way you can amortize the land over more floors.
+
+And there's something in the urban stuff that's called the floor area ratio.
+
+What's the area of a floor zone over the area of surface that you are occupying?
+
+Okay. And typically building higher is a little bit more expensive.
+
+So you're you're trading off building higher which is a little bit more expensive with amortizing your land over more floors.
+
+Okay. Now that higher price of land and maybe higher cost of construction of of built
+
+up things is going to make people need to trade off housing place prices.
+
+So I can afford say you can afford an apartment of $1 million, you can afford $1 million.
+
+It's not going to be a house in the suburbs. Is it going to be a small apartment in the city?
+
+So you're trading off apartment size or housing size for housing location, right?
+
+Um, and maybe commute costs. Right. So if you're poor, you cannot afford a good house.
+
+So you want a cheaper house? A cheaper house is farther away. If it's farther away, then then you need to pay more in transportation costs.
+
+And we're going to revisit this issue in a couple of weeks. When we talk about labor markets, when we're introducing commute costs in labor markets.
+
+Okay. And now, um, so typically poor people tend to live in the periphery of cities and they face very high transportation costs.
+
+Yes, yes we do. Sorry. But this is like and the one before.
+
+How does the logic change if you assume, uh, proportion of people own their homes and a proportion of the people are renting.
+
+Right. So for some people, uh, including matter, it shouldn't matter because you can own a home and rent it and rent a home that you live in.
+
+So in principle, people can substitute and they can sell and buy.
+
+But don't you benefit from the asset price increase?
+
+You. Yeah. The the owners benefit from the asset price increase.
+
+But they can realize that gain by selling and moving to a cheaper place.
+
+Right. So in no.
+
+The poor can potentially outcompete the rich and well-connected parts of the city if you allow them to build high enough.
+
+So what this is going to tell us is that we should expect that the better located parts of the city have higher built up density.
+
+There's more floors per unit of area, more density.
+
+Okay. And then as the land becomes cheaper, then people, you know, use more land, right.
+
+And build lower. So this should generate the shape of cities that we see, right.
+
+That the central business district is very dense.
+
+And then it declines as you move out. And, you know, that's more or less the shape of most cities.
+
+We were. Puzzled that, you know, Johannesburg doesn't look that way.
+
+We were wondering why the [INAUDIBLE] would Johannesburg look so different? And, you know, the history of apartheid behind that then and and so on.
+
+So. So typically you observe these this is density a person's per hectare.
+
+And this is distance from the central business district. You see typically these these shapes.
+
+Okay. Um, and for example this is.
+
+Land values. So.
+
+Look at what is the price people are willing to pay for the central business district relative to the average night value in New York City,
+
+they pay 22 times more. In Washington, D.C. they pay 32 times more.
+
+So these. So then you have to see who's able to afford that, you know,
+
+or what would you do with density if you if you're allowed to build in Washington, they don't let you build over, I think nine stories.
+
+So. Now housing policies typically regulate density.
+
+And and we have found are density. So in our analysis of South Africa we found that these extremely low densities in cities is mandated by regulation.
+
+And so you don't allow people to build like this zoning okay.
+
+Zoning rules. And so we we for example, we've done a lot of work now on zoning things both in South Africa and Wyoming.
+
+Wyoming has also super restrictive zoning laws now.
+
+And emotion and aim is is a city of only detached houses.
+
+There are no apartments. Only 0.5% of the people live in apartment buildings.
+
+It's only individual houses. So it's super low density and the growth of the city and this dark things are new things.
+
+Things that were built up after 2000. The are get built up in the periphery of the city.
+
+So there's no you can look at the growth of the city and the growth of density at the center, or just expansion of the surface area.
+
+What you find is that in you, it's all expansion.
+
+So good. You know what they call horizontal growth.
+
+But the more you have horizontal growth, the bigger the transport cost is going to be, because people are not going to be farther away.
+
+So we have to transport more of a distance. And all the public transportation systems are not going to be very effective, because with low density,
+
+you don't you cannot justify bus rapid transit, you cannot justify a metro because there's just not enough traffic to justify these things.
+
+So you're trapped and having to have, um, uh, a bus.
+
+It also means that the provision of, of things like water, electricity and so on becomes more complicated.
+
+Okay. Um, and the in elasticity of housing comes from the fact that you cannot build a
+
+house if they cannot promise that you'll have water and they don't have water,
+
+or they have limits in the expansion of water. So that's going to make housing inelastic, okay.
+
+And that's going to lead to, to, you know, shantytowns to informal settlements.
+
+Uh. Yeah.
+
+You know, so so there's this idea that housing is not built around new roads.
+
+New roads are being built to connect informal housing.
+
+So your, your, your, uh, you did not expand the housing supply.
+
+People did it kind of like illegally informally and one that they are settled there.
+
+You are politically you know your incentive is to is to correct them.
+
+So so we looked at the supply and demand of housing and we found that, um, housing was a constraint then, you know,
+
+so the growth of the city was being limited by the fact that housing was not adequately supplied,
+
+in spite of the fact that it's not a congested place. It's a super, you know, spread out places.
+
+It's very sprawling. Okay. So, um, in, um, uh, I, we calculated for every American town, every American county we calculated.
+
+So this is, um, this is a we have a model of, of housing values that depends on the size of cities, etc.
+
+And this is the expected price of, of housing.
+
+And all of these counties in Wyoming are more expensive than the expected amount.
+
+And we said, well, why the [INAUDIBLE] would Wyoming, which is such an empty place, have expensive housing?
+
+So we tested some hypothesis. Maybe the cost of materials is higher.
+
+That didn't pan out. What we did find out is that in.
+
+A infrastructure had a lot to do.
+
+If you don't expand. If you don't expand the water network, then people have to have enough land to put a water well and a septic tank.
+
+But if they're going to put a water well in a septic tank, they need to be very far apart from each other so as not to contaminate each other's water.
+
+So then you put you regulate a minimum plot size.
+
+So they have these huge plot size requirements like five acres.
+
+And as a consequence they have these block size regulations.
+
+And we found out that, for example, in Sheridan that there is a there's bunching at the legal limit that these people might have wanted less land,
+
+but they're constrained to buy more land because they're forced to be farther apart.
+
+And we found similar things, you know, everybody bunching up at this, at this limit and in this other city in Wyoming.
+
+And so, um, this is going to create, um, this is going to create a very inelastic supply of, of housing, which is going to limit city growth.
+
+And what we did here is we estimated the elasticity of supply of housing in the US for all the counties of the US.
+
+Okay. And this is the Z-score of how different is the elasticity of these places relative to the elasticity, the average elasticity in the US.
+
+And you see that except for these two places, which are weird places, and in these places you have much lower elasticities of supply.
+
+This is measured in units of standard deviation. Okay.
+
+So the elasticity of supply is much lower in spite of the fact that it's an empty space.
+
+And it comes from the fact that these guys are under investing in infrastructure,
+
+especially water infrastructure, which is forcing these super spread out places because they're super spread out.
+
+You cannot live in Wyoming without if you don't own a car, and if you don't own a car,
+
+that means if you have to own a car, then there's a lot of the income distribution that cannot live there.
+
+So there are no African Americans in Wyoming.
+
+There's no migrants to my poor migrants to Wyoming because it's too expensive a place to live because of the structure of a town.
+
+And so let me finish by saying, since these are very open economies with an open labor market, this makes exports all the more important.
+
+And so for that, your complexity analysis is super good because, right, it allows you to understand what else the.
+

@@ -1,0 +1,1369 @@
+[Auto-generated transcript. Edits may have been applied for clarity.]
+They like to their job in the park. You know, like, some of the things that I have are like that the crown Prince Albert King.
+
+But I don't know at this point because, you know, I.
+
+Don't know how to answer that might help.
+
+But for me, I mean, comfortable with, uh, I guess this is the safest place ever.
+
+Okay. I'm happy. You're good.
+
+I keep that in mind. Right. I just go, yeah.
+
+Yeah, okay. But some of them are here anyway.
+
+Uh, not enough people. Well, I was on the fence.
+
+Ah, I know, I know, yeah.
+
+So. Yeah, I'm out of hours. I'm sorry for this, but what's a very good thing?
+
+I mean, it is surrounded by monuments, and we have popular neighborhoods, but in general.
+
+So it's a very, uh. Well, like, there was a certain set of, like, I will say that a place of, oh, 6 million population lives in.
+
+The population. And I know there are times this year, but that's not my problem.
+
+But we have cable cars. Yes, I know that.
+
+And you can notice. Um, let's get started.
+
+Today we're starting, uh, another section of, uh, of the course.
+
+This one is on Growth Diagnostics. Right.
+
+And for this lecture.
+
+Well, for this lecture, um, you were supposed to see some videos, and I'm sure immediately after you turned your assignment at midnight last night.
+
+Uh, you you watched them diligently.
+
+So I'm going to summarize a little bit about those videos.
+
+So we come from having studied economic complexity and we started to growth cities agglomerations uh, and remoteness etc.
+
+So now we're going to go to a growth diagnostics.
+
+In the videos, uh, you had sort of like a justification of why, uh, growth diagnostics.
+
+No. Um. Ehm, the, the growth diagnostics approach was in some sense conceived as, uh, uh, a response to the original Washington Consensus.
+
+And in the Washington Consensus, it was a list of policies that that, you know,
+
+countries were supposed to adopt if they wanted to progress the world, whatever.
+
+Right. And the interesting thing about the list is that the list is unconditional.
+
+And, you know, you better do everything.
+
+So it's a little bit like the perfect soup. It aspires to be the perfect suit, except that, as you know, the perfect soup does not exist.
+
+The only thing that might exist is a perfectly tailored suit.
+
+But this one was not tailored. This one was. This is true for everybody, everywhere at any point in time, after ten years of the Washington Consensus,
+
+which was a term coined by Oliver, William Williamson was very successful.
+
+And ten years later he wrote, you know,
+
+and Washington and Washington Consensus at ten and realized that the results had not been all that he expected.
+
+So he said, you have to amend the Washington consensus, and not by making this list more tailor made, but simply by expanding it.
+
+Okay, so. This is sort of like, uh, the approach.
+
+We are going to take a different line in a paper I did with Ron Pritchard and Danny Roderick,
+
+we studied growth accelerations and we had a filter to define what's a growth acceleration of growth.
+
+Acceleration is growth of more than 3.5% per capita for at least eight years, and more than a 2% acceleration vis-a-vis the past.
+
+So it's, um, you know, it's growth that is sufficiently high for sufficiently long time.
+
+And that represents an acceleration vs every what happened in the past.
+
+And we found 83 cases, which were many, many more than we expected.
+
+Now only 14.5% of a major liberalization were followed by growth accelerations and
+
+only 18% of growth accelerations were preceded by major economic liberalization.
+
+So it suggested that this idea that, you know, if you if you adopt the Washington consensus, you get a growth acceleration.
+
+A it's not true either, that if you take the medicine it doesn't follow or that a team,
+
+even if you have a growth acceleration, it must be that you did something in the direction of the consensus.
+
+So, uh, the way I like to think about the idea of growth diagnostics is that production requires many inputs.
+
+Okay. Call them. Production requires many letters. Okay.
+
+Now, uh, now the question is, are these inputs and complements or substitutes?
+
+So, you know, everybody talks about capital labor substitution or about capital human capital substitution, etc.
+
+Now complements are things like coffee and sugar. Uh, and substitutes are things like coffee and tea.
+
+Now what's the difference between being complements or being substitutes?
+
+Yes. Uh, substitutes.
+
+Uh, we can, uh, replace one thing with another.
+
+And, uh, compliments that are essential for each other.
+
+We cannot use one without the other. So essentially, the more coffee you have, the more sugar you need.
+
+Right. So if I increase the supply of coffee, I increase the demand for sugar.
+
+But if I increase the supply of coffee, I reduce the demand for tea.
+
+Right. Simple.
+
+We're going to take the assumption that inputs are complements.
+
+And as a consequence, if something is in short supply, its price is going to be very high.
+
+But since I don't have coffee, I don't want to buy to buy sugar.
+
+If I don't have coffee, I want to buy tea. But if I don't have coffee, I don't want sugar.
+
+Right. So the demand for the complements is going to go down because the supply of coffee is restricted.
+
+That's it. We're going to run with that idea.
+
+Okay. Uh, now the idea of complements is that we run out of some inputs before we run out of others.
+
+And the inputs that you run out of become the constraint on the system.
+
+So the game is a game of finding out what are the constraints on the system.
+
+And the constraints on the system should give you some symptoms.
+
+And you are out there looking for the symptoms of the constraint.
+
+That's the approach. Okay. So um, a if in a world of substitutes is a world in which growth depends on some inputs to growth.
+
+In this example there's a low social conflict infrastructure, macro stability, human capital, low taxes, finance, etc.
+
+And these are the inputs into the growth process.
+
+Okay. And I don't know if you appreciate my artistic qualities, but this is meant to be a barrel.
+
+And the amount of growth that the system can tolerate is the amount of water that fits on the barrel.
+
+Okay. So here if you add any of these.
+
+If you increase the width of any of these slabs, you get a taller barrel and you can put more water in the barrel.
+
+Is, uh, artistic metaphor clear enough?
+
+Okay, so this is a world of compliments.
+
+So in a world of compliments, you can work on any area, in any improvement in any area is going to be good for growth.
+
+Okay. Uh, in a world of substitute sorry, improvement in any area is going to be good for growth.
+
+But in the world of compliments, the barrel looks like this.
+
+Okay. And the amount of water you're going to be able to fit in the barrel is going to be dependent on the shortest slab.
+
+Right. So in this case obviously the shortest slab is infrastructure.
+
+You think in the world of of substitutes you can run a regression.
+
+The regression is going to give you a coefficient.
+
+And you think that the coefficient say on infrastructure is going to be the impact of improvements in infrastructure on growth.
+
+And that's like a coefficient is you think of a technical coefficient.
+
+It's the same kind of everywhere right here. If you improve on infrastructure you're going to get a back on growth.
+
+But how much of a bang? The answer is obviously.
+
+What's the best answer in economics? It depends. It depends.
+
+And then you shut up. Right? Yeah. It depends on where is the next lab.
+
+Because once you improve infrastructure, maybe infrastructure is no longer the binding constraint.
+
+So something is something else is going to be the binding constraint.
+
+So the idea that an impact of an input on output or on growth is kind of like a technical coefficient, is a fiction of the imagination.
+
+In a world where there are multiple potential constraints on growth, where they are all not binding at the same time.
+
+Okay. Um.
+
+So in a world of compliments, you only get more water in the barrel by lengthening the shortest line.
+
+And the impact on the barrel depends on how far is the next shortest lap.
+
+By focusing on the shortest lap. You get more bang for your efforts.
+
+But you need to anticipate what may be in short supply next.
+
+So maybe saying in the first short supply was macro stability and the next one was infrastructure.
+
+If it takes you a long time to fix the infrastructure, and you don't wait until it becomes a binding constraint to start fixing it,
+
+but at least from a diagnostic perspective, a it's important to to start somewhere.
+
+So I'm going to tell you the, um, the lecture today is called Principles of Differential Diagnosis.
+
+And I haven't gotten there yet. But in the videos that preceded this lecture, it set that up.
+
+And the idea is that when you do a growth diagnostic, you start with a question.
+
+And questions are many and far between.
+
+Okay. There are many kinds of questions that you might ask about growth, right?
+
+It may be that very simply growth is just too low, right.
+
+Or it may be that you fear that growth might not be sustainable,
+
+or you fear that growth is too concentrated in one region of the country or in one and one a, you know, kind of industry or, you know, whatever.
+
+Or it may be that your question is not about growth, but about maybe the growth of jobs or employment or whatever.
+
+Right. But you have to start with a question, and it actually takes us a long time to get to ask the right question,
+
+because it's very hard to get the right answer unless you have the right question.
+
+Okay. Second, we're going to go some decision tree.
+
+And the decision tree is a heuristic that tries to nest all the possible theories of what could go wrong or what could the problem be.
+
+Okay. And then we are going to go the the diagnostic tree is a decision tree where the diagnostic
+
+tests are going to help us figure out where the [INAUDIBLE] in the decision tree we are.
+
+It all become clear once they show you the next two slides.
+
+Okay. At some point in time, we get to sort of like the end of a tree.
+
+And we see we have seen because we've done all these diagnostics, a set of symptoms, a set of interrelated symptoms.
+
+And now we stop and ask the question, why the [INAUDIBLE] are we observing this pattern of symptoms?
+
+So for example, you have a fever, you have a runny nose, you have an upset stomach.
+
+Maybe what you have is a virus, right?
+
+Or maybe what you have is a bacterial infection or you.
+
+But if it's a bacterial infection, you want that antibiotics. If it's a virus, you don't want antibiotics, etc., right?
+
+But it's not that you are going to observe one symptom and that's going to be the killer.
+
+You're going to observe a collection of symptoms, and the collection of symptoms is going to suggest a particular disease.
+
+And the disease is what we call the syndrome okay.
+
+And once you posit the syndrome you have to test for the syndrome.
+
+If you tell me no, it's bacteria okay. Let's do a bacterial a what do they call that the we take a swab and then they let it grow,
+
+and then they figure out what it is and then they choose the right antibiotic, etc.
+
+So you want to test the syndrome. Okay. So you iterate between steps three and four until you converge.
+
+Right. So this is what we call this is the way we do it systematically okay.
+
+This is not the way you write it up.
+
+If you write it up this way, it's going to be super boring because you're going to say, I tested this and it was not the problem.
+
+I tested that and it was not the problem I tested. So we call that in a kitchen room talk.
+
+When you're cooking between the cooks, you can have a kitchen, okay.
+
+But when you are going to present your results, that's what we call dining room talk.
+
+In the dining room you present the final product, you know, the etc., the the coherence of it,
+
+etc. but this is the way you cook the stuff, not the way you present the stuff.
+
+Okay. So this was the original Aim decision tree.
+
+And in that decision tree we were very much still in sort of like the neoclassical production function.
+
+And essentially we had a classical production function which was of this nature.
+
+Okay. That output is a function of.
+
+Something like that. Well, so where, you know, a capital is an important part of a story.
+
+So why are if you don't observe growth, it's because people are not investing.
+
+Why they're not investing. Well, this Tao is kind of like a tax rate or or maybe it can be corruption or theft or whatever.
+
+And one minus tau is the part of the output that the private agent can appropriate.
+
+Okay. So we said, look, there are three possible reasons or two, two reasons why people don't invest.
+
+So if you don't grow, it's because you don't invest and you don't invest for a reason.
+
+One class of reasons is because the returns on investment are low.
+
+So you don't want to invest because it makes no sense to invest.
+
+You might not be investing much, but you are not mistaken for not investing much because the returns on investment are lousy.
+
+Okay. And why are the returns on investment lousy?
+
+Well, it might be because there's something wrong here.
+
+Or it might be that the tower is very high. So whatever returns there are are not appropriate.
+
+You know, like, Bolivia has this spectacular lithium reserves, and there's a known technology on how to extract lithium.
+
+And they have yet to extract the first tonne of lithium. And the idea is that, you know, Bolivia, every time they give somebody a concession.
+
+And after they spent a couple of hundred million dollars in developing the mine, they expropriate them.
+
+Right. And so no one wants to touch Bolivia with a ten foot pole, because they know that,
+
+you know, the likelihood that they're going to be expropriated is just too high.
+
+So it's not that the return social returns to capital, real returns to capital are low.
+
+It's just that they're not perceived to be appropriate. Okay.
+
+So people don't invest because the returns are low either because they're actually lower,
+
+because they're not appropriate and they're low because maybe some of the complements of of the production function are not there.
+
+Maybe because infrastructure is lousy, maybe because you're remote, maybe because there's no human capital.
+
+So there's some complements of capital that are not there. So returns to capital are low because the complements of capital are not there.
+
+Okay. That's this. And this is you know, their returns are low because they're not appropriate.
+
+So why would they not be appropriate. And here no the returns to investment are high very high.
+
+But so is the cost of finance. So maybe the returns to capital are 20% right.
+
+But I can get 20% from a government bond.
+
+So why would I go through the risk of investing if, you know, the government is willing to pay this exorbitant interest rate?
+
+On its debt. And so capital is not being allocated to these things because capital is just scarce.
+
+And why is it scarce? Why is it so expensive?
+
+And there's a set of reasons why it might be expensive.
+
+And on Friday and I'm actually going to talk about this this side.
+
+Okay. Why why could finance be a problem. Now more recently we've been playing around with this decision tree.
+
+And the decision tree says, you know, no, it could be capital.
+
+Domestic capital could be a technology.
+
+And now we have a way of measuring technology's. Is there economic complexity index low relative to your income.
+
+So you don't have enough letters to be where you are. You are a little bit like Greece etc.
+
+So you have not absorbed enough technology or maybe the, you know, imported inputs are important,
+
+but you cannot buy imported inputs either because you cannot export or because you cannot borrow.
+
+And you cannot export.
+
+Maybe because the real exchange rate is misaligned, maybe because you don't have the complexity to continue exporting and so on.
+
+Or maybe it's because there are no public goods and there are no public goods.
+
+Maybe because the government doesn't have a large enough tax base to, uh, to fund itself.
+
+Or maybe because this parameter gamma is very low, which means with this parameter, gamma is your ability to convert money into public goods.
+
+So maybe it's not the problem that the problem the government doesn't have money.
+
+And so the government cannot transfer money into public goods. So you have sort of public goods.
+
+So all of these are heuristics. And the idea is that it helps to nest all possible theories of what's wrong.
+
+And then you have to go out and test about those theories.
+
+Okay. Well. In today's lecture, we're going to ask about how do you choose appropriate benchmarks.
+
+I'm going to present the theory of differential diagnosis. And I'm going to go through four tests.
+
+Okay. Are four standard tests of growth agnostic.
+
+So choosing the appropriate benchmark. Why do you need a benchmark by the way a the the problem is that you need a benchmark to know what is high.
+
+What is low, what is normal. If I give you if I tell you credit to the private sector as a share of GDP is 30% that.
+
+You have an intuition. Is that high? Is that low? No. Are you surprised?
+
+Right. So how where do you get your intuitions from? Okay.
+
+So you need to be comparing your country to some other set of countries like it where you say this seems to be what's normal.
+
+This is the distribution of this variable in this, in this, in this setting.
+
+Okay. So if a country is growing at 3% per year over the past ten years, is that high?
+
+Is that low? Is that okay? You know, and so so let me give you three examples of how we choose benchmarks.
+
+Andalusia is a region of southern Spain we're currently working on.
+
+Sometimes asking the right question is kind of like super trivial, because Andalusia is the poorest region of Spain.
+
+So you can ask the question, why is Andalusia the poorest region of Spain?
+
+No. What makes it poor? Um, so it's 34% percent poorer than than Spain and 82% poorer than Margaret.
+
+But then it's not only poor, it has.
+
+This is the GDP per capita in in 2022.
+
+And this is the unemployment rate. Okay.
+
+So do you think the unemployment rate is relatively high?
+
+Okay. It's kind of like you know, have you gotten something over here.
+
+What have been harder question. Um, in addition, this is Andalusia as income per capita relative to the Spanish average.
+
+You see that this green line is going nowhere, that this red line, which was Galicia,
+
+was right next to a green line, and now there's a big gap between them.
+
+And this a, I don't know, pink line, which is Extremadura, was significantly below Andalusia and it's now together with Indonesia.
+
+So they are not only poor but they're not catching up.
+
+They're not they are not closing the gaps. These are the gaps. Vis-a-vis the Spanish average.
+
+Now. In addition, this is GDP per capita in 2013.
+
+And this is how much they grew and between 2013 and 2022.
+
+And this says that at this level of income. There are plenty of other countries.
+
+These are regions of Europe that grew much faster than Andalusia.
+
+So it's not that, you know, conditional on you, you know, um, you comparing apples to apples,
+
+countries with similar income per capita or regions with similar income per capita.
+
+Andalusia is just growing very slowly. Okay. So here the implicit benchmark was the rest of Spain, the rest of Europe.
+
+And it doesn't matter because whichever way you do it, the answer is kind of like too obvious right?
+
+Now. We were working on an animal Sego, Sonora,
+
+and here it was a little bit more complicated because this is the distribution of growth rates of municipalities in Mexico.
+
+Um, and this is Hermosillo. So Hermosillo is growing on average higher, faster than the rest of the municipalities in Mexico.
+
+But but Mexico is a super diverse country.
+
+No, there are municipalities that are indigenous and they have their own laws, etc. there are municipalities that are in the poor south.
+
+There are municipalities that are close to the American border that are super dynamites by exports to the US.
+
+So if you compare to the I think there are several thousand municipalities here, 2400 municipalities.
+
+It's not obvious that you are comparing apples to apples. Okay.
+
+So here we have to develop our framework and to think of our firm.
+
+I mean politics that you're looking for. So in principle you want to have a question here.
+
+Say why is this place growing more slowly than its comparators?
+
+Ideally. Ideally you want to choose your comparators so that they differ in some variable x.
+
+So suppose Y is Andalusia growing more slowly than the rest.
+
+Okay. So there are two kinds of variables. Your variable of interest x and all other variables z.
+
+Okay if you choose. If you were lucky enough to choose a comparator group where they are identical in all disease,
+
+then this term goes away because they are identical in disease.
+
+So the only thing that is left to explain why you are growing more slowly is the ax.
+
+Then you can say, see, it was because of the x, y because you have in some sense taken away as an explanation the things in which you chose your your.
+
+For example, I'm going to only take northern states of Mexico.
+
+Well, so the fact that some state now disappears as an explanation,
+
+because I'm only comparing northern states or states with a similar initial industrial structure.
+
+So it's not the initial industrial structure because you're already choosing.
+
+So. So ehm, the way we did it, we took the municipalities and we took cities in border states.
+
+We took them out of a certain size, we took them off a certain export value and so on.
+
+And we created a group of comparators.
+
+And this was our group of comparator. And in this group of comparators in the initial in the total period.
+
+And we'll see you didn't do that poorly. But in the first period it did quite well.
+
+In the second period did quite poorly. Okay.
+
+So now I have a set of comparators that are not the 2500 municipalities of Mexico, but municipalities that are more narrowly similar to do that.
+
+And in that in this set of municipalities, you know, a in remote,
+
+you started with a somewhat low flow complexity, but a over time it evolved in very different directions.
+
+So now it's way, way below the rest. Okay. So so that's one way to choose your your comparator group.
+
+In the case of Buenos Aires it was a little bit more difficult because in the case of sites,
+
+you know, in Mexico we were comparing Hermosillo to other places in Mexico.
+
+But if you were to compare Argentina to other places in Argentina.
+
+Well, there's nothing in Argentina that looks like Buenos Aires.
+
+Because when I say there's a city of, I don't know, 15, 20 million people or or something, right?
+
+It's a humongous city. You cannot compare it to the next city has 2 million people or something.
+
+1 million people. So you cannot compare Buenos Aires to itself.
+
+So, uh, we, uh, we took, uh, we took a set of cities.
+
+We wanted to compare it to other Latin American cities and to other cities in the world.
+
+So we invented a bunch of filters. Uh, and so in the end, we ended up with, with these cities.
+
+This is these are the Latin American cities Bogota, Lima, Mexico, Sao Paulo,
+
+Santiago and Rio de Janeiro and Buenos Aires have done well in this period.
+
+It was just coming out of a crisis. But since this year here it has been doing more poorly.
+
+And this is since 2011. It's the worst performing city among the global comparators.
+
+Okay. Good. Okay.
+
+So. So now we go to.
+
+We have our comparator group. You have chosen countries or places or comparators that make sense.
+
+Okay. And a for example, we did uh we just applied this to Morocco.
+
+Yeah. Who. Right. Good question. Um, if this I understand for like a city, you can look at other cities globally.
+
+But what if you have a very unique country, try to find other country competitors like India or China,
+
+which don't really have a lot of similar countries that you can compare benchmark?
+
+Well, I mean, um, it's hard. But then I once did compare, I asked myself the question, why is China growing faster than Korea?
+
+A at the time of their growth? Acceleration is always better than event time, right?
+
+Then. Or why is Vietnam growing more slowly than China?
+
+And it's it's super indicative. For example, right now we're asking ourselves why is Morocco, um, growing so, so slowly?
+
+So we took a bunch of countries that are somewhat similar to Morocco and initial GDP per capita,
+
+maybe an initial complexity, etc. and then there is a bunch of countries that grew much faster than Morocco.
+
+But that are much worse than Morocco on 20 dimensions, right?
+
+So when we figured, you know, why is China growing faster than than Korea?
+
+Well, it was not because of education.
+
+It was not because of urbanization. It was not because Korea outperformed China in all of these dimensions, and China outperformed Korean in growth.
+
+So so you discard a lot of possible things by choosing a competitor.
+
+So so you can ask the question, why is China? Why is India growing more slowly than China?
+
+Why has India grown more slowly than China at any point in time?
+
+If you want to. I like also sometimes to change the dates to do it not, as they say in calendar time, but in event time.
+
+So if you compare, I don't know, China in 1978, the reforms with the reforms of Rajiv Gandhi in the early 90s,
+
+and you make 1978 equals 1991 or whatever in India, and you ask why, you know, what would account for the difference?
+
+Okay, good. So, okay. So yes.
+
+So what was the answer about China and Korea aim.
+
+I think that the that that study left us with the idea that it was a the speed.
+
+China had a humongous difference in the productivity of agriculture vis-a-vis industry or services.
+
+So if you move one person from agriculture to industry, GDP per worker goes up by a factor of five, say, in China.
+
+But it will only go up by a factor of 2 or 3 in Korea.
+
+So that element was an important part of the story,
+
+that there was just the probably you might explain that as as an incredibly ample supply of low skilled labor in rural China.
+
+And so that if you could integrate it to just not because manufacturing was having a very fast productivity growth,
+
+but just a step change of moving a worker from this sector to that sector was an important part of the story.
+
+But I'm sure that that story changes depending on the period.
+
+You look at it because in the the whole demographic window of opportunity played a much bigger role in Korea than in China.
+
+I should have explained why Korea did better than China.
+
+But but it's not so. So you can discard a lot of hypotheses through this differential approach.
+
+So. A a so so now we are looking for binding constraints.
+
+We want to know if if the constraint. Yes. So it was a good question about a single or um I'm just thinking about the
+
+scientific instrument like to build these synthetic countries or to compare.
+
+So we it be like something of interest like to build a country that is synthetically, um, just as the one that we are looking for in terms of seed.
+
+And so we can like isolate the X and like run different trials instead of just having different
+
+countries and trying to understand which variable is the one that can explain the difference.
+
+So Alvaro is suggesting the method developed by Alberto Valley from synthetic cohorts.
+
+So you want to create a group of countries which on average through some weighted average.
+
+It was historically very similar to this country up to a certain point in time.
+
+And then you look at and then they diverge supposedly.
+
+And you you want to say, what are the variables in the, in the, in the synthetic cohort that are differ from the variables in the country of interest?
+
+That's in some sense, uh, a related way of doing it.
+
+Um. Am.
+
+Here? Yes.
+
+We are going to do it so many times in any growth diagnostic, you are going to run so many different tests that for some tests it might make sense.
+
+Most of the time we just we don't do it.
+
+But you'll see how it turns out in practice. So a m.
+
+So. So the idea of differential diagnosis is this, uh,
+
+differential diagnostic procedure is a systematic diagnostic method used to identify
+
+the presence of a disease entity where multiple alternatives are possible.
+
+This method may employ algorithms akin to the process of elimination,
+
+or at least a process of obtaining information that shrinks the probabilities of
+
+candidate conditions to negligible levels by using evidence such as symptoms,
+
+patient history, and medical knowledge to adjust epistemic confidences.
+
+You know, take confidence of what you think you know.
+
+Okay, so the idea is, you know, this is sort of like the framework that doctors use.
+
+There are many possible diseases. And you want to and you initially start by assuming that all of these diseases are possible.
+
+The more you know about the patient, the more you try to reduce the probability of some diseases and focus on the probability of other diseases.
+
+Okay, so there are two kinds of things.
+
+The two kinds of claims that you might say if x is the binding constraint, or Y is the binding constraint okay.
+
+We start by trying to collect some data and a a if if you can create the sentence such as this one.
+
+If p then x is the binding of stream. If I observe something, then it means that x is the binding constraint.
+
+Okay, this is a sufficient condition okay.
+
+A and necessary condition is if x.
+
+If x is a binding constraint, then I should observe q okay.
+
+If x is the binding constraint, I should observe q. It doesn't mean that x is the binding constraint.
+
+You might say if x is the binding constraint and I don't observe q, then that lowers your belief that x is the binding constraint okay.
+
+So in real life A you almost never find sufficient conditions.
+
+So it's almost never that you you run a test, it gives you positive.
+
+And you can say c x is the binding constraint.
+
+Most times you run a test for example the person has fever.
+
+You say, well, it might have some kind of an infection, but it doesn't mean it has Covid, right?
+
+So yes, Covid might go with fever, but so do many other things.
+
+Go with fever. So it's a necessary condition but not a sufficient condition.
+
+Okay. But the key idea is that if X is the binding constraint, then it will show up in many places.
+
+It's not going to be a single symptom. It's going to be a bunch of symptoms.
+
+Okay. And the question is as you observe these other symptoms, how do you a um,
+
+decide on what a what to make about your hypothesis that X is the binding constraint.
+
+So if you if you think that X is divinely given strength and you should observe Q,
+
+you don't observe Q, you're not so sure anymore that X is the binding of strength.
+
+Okay. So in practice, you have to be very Bayesian in terms of how you interpret the evidence that you're going to find okay.
+
+And this is Bayes's formula. Okay.
+
+This thing is the prior probability to the hypothesis that x is the binding constraint okay.
+
+So you start with a certain prior. Now this is the probability that you should observe the symptom given that x is the binding constraint okay.
+
+And this is the probability that you would observe the symptom unconditionally.
+
+And this is the probability that a x is the binding constraint given the symptom you observed.
+
+Okay, let me make it maybe more vivid for you.
+
+Suppose you find somebody in an airplane with a bomb.
+
+Okay. And the hypothesis is that you caught the terrorist.
+
+Okay. Okay. So pbft is the probability that any passenger is a terrorist.
+
+I don't know. Significantly less than 1%, I would presume.
+
+No. P of T is a probability that a person that is a terrorist would be carrying a bomb.
+
+Okay, now that might be a much higher probability, right?
+
+Say I don't know, 20%. Right. And this is the probability that any passenger is carrying a bomb.
+
+Maybe the guy is working in the mining industry and no miners use explosives etc.
+
+So other people might use explosives. So he might have a perfectly valid reason.
+
+But you know, the probability that that happens is maybe 1%.
+
+Okay. So 1%. You have 20% in the numerator 1% in the denominator.
+
+This ratio is going to be a factor of 20. So it's going to multiply by 20 or prior in assessment of the probability that the person is a terrorist.
+
+So if you observe somebody with a bomb it will change significantly your assessment of the likelihood that you call a terrorist.
+
+Now.
+
+If I change the hypothesis and I say, look, this is a prior probability that anybody is a terrorist, I caught somebody and a passenger had a beard.
+
+Now, what's the probability that a terrorist has a beard?
+
+Well, maybe it's higher than 50%, I don't know.
+
+Right. And because terrorists typically have beards I don't know.
+
+But the only problem is that many people that are not terrorists also have beards.
+
+That's the denominator. Okay.
+
+So if the denominator is very big, this term is not going to increase your assessment of the likelihood that the person is a terrorist by too much.
+
+Okay. So that's basis for me. I want you to keep it in the back of your mind when you see a symptom.
+
+If you tell me oh credit to the private sector is small.
+
+Therefore finance is the binding constraint. You know the guy has a beard.
+
+Okay. I would need more convincing, right?
+
+Find me a bomb. All right, so these are the four tests of differential diagnosis.
+
+The first test is if something is a constraint, its price should be high.
+
+If if the place is running out of coffee, people should be willing to pay a lot for coffee.
+
+Period. Um, people do a lot of diagnostics by looking at quantities, but quantities are really lousy diagnostic tools because.
+
+Quantities so can can be because there's insufficient supply or quantities may be low because of insufficient demand.
+
+So people don't want coffee because there's no sugar.
+
+So the demand for coffee is low, but not because coffee is constrained, but because sugar is constrained.
+
+Okay, so so quantities are lousy indicators, but prices are better indicators.
+
+The only problem is that many of the constraints that we are going to be looking for are not things that have explicit prices,
+
+but they may have something like shadow prices. We have to be very keen at looking for shadow prices.
+
+Secondly, if you come coming that something is a binding constraint and it moves.
+
+Gee, then I should observe movement because you told me it was a binding constraint and it suddenly went, it was relaxed.
+
+So I should observe movement or it suddenly became more tight.
+
+I should observe movement, right. So this is changes on changes.
+
+Okay. You want to you want to look at whether the covariances are in the right direction.
+
+Number three. And this is a very subtle one.
+
+It's a camels and hippos. Okay.
+
+So suppose you're in the Sahara and you know you don't know too much.
+
+You know you are in the Sahara and you find very few animals in the Sahara,
+
+and you are wondering why the [INAUDIBLE] are there so few animals in the Sahara?
+
+Well, it helps to answer that question, to find out that when you do find an animal in the Sahara,
+
+it tends to look more like a camel than like a hippo. Now, what's the difference between camels and hippos?
+
+Right? That camels are particularly good at administering water and hippos love to live in water.
+
+So there's a radically different kind of water intensities of these two animals.
+
+So the fact that when you do find an animal, it tends to look like a camel.
+
+Suggests that maybe the Sahara doesn't have too many animals because of water.
+
+So the intuition is that the things that thrive tend to be the things that are least intensive in the binding constraint.
+
+If you tell me that the only places that grow in India are Bangalore and Hyderabad, I don't know that that's true.
+
+Which are two cities up in the in the Highlands and in, um, in the Plains?
+
+What do they call that? Does the deca or they can plateau.
+
+Okay. They are not close to the sea.
+
+Well. If your hypothesis was maybe India doesn't grow faster because it has really lousy transport infrastructure.
+
+Well, the things that thrive would be things that are not terribly reliant on transport infrastructure.
+
+Okay. So there are things like call centers and Wipro and whatever things that don't need to go to port, don't need to transport things, etc.
+
+So these are the things that are least intensive in the binding constraint.
+
+Those can grow because they're not very intensive in the constraint.
+
+Okay. So A I'm going to tell you how to do a camels and hippos analysis.
+
+And the final one is hippos in the desert that if you find if you tell me that the binding constraint is water and you find the hippo in the desert,
+
+you have to tell me why the how the [INAUDIBLE] did it get there? Because it shouldn't be there.
+
+But if you find them there, there must have been a workaround or something to to make a hippo in the desert.
+
+Okay, so these are the four general diagnostic tests that we want to run.
+
+Okay. So let me give you some examples. Um.
+
+So a we're going to a run.
+
+So the idea is, you know, a factor is in relative scarcity.
+
+So its price should be disproportionately high.
+
+Sometimes we can just look at prices and compare it to other prices and say like interest rates or real exchange rates and so on.
+
+You can look at prices, but sometimes it's more subtle, like for example, human capital.
+
+It might be the returns to human capital, and you cannot just download it from the newspaper.
+
+Right. We have to run a mental regression and, you know, you're going to get uh, uh, an elasticity of, uh, wages to education.
+
+Right. And that's the price we're going to use. Sometimes the problem is infrastructure.
+
+Say congestion, but there is no price to congestion.
+
+So there are related prices to congestion. So you can ask, um, you know, how much does it cost to move a container from A to B?
+
+And the good thing about that is that companies that offer to move your container from A to B are on the web.
+
+They announce themselves. So you can ask the question to them.
+
+So so you might get some indications of that. Or if you think it's congestion you can ask.
+
+And we have done this Google Maps and ask how long does it take to go from A to B, what's the average speed.
+
+And so on. And that might be an indication, you know, of of congestion.
+
+And so a growth agnostics was born in El Salvador.
+
+And Salvador asked me to put together a team of researchers to think of a growth strategy.
+
+And I had the Danny Roderick, Andres Velasco, Lan Pritchett and others in that team.
+
+And, you know, the story was you know, it probably Salvador doesn't grow because they don't have enough human capital and enough physical capital.
+
+So K and H are the problem. So look at at schooling and schooling attainment is low.
+
+And look a but if you look at the returns to schooling this is education at age 25.
+
+So there past university and this is returns to education.
+
+And you see that El Salvador is very low returns to education.
+
+So yes, they may have low quantities but they have low price.
+
+So quantities are a bad indicator okay.
+
+Maybe you know they have crime, they have violence, they have whatever.
+
+And so under those conditions I don't want to demand human capital.
+
+So demand for human capital is low. Doesn't mean that human capital is a constraint.
+
+And maybe something else. Okay. Uh, you say no, it's a it's a it's a capital.
+
+They are not investing enough. But the interest rate on loans in El Salvador is the lowest in the region.
+
+So how the [INAUDIBLE] tell me that the province of Salvador has high interest rates?
+
+If they had the lowest interest rates? Again, you told me that the problem in El Salvador, in Brazil is, is finance.
+
+I might believe it because the price of finance in Brazil is super high.
+
+Or it was whenever I did this slide, but not in El Salvador.
+
+Okay, so. And this is another, you see that the price of the interest rate is super high in Brazil.
+
+You see it now, you would not have guessed that from the point of view of the amount of credit,
+
+domestic credit to the private sector compared to Mexico, Brazil has more credit to a private sector compared to Mexico.
+
+But here is Brazil. And is Mexico here?
+
+No, no. But Mexico had low interest rates and lower interest rates than than Brazil.
+
+But even with a smaller credit to a private sector.
+
+So if it's going to show, it has to show in prices, if it's a binding constraint, it has to show in prices.
+
+Uh, here it is. These are interest rates in Mexico. Here are interest rates in Brazil.
+
+So in quantities you look at quantities you don't necessarily get to the right answer.
+
+Okay. So here is uh, Panama.
+
+Panama was a very successful country that it had a boom in service exports and high skilled service exports.
+
+But it's a country that had a boom in high skilled service exports, even though their supply of human capital is very lousy.
+
+And these are besides the Pisa scores for Panama among a team.
+
+This is the OECD average. China and then the rest of the Latin American countries.
+
+Uh, it's done for the year 2009, because after Panama got the results in 2009, they swore never to do a PSA exam again.
+
+So but the interesting thing is that you realize that there's a binding constraint in human capital by looking at the wage premium to foreign workers,
+
+and these are the highest wage premiums we've ever seen. This is a 50% excess return on all.
+
+You are willing to pay 50% more to foreigners than to them than to natives.
+
+Controlling for everything else. And this is by industry and this is by occupation.
+
+Okay. So that suggests kind of like, yes, there's a very high price to foreign talent.
+
+By the way, they have deep restrictions on immigration.
+
+So that's why immigration is not is not high enough to do away with these differences because you're constraining its policy.
+
+Okay. So now movements are movements. You told me that in Brazil interest rates were super high.
+
+If the interest rate moves, I should observe movement, right?
+
+Well, this is exactly what I observe that when interest rates move in Brazil, I see a lot of impact on how much people invest.
+
+And the movement I see is in the right direction. When interest rates go down, people invest more.
+
+When interest rates go up, people invest less. You might say no, but that's always the case.
+
+No, that's not always the case. This is Mexico.
+
+Okay, so Mexico was here and it went in this period from 2000 to 2003, interest rates went down and investment went down.
+
+So what will your interpretation of this be? Well, I don't know.
+
+Maybe you were not born then. Uh, yeah. That, uh, access to finally stop constructive growth.
+
+Why did interest rates go down and investment go down?
+
+Um, could be a lurking variable. Maybe there was a depression.
+
+Um, they tried to cut interest rates to stimulate economic growth, but it didn't help.
+
+So as you all remember vividly, the year 2000 was the Y2K year was the so-called the.com bubble that burst.
+
+So there was a recession in the US in the year 2000. Right.
+
+So, um, and a recession in the US, you know, if there's, uh, the US Congress called the Mexico catches pneumonia.
+
+So. So a the recession, the US, the central bank responds by lowering interest rates because investment demand is falling because there's a recession.
+
+Okay. So this is what you would observe is if, if it's demand for capital that is declining.
+
+So you would observe a declining quantities and a declining price.
+
+Okay. But here you only have a decline in quantities.
+
+You have an increase in the grinding price. You have an increase in quantities okay.
+
+So these second this first order variations are important in figuring things out.
+
+It changes on changes. So for example El Salvador was slowing down these.
+
+By the way this is the age of the student. And this is how many years of schooling they accumulated.
+
+And this shows that between 1992 and 2002, there was a big expansion in a retention.
+
+So kids at age 18 had accumulated only six and a half years of schooling before.
+
+And now they accumulate nine years of schooling. So okay, so you are increasing the supply of human capital.
+
+So now growth should be accelerating or should be should be better.
+
+But growth was actually declining during increasing the supply of human capital when growth is declining.
+
+And what you observe is declining returns. So you increase the supply of human capital.
+
+And instead of just getting, you know, people happy to absorb that.
+
+No, they you see declining returns. It means that in some sense there's excess supply of human capital.
+
+Same thing, for example, in TP us, where you ask yourself, why is Chiapas not only poor but falling behind the rest of Mexico?
+
+Well, a, is it schooling? Well, schooling went from three years less in Mexico to two years less than Mexico.
+
+So the education gap was narrowing when the income gap was widening.
+
+So it can be that if your education gap narrows, that education is a finding of strength.
+
+Okay, so you see the income gaps. This is Japanese.
+
+It was at 46% of Mexico. And now it's it was at 30 and 40% of Mexico.
+
+So there's this decline in the relative income of Chiapas even though the schooling gap was narrowing.
+
+Okay, let me show you another case.
+
+This is the case of Wyoming. Wyoming got a land grant university in 1886.
+
+This is a University of Wyoming, also known as UW for UW.
+
+And Wyoming is a country that is a state that spends the most in, in education, but nobody wants to live there.
+
+And so it's a state. This is Wyoming, the state that has seen the smallest growth in its population.
+
+So even though they have a lot of education, etc., people don't want to live there.
+
+And it's not because it's cold, because all the surrounding states are growing faster.
+
+So interestingly, there's they are sort of like average for the amount of tertiary education that they supply.
+
+But they are last in terms of, uh, jobs that require a college education.
+
+So they are supplying much more education than the economy seems to be asking.
+
+And as a consequence, their returns to education are very low. And as a consequence, people leave.
+
+And this is and this is the probability that a person born in Wyoming lives outside of Wyoming by different ages.
+
+And all of these are the 50 states. And in Wyoming they all leave.
+
+This is in people born in Wyoming.
+
+Where do they live? And these are the cities where they live in in Wyoming, the blue.
+
+And this is all the people that left. They left for cities that are much bigger than Wyoming.
+
+So and by the way, they don't go too far away.
+
+They go here is. Is Denver, Colorado.
+
+So it's not that they are going to Florida because Wyoming is cold in there, going right across state lines to places that are much bigger.
+
+So maybe you see there are no agglomerations in Wyoming because there's no agglomerations.
+
+There's no demand for human capital because there's more demand for human capital where there's larger agglomerations.
+
+And that's why we observe low demand for human capital in Wyoming.
+
+It's not a supply problem. There is the supply. They are doing the investment.
+
+They're graduating. The people. The people are not staying. Yes.
+
+Um, do we know anything about how accurate these people are in assessing where their best opportunities are going to be?
+
+How accurate do they move to the places where there are genuinely good opportunities for them?
+
+That's an interesting a question.
+
+This is the other side of that question. Um, a there's a city near Cheyenne, is the capital of Wyoming, the closest city on the Colorado side,
+
+which is called Fort Collins, where there's also University Town there.
+
+And University of Colorado has a campus there.
+
+But we found out that this business in Cheyenne opened an office in Fort Collins
+
+because they wanted to hire young people who prefer to live in Fort Collins.
+
+And when you ask them, why do you prefer to live in Fort Collins? They talk about restaurants, they talk about music, theater, amenities, etc.
+
+So and that's kind of like companies are moving out of Wyoming because they want to hire talent that doesn't want to live in Wyoming.
+
+So anyway, so a then we have, um.
+
+That's wrong. That's the way it says.
+
+Two minutes. And so.
+
+Here you have if you Obiang Ethiopia was you know super poor and stagnant and suddenly starts growing.
+
+Yeah. And you wonder why the [INAUDIBLE]. How come you are poor and suddenly you start growing like crazy?
+
+Well it helps to know that suddenly you have this big boom in imports.
+
+So imports were not growing and suddenly inputs can grow. So suddenly you kind of like it looks like you relaxed a constraint on foreign exchange.
+
+And the moment you relax the constraint on foreign exchange, the place can grow.
+
+Okay. And a and why did you were you able to relax the constraint on foreign exchange.
+
+Well a this great part is aid.
+
+It did go up right. But you also started to borrow mostly from the Chinese.
+
+And the thing is that here in 2014 or so the process stopped.
+
+And as a consequence you see this big decline in imports.
+
+So it would appear that what caused the growth acceleration was the relaxation of off the foreign exchange constraint.
+
+But now it's binding again. Okay, so maybe you want to look at something.
+
+Now, whenever you do this, the second, um, test of changes on changes, you want to see if the things, when they change, they change.
+
+You know the thing co varies with your hypothesis of a binding constraint.
+
+It's important to note that this is analysis that you're going to be doing over time.
+
+And you are implicitly making the assumption that over that course of time in the binding constraint didn't change.
+
+So because in the period of time you're talking about, other shocks might have happened that attempt also.
+
+So you have to make sure that the you know Im not there.
+
+No no confounding factors here. Now this is camels and hippos okay.
+
+I already explained the logic.
+
+Um, so the logic comes from a paper by Reynolds in galleys where he asked his question, is finance a binding constraint?
+
+Then he developed an indicator of how sensitive to finance is an industry in the U.S.,
+
+how sensitive to find, assuming, you know, in the U.S. has a good financial market.
+
+So in the U.S., some industries use finance a lot, and other industries don't use it that much.
+
+So there's a variable which is sort of like the finance intensity of an industry.
+
+And the hypothesis is that if finance is the constraint, finance intensive industries are going to be underrepresented.
+
+Is that clear? Good. So so this is the idea.
+
+So you want to know the presence of a certain industry in a certain municipality or a certain product in a certain country.
+
+Okay. That's going to be a function. Of a the intensity with which this industry uses this factor.
+
+So if this industry uses this factor a lot, I should find it underrepresented.
+
+Okay. Relative to other controls okay.
+
+So you may have an industry dummy or municipality dummy whatever.
+
+No. So we applied this for say electricity.
+
+So we have a variable called the electricity intensity of an industry.
+
+And we do it for several municipalities.
+
+And we ask in the municipality I'm caring about, which is how do I find that electricity intensive industries are under represented.
+
+And I find that that is the case. Or this is for I think it is Tabasco is water constraint.
+
+So a I run it for 2008 then for 2013.
+
+And this coefficient, this interaction coefficient of the intensity of the industry with a municipality,
+
+I find that a water intensive industries in Tabasco are severely underrepresented.
+
+Okay. And that is suggestive of maybe water is a problem in Dallas.
+
+Okay, now this is a case we did for South Africa and and in South Africa there was rationing of electricity.
+
+And this is the amount of rationing of electricity that was going on.
+
+It started in 2007. And all throughout this period there were shortages of electricity and the price of electricity was going up and so on.
+
+So a, you know, you can ask surveys and kind of, you know, the World Enterprise Survey asked them.
+
+How much is electricity a problem for you when in red is in 2020 and in blue is in 2007.
+
+You see that in 2007 there was a little bit of rationing, but in 2020 is much more okay, so they complain much more than they used to.
+
+So with an enterprise survey they have that question. And it went from this is all the countries in the world.
+
+It went from over here to over there. So that's kind of like suggestive that if they complain about electricity, that must be the problem.
+
+But here them, the camels and hippos is we did the following thing.
+
+We look at the electricity intensity of all products in.
+
+So we have electricity intensity of all products in the world okay.
+
+And these are is the electricity intensity of the export basket of all countries in the world every day.
+
+So this is you know, these these are him graphs.
+
+The box is the 25th to 75th percentile of Am electricity intensity.
+
+And the line is the 10th to 90th percentile.
+
+And then these are the extremes. Oh.
+
+And what you find is that electricity, that the export basket of South Africa is very, very intensive in electricity and electricity is constrained.
+
+So it suggests yeah, maybe there was a this constraint on electricity.
+
+Not only was it large, but it was particularly damaging because the export basket of South Africa was particularly intensive in electricity.
+
+And the constraint in that was going to generate the problem for electricity intensive sectors.
+
+Let's check if that's the case. This is the rate.
+
+This is the electricity intensity of the sector. And this is the rate of growth of the sector.
+
+And here camels and hippos, the ones that are more intensive in the binding constraint are growing less.
+
+Okay. Clear. Many seem.
+
+Good. Now hippos in the desert. So it cannot be that a people are stupid and they did not know that something is the binding constraint.
+
+Right and they are waiting for your report to come out.
+
+Can't be the case. They are living through the constraint, and they have to be doing stuff to overcome the constraints.
+
+And you want to in some sense document the stuff that they're doing.
+
+For example, if there's poor financial intermediation,
+
+what you're going to get is you're going to get conglomerates that are going to use the their
+
+business structure to move resources from one industry to another without having to go through banks.
+
+And that's the typical theory of why Japan has collapsed rules and why Korea has chaebols
+
+that even though the productive system was much more developed than the financial system,
+
+so that they internalize the financial system in their group.
+
+Okay. If you tell me there's industry specific public goods that are under provided, maybe, for example, in in Pakistan,
+
+there's this unique city called Sialkot and Sialkot,
+
+which is kind of like a city apart the the export, the most sophisticated things that Pakistan does.
+
+These are surgical devices. It comes from an industry that had the long history of making swords and stuff like that then,
+
+and that industry survives and is competitive because not because the government is particularly good at providing public goods,
+
+but because they have become particularly good at self providing the public goods that they need.
+
+Okay, so maybe public goods are the binding constraint in Pakistan and the things that but I find this thing that needs public goods and survives.
+
+They found an alternative way of providing the public good. It's kind of like you need social capital in that industry and so on.
+
+A property rights and contracting it.
+
+Well, you might, you know, demand the Mafia to protect you, so you pay.
+
+You know, there's this theory that the state is just like a successful mafia.
+
+They protect you in exchange for payment. Right.
+
+So and that the, the history of, of the state is the history of competition between mafia groups and, you know, one, one and so on.
+
+So, um, let me tell you about, um, finding, um, a hippo in the desert.
+
+This is the export basket of Chiapas. And there's this here in our transport vehicles, which is kind of weird.
+
+And this is Chiapas in the product space.
+
+And you say, okay, so there's all of these things here, but suddenly there's this monkey right here in the middle.
+
+So you ask, okay, how did the hippo get to the Sahara? Right.
+
+Well, this is the hippo. And the hippo is is.
+
+Yeah. Saki is, uh, the Japanese, uh, assembler of car harnesses.
+
+Car harnesses. There's, you know, the the set of all, um, cables that go into a car.
+
+They have to put them all together and they have to connect, you know, so that all the electric, um, wiring of the car is, is put together here.
+
+So it's a little bit like, uh, garment manufacturing in the sense that it's relatively low skill.
+
+You just have to cut these different cables, uh, different lengths and put them together.
+
+Um, so the interesting thing about Yasuke is that they grew a lot, but they had to they didn't grow through a big company somewhere.
+
+They put, you know, six different plants in six different parts of the state.
+
+And that kind of told us something that maybe the problem in the state is, uh, mobility,
+
+transport to work, that it's hard to get workers to, to a manufacturing places.
+
+So instead of having the worker go to the factory, the factory had to end up going to the worker.
+
+Okay. And this is sort of like an estimation of how large our transport costs relative to expected income.
+
+Um, for a city, for a town that's just 15 minutes from San Cristobal, which is a beautiful city.
+
+If you haven't been there, you should go there. It's a really beautiful place.
+
+People living 15 minutes away from there. This is how much it would have to.
+
+This is how much you would have to pay. So for them that labor market is just unacceptable.
+
+And so the idea was, you know, they got the monkey, they got the hippo to go to a desert because.
+
+Cause, you know,
+
+you had one company that was able kind of like to change its production function to to locate as close as possible to where the workers are.
+
+Actually, they had losses going to 35km distance to fetch the workers.
+
+And it suggested that maybe, maybe mobility was the binding constraint.
+
+Final idea is that a constant cannot explain the change.
+
+Tell me why the change.
+

@@ -1,0 +1,1331 @@
+[Auto-generated transcript. Edits may have been applied for clarity.]
+If I said. For long.
+
+Hey, guys. Uh. Yes I appreciate.
+
+You for taking. So that was really cool.
+
+That's so cool. You know, honestly, it's fine.
+
+I think it's too much. Well, it's probably 160.
+
+So, you know, for us here in town within a matter of weeks.
+
+Huh? Yeah. I'll be there for, like, six hours.
+
+Thank you. I'm sorry. No, wait. I can give.
+
+Him all of that. Yeah, it would be helpful. Okay.
+
+It is very good. So today we're going to have, uh.
+
+You want to think about it as, uh, a positive theory of fiscal policy?
+
+Okay, that is not what fiscal policy should be, but what fiscal policy is in practice.
+
+Okay. So before we get there, let me do some housekeeping.
+
+Problem set five on Micro Diagnostics is due November 26th.
+
+And this week you'll have a review session on Thursday and the lecture on Friday.
+
+Okay. Good. So, uh, we know that, um, fiscal policy, uh, should be proceed.
+
+Click on that is, um, it should be anti cyclical in theory whether you are a Keynesian or um,
+
+or um, neo Ricardian economist or whatever a it should be.
+
+And they cyclical in the sense that both times you said why didn't we are deficit in good times we should shorten it.
+
+This is a sample of of Latin American recessions, um, and OECD recessions.
+
+And you see, we did this in the last lecture.
+
+Uh, the red bars are much bigger on the right than on the left, meaning that volatility of GDP in Latin America is much bigger than the OECD,
+
+but that these green bars, which is what happened to the deficit,
+
+they move with the red bars A and typically are larger than the red bars of GDP falls by one.
+
+The fiscal deficit falls by more than one, uh, in uh, in uh, upper middle income countries we see more of that.
+
+But in a lower low middle income countries we don't see that.
+
+So for some reason they are not, um, they cyclical for some reason they have trouble accessing financial markets.
+
+Not all the time. Remember, sometimes Mexico looks like a country right next to us, and the next day it looks right next to what they might write on.
+
+And it has, uh, typically, uh, an electoral budget cycle that for some reason, in elections, deficits widen.
+
+Um, okay. So the question is why do developed countries face, uh, precarious access to borrowing?
+
+We discussed that last week. And maybe it's not because they borrow too much, but because they borrow in dollars.
+
+And this generates all sorts of bad cyclical dynamics, right?
+
+That in bad times, um, the exchange rate weakens.
+
+And if you're debt is in dollars, then it's more expensive to service that, that in bad times and that in fact,
+
+the depreciation of the, of the exchange rate in bad times is bigger than the fall in actual revenue.
+
+Right. So is this change in relative prices that makes that, um, hard to hard to pay.
+
+And then, uh, you might try to prevent the exchange rate from depreciation by jacking up interest rates,
+
+but then you have to pay more on your short term debt. Okay.
+
+Um, we also have the question of, uh, uh, and not just why can't you borrow, but why are you cyclical?
+
+They may be related. You may be you don't borrow in bad times because you can't.
+
+Maybe you borrow in good times because that's the only time you can. So.
+
+Huh. And why is there an electoral budget cycle?
+
+And can you design institutions around these issues? So.
+
+In this lecture, I'm going to try to look again at these questions.
+
+But from the point of view of the behavior of agents around fiscal policy.
+
+And a fiscal policy is going to suffer from several problems.
+
+One problem, one kind of problem. I will describe these problems in more detail later on this just introductory.
+
+If you have coordination problems in a common food problem that has kind of like
+
+two versions of a static common pool problem and a dynamic common pool problem,
+
+then I'll elaborate. Then you have the problem of aggregation.
+
+How do you go from individual preferences to social preferences?
+
+Because fiscal policy is in principle decided collectively.
+
+How they how do you go from what people want, from what individuals want to the aggregate?
+
+Okay. And you have agency problems and you have time inconsistency problems.
+
+So these are four kinds of problems that are going to a um, potentially explain some of the weird aspects of fiscal policy.
+
+Okay. So these are our are four for four problems.
+
+So the first problem is a common pool problem. The way I like to explain the common pool problem.
+
+And I hope this is a memorable metaphor. All the metaphors have something to do with animals.
+
+So this is called the chicken and lobster problem. Okay, you go to a restaurant with nine friends.
+
+There are two dishes on the menu. One is chicken for $10 and one is lobster for $50.
+
+If each one is going to pay their bill independently.
+
+And considering that you are graduate students with.
+
+Constraint cash flows. You choose chicken, right?
+
+Now, if you're going to share the bill, there are two possible scenarios.
+
+And one scenario is everybody else chooses chicken.
+
+So for you if you chose lobster it will be nine times ten is 90 plus your lobster 50.
+
+That's 140 divided by ten. That's 14. So actually you could buy chicken for $10 or lobster for $14.
+
+Now maybe for $14. You know lobster is worth it, but maybe you're not the first one to choose.
+
+Maybe you are the last one to choose. So suppose everybody else has chosen lobster.
+
+Now you have nine times 50%.
+
+That's 450 plus your chicken. That's $10 460 divided by ten.
+
+That's 46. So you can have chicken for $46 or lobster for $50.
+
+Okay. So if you chose independently, you would have chosen chicken.
+
+But now in this strategic game, you're better off choosing lobster because you could have it either if everybody else chooses a lobster.
+
+You have your chicken for $46, and who's going to pay $46 for a chicken, right?
+
+And if everybody else chooses chicken, you can have lobster for $14.
+
+Who would not have lobster for $14, right? So the point is that when you choose things collectively, you may choose different fee.
+
+And when you choose things as an individual. Okay.
+
+Now, fiscal policy is the process of paying collectively for things.
+
+So, you know, you might want, you know, Boston might want the Big Dig, right, about the Big Dig.
+
+You know, if it's paid by the federal government that's paid by everybody else.
+
+So it's not that you have to internalize the cost of the, you know, you know, the taxes that you would pay for the Big Dig and so on.
+
+So. So the idea is that there's going to be concentrated benefits of spending while and that are going to be paid from a common resource.
+
+So the budget is this process of choosing collectively.
+
+If you are a minister of health, you're not going to internalize the problem of the taxes that you would need to raise, etc.
+
+But because you, as a minister of health are going to be judged by your health performance and so on,
+
+not by the implicit cost of, of um, of the taxes to everybody else.
+
+If you're spending money, if you're legislator, you know, you bring a bridge to your town, right?
+
+You're not internalizing the tax cost of bringing a bridge to your town, because that's shared with everybody else in the country, right?
+
+So for that reason, there's going to be a tendency to overspend and over borrow.
+
+Okay. So this is the first claim because there's a common pool problem.
+
+There's going to be a tendency to overspend. That means that somehow you have to impose a budget constraint somehow on a game that wants to overspend.
+
+So that's if you want a static common pool problem.
+
+A more dynamic version is the following.
+
+Suppose you are, say, a Venezuelan minister of economy.
+
+Just suppose and suppose there is an oil boom.
+
+And the oil boom is associated in. Actually, this actual history of oil boom is associated with the fact that in some Hussein invaded Kuwait and,
+
+you know, the U.S. is going to kick out Saddam Hussein from Kuwait.
+
+Oil prices skyrocket. But you realize Saddam Hussein is not going to beat the U.S. and the international coalition.
+
+This is going to be a temporary shock. So what does the theory say for temporary shocks?
+
+Saving you. You save them, right?
+
+You should save them because you know you should save them.
+
+Because. If you start spending them next year, you'll have to cut back because a temporary shark.
+
+So you just, you know, like you save it, you incorporate the permanent component and maybe you just spend a little bit.
+
+Right. So everybody read the the, um, um, uh, the econ 101, uh, version of the problem.
+
+And so we know we should say we agree that we should save the temporary wall.
+
+Now, suppose you are a the president of the teachers union, and, uh, Bernadette is the president of the of the, uh, police union.
+
+Suddenly. Ehm, eh?
+
+Bernadette is thinking, you know,
+
+I have an upcoming collective bargaining agreement and right now the Minister of Finance is full of money because of the temporary shock.
+
+He says he wants to save it, but savings is kind of like postponed.
+
+Chicken and egg problem. Chicken and lobster problem. Right?
+
+It's kind of like an undefined property, right? On both savings.
+
+She says I have the following problem. If I go on strike now.
+
+The minister has money.
+
+If I don't go on strike now, maybe them this the union, the education, the teachers union goes on strike and they take all the money.
+
+So let me take the teacher's union money before they take my money.
+
+Right. So we all agree that the first best is that we all save, etc.
+
+But I'd rather do the savings myself, right?
+
+I'd rather use this occasion to grab the money before somebody else grabs it.
+
+Okay. So if you put this in a dynamic game, it makes it makes kind of counter-cyclical thinking a little bit harder because it this
+
+undefined property rights in the static problem and you don't know who owns the common pool.
+
+It becomes an undefined problem on undefined property rights, on temporary savings.
+
+Right. And that may lead to a tendency for pro cyclical spending.
+
+Is that clear? Okay.
+
+So. So that means that we might explain in some sense that the outcome of the physical game is going to have some funny features.
+
+Because of its common pool nature. Okay, so then there are agency problems.
+
+Can anybody define for me what is an agency problem or a principal agent problem.
+
+Yes. Why don't you explain to the group. That the agent is representing a principal, but not always acting disinterested.
+
+Or, you know, the principle of a principal. Know like you cannot deviate from their duties.
+
+Okay. So you have a problem of what they call in this literature.
+
+Delegate the choice. Right. Oops.
+
+So you you're saying I'm a very busy person?
+
+I am, uh, I don't know, I'm a medical doctor.
+
+I benefit from all of these public goods, but that's the business of the government.
+
+So I'm going to delegate on the government the choice of running the government for on my behalf.
+
+So I'm the principal. The government is the agent or the president says I'm a very busy person.
+
+And, you know, I cannot be running around every ministry.
+
+So I'm going to appoint the Minister of Health, and the Minister of Health is going to take care of that.
+
+Right.
+
+So there's in each one of these situations, you have a principal who's has to make some choices, but he's too busy or she's too busy to make choices,
+
+delegate those choices to somebody else in principle, that somebody else should be choosing as if they were the president,
+
+or as if they were a the medical doctor that is delegating on the government.
+
+But the truth is that this delegate, that agents are going to have some objective function,
+
+some preferences that may not be the same as the preferences of the principal.
+
+So, as Juan Pablo said, they might deviate from the preferences of the principal.
+
+If if the principal could perfectly observe what was happening, then immediately, instantaneously,
+
+the moment they make a choice that differs from the choice they would have made, they call him up.
+
+But in order for the principal agent problem to be real, there has to be asymmetric information.
+
+That is, you set up the whole problem because there is asymmetric information, because you are too busy to deal with the minutia of that decision.
+
+So you delegate on somebody who's going to spend the time processing all the informations and
+
+the costs and benefits and etc. of decisions and choices that you don't have the time to do.
+
+And because of that, they have more information than you have on what are the elements of the choice.
+
+And they can always hide behind the fact that they have more information than you have, so they can use that information asymmetry to their advantage.
+
+Okay. So those are kind of like the building blocks of a principal agent class.
+
+And so here you can have some of the some of the distortions that the agency generates.
+
+The government may want to spend more money than the public would have spent because either they can appropriate part of it,
+
+maybe because if they spend more money now,
+
+the economy will be apparently doing better now, and they will get the political benefits of an economy that is,
+
+you know, happy today, maybe sorrow tomorrow, but tomorrow is a is another day, right?
+
+And because of that, and the principal knows that they cannot really trust the agent too much.
+
+So there's going to be a problem of lack of confidence on the, on the, on the agent right by the principal.
+
+And, and the agent is going to have incentives to distort reality through policy.
+
+So. One of the things that the agent can do is they can distort in the economy by organizing an electoral economic boom.
+
+So by organizing an economic boom that's going to peak at the time of elections.
+
+So if it's time of elections, you want to go full with government spending, generate the mini boom around the election.
+
+And because people don't know exactly what's happening.
+
+They have to they say this might be an artificial boom or this might be the consequence of a very effective government.
+
+So they they don't there's this noisy signal.
+
+Is this an artificial boom or is this a very effective government?
+
+Well, the idea is that if if it's a noisy signal, there is some signal.
+
+And maybe given that the economy is booming and you don't know the cause, you will update upwards your perception that the government is effective.
+
+But maybe there is some probability that they're just playing games, but maybe there's a probability they're actually effective.
+
+Okay. So this, um, in the initial paper by Nordhaus in 1975, it was before the the rational expectations revolution.
+
+So Rogoff in 1990 wrote a paper with rational expectations.
+
+But with this asymmetric information and and in rational expectations,
+
+you still would vote the government because of this, uh, this, this noisy signal that you're observing.
+
+But there is you're assuming that there's some signal in the signal.
+
+It's not pure. So that's.
+
+Then. Okay, so that's the, um. Uh, the second problem.
+
+The agency problem. The third problem is, uh, credibility or timing consistency problem.
+
+That one has, uh, a Venezuelan version.
+
+I don't know if this is, uh, an international version, but the Venezuelan version says you don't know who's more stupid,
+
+the person who lends a book or the person who returns it.
+
+Right. Because why would you lend a book if they're not going to return it?
+
+And why would you return the book if they already lent it to you?
+
+Right. So so this is the problem of future promises.
+
+Okay. Today, before you give me the book, I'm willing to promise anything, right?
+
+Because I really want to read that book. But now that you have given the book and now I have the book, now my incentives to return it are changed.
+
+I promised to return it before you gave me the book.
+
+But now a I regret having promised it to you.
+
+I was actually crossing my fingers in the back or something. Right? You know, so on.
+
+So what promises do governments do about the future?
+
+Well, they do promises about that. Right.
+
+And with that aim.
+
+You are saying, gee, you know, lend me the money today.
+
+Lend me the money today. I'll pay it for you for sure tomorrow. But tomorrow comes and you say, gee, I regret having made that promise.
+
+I'd rather keep the money than pay it back. Okay.
+
+So bondholders.
+
+Are thinking, is this government actually going to pay me back or not?
+
+Hey. They're wondering. And one way in which these and for example, this paper for example, is, is very nice.
+
+It says, okay, let's embed this in what they call a signaling problem.
+
+Now who can remind me? Signaling sounds like something that I think I would have explained to NPR ads.
+
+Am I wrong? Right? Yes. Juan Pablo seems to be the only one who remembers.
+
+I'm not on NPR. Oh, maybe that's the reason you. Stunningly dumb.
+
+Yeah. Okay, so maybe that would be how you guys take note if you want to really study anytime.
+
+So the signaling ring a bell?
+
+It rings a slight bell, but you cannot recall it.
+
+There's Alzheimer's seeping in or something. Anybody can tell me what signaling is.
+
+I think it would be something like you signal that you have certain virtues.
+
+A certain amount of credibility through some other action could increase your credibility.
+
+And then, for example.
+
+Okay. Yes. Right. I, for example, going to Harvard to signal that you are able to do things.
+
+I thought I thought that this is such an obvious example that you would have all come up.
+
+You want to do exactly that, that this course 309 is completely useless.
+
+You already know that. But you're just signaling that you took it so that a future employer might think, gee,
+
+this guy, you know, this person really, really must be tough or something, you know?
+
+And he's not afraid of long and homework assignment.
+
+Okay, I'll give you a better example. Go ahead.
+
+In biology, there is something called a handicap principle that it's used to explain why peacocks has this huge tail.
+
+They basically say, and have quite interesting math behind it, that if a peacock can defend itself while carrying this huge tail,
+
+it means that he they are able to they have good genes and they're able to protect, uh, whatever they need and so on.
+
+So I think that's a very interesting idea. Yeah. So so you, you do something that.
+
+It's a very good point. You do something that is actually costly to you.
+
+I don't know if you've noticed that a degree at the Kennedy School is not cheap, but so it's something that is costly to you, but that you do it.
+
+And because you are trapped in this informational asymmetry problem, it's again, it's an informational asymmetry.
+
+So the way we think about this, and at least in this model, is there are two possible types of government.
+
+There is the dry government and there's the wet government.
+
+The wet government is it likes to spend and and doesn't like to pay its debts.
+
+And the dry government is more austere and so on.
+
+So you can think of the bondholder as wondering, is this guy who's selling the debt?
+
+Is he dry or is he wet? So now you are the banks.
+
+You're the government. And you say, how can I tell the bondholders that I'm actually dry and not wet?
+
+Well, I have to do something that is costly to me, but it would be super costly to a wet person, to a wet government.
+
+So what can a government do that is costly to the government?
+
+But it would be really costly if the government were wet.
+
+And that would be, for example, like. Making a massive deficit cut to cut the deficit.
+
+For example, suppose there is there is a temporary recession, and we all understand that the first best of a temporary recession is that you funded.
+
+You borrow against it. That's we all agree that we have that's the first pass.
+
+But if we're trapped in this asymmetric information problem, there are bondholders don't don't know if if I'm a dry government that is going about,
+
+uh, as what econ 101 tells it to do or whether it's actually a wet government.
+
+So what what a what government do they would borrow in bad times?
+
+So what how can you differentiate yourself from a dry from a wet government?
+
+Well, you might borrow not borrow in bad times or borrow much less in bad times.
+
+So you show that you know you are austere and you borrow much less.
+
+So you actually under borrow as a signal that you're dry.
+
+Okay. So, so, uh, the this, um, credibility problem would a translate itself into, um, cyclicality.
+
+Right that the first best would have been anti cyclicality,
+
+but in bad times you would look like a wet government or you under borrowing
+
+in in bad times because you want to convince bondholders that you're serious.
+
+Okay. So, um, we have three kinds of, ehm, diseases that I started the lecture with.
+
+One is that, you know, you may borrow too much. One is that your response may be parasitical.
+
+And one is that you might have an electoral budget cycle. So.
+
+A coordination problems might lead to both a deficit bias.
+
+Because you know we all want lobster. And it may lead to a pro cyclical response because bear in our debt is afraid
+
+that somebody will take the money that's in in the ministry before she does.
+
+Right. And so on. So the commitment problem would explain.
+
+A why countries respond positively to bad shocks.
+
+It's that they fear that the commitment is credibility.
+
+They fear that markets are not going to trust them as they borrow in bad times, because they might interpret that they're a wet government.
+
+And so and so in their inability to commit to future sustainable policies, leads to poor access to finance in bad times.
+
+And the electoral budget cycle is more of an agency problem here.
+
+Risk of being out of office accelerate spending agents, for example.
+
+Executive may have incentives to expand fiscally during election years of being in office.
+
+Okay. But also in in election time, a, you know, if you're the Minister of Finance, you cannot say, um, buy my bonds.
+
+And I promise that in the future, a I'm going to adopt such and such policies.
+
+Because it's an election year and the market doesn't know who's going to be there in the future.
+
+So the closer you are to the elections, the less you can promise about your future actions.
+
+And that may mean election times being very troublesome.
+
+Not necessarily.
+
+So a in a, you know, country risk might go up in election times because you don't know if if the lunatic fringe is going to win the election or not.
+
+So I remember, for example, in 2002 there were elections in Brazil.
+
+And here, ehm, everybody thought that, uh, you know, Fernando Enrique Cardoso, he was the president.
+
+He could not be reelected. It was the second term, had done a spectacular job with a real plan A, and brought inflation down to single digits,
+
+etc. he couldn't get reelected, but everybody thought that his party would get reelected after such a good performance.
+
+Uh, I think the elections in Brazil are in October.
+
+If anybody from Brazil can contradict me, we don't have anybody from Brazil, thankfully, so no one will control me.
+
+But and then the change of government is in January.
+
+So sometime in July, August, the polls starting to come out saying that Lula,
+
+which was this super leftwing party at the time that had never been in power, was leading in the polls.
+
+Well, markets went crazy. Country rates went through the roof, and the only way to calm markets was to call the IMF for a program.
+
+And the IMF said, okay, there are we are now in the month of July, I can give you a program for four months.
+
+But that's not going to solve the problem because people are going to see forward.
+
+So I'm going to give you a program for two years. But Lula has to sign on to a program.
+
+Right. And so they actually got Lula signature on the program in Congress of Lula's party to signal that policy is going forward.
+
+We're going to be reasonable. And actually, Lula's first period and he stayed in government for two periods, his first year, his first period.
+
+He was very responsible, macro economically and in some sense because he realized that if he misbehaved.
+
+Country risk would go up, the exchange rate would weaken, and so on.
+
+And so. Irresponsible things would get punished overnight by the markets and good statements would get rewarded overnight by markets.
+
+So so markets sometimes discipline governments anyway.
+
+So so you see that these different kinds of problems.
+
+So for example the agency problem might explain why there's a deficit bias.
+
+Because the agent is the government. The government doesn't care that much about future debt they're going to be around.
+
+Is anybody paying attention? Yeah. You're all looking at your machines.
+
+Oh, okay. Then there are electoral rules.
+
+And the electoral rules are really, really arbitrary.
+
+So, for example, how was the 2000 election decided in the US?
+
+Quote unquote part, quote unquote, the court.
+
+But what happened before the court? Anything.
+
+Some issue in Florida with some boats. Um, but I can't recall.
+
+Actually, it was a Republican administration that that decided that certain votes would be considered as valid and invalid.
+
+And that kind of swung the election in one way. You remember how many votes?
+
+Huh? 500. Yeah, something like 425 votes.
+
+So al Gore won the popular vote by millions, and he lost Florida by 425 votes and 425 votes in Florida.
+
+Determine who the president was. Okay, so.
+
+So why is that? Because the US uses this electoral college.
+
+We've just gone through the election. We know how it works. It means that, um, you know, in in Massachusetts, uh, Kamala Harris got 67% of the vote.
+
+Um, if she had gotten 50.1% of the votes, you'd still would have gotten the same number of Electoral College votes.
+
+Okay, so there's weird ways in which you aggregate preferences.
+
+So, for example, a the new the new, uh, prime minister of Britain has, I think,
+
+one of the largest majorities, if not the largest majority, uh, ever in, in the British Parliament.
+
+What percentage of the vote did he get? 54.
+
+30. 34. Huh? Okay, as in Spanish, you would say.
+
+You say 30. I say 32. Yeah, well, he got more in the 40s, but.
+
+So, uh. That has no translation, but.
+
+So he has a humongous majority in Congress, in Parliament, but with a minority of votes.
+
+Why is that? Coalition people votes in districts.
+
+It's first past the post. It's first past the post.
+
+It's first past the post. It means that I know in Britain you have three parties.
+
+So, um, it's just whoever comes first in that jurisdiction because you elect one member of Congress per jurisdiction.
+
+If it was proportional representation, then perfect proportional representation like there is, for example, in the Colombian Senate.
+
+Or there is in Israel, there's perfect proportional representation to a first approximation.
+
+Then it's in Israel you have 120 seats, so you get 60% of the votes.
+
+You're going to get 60% of the seats. If you get 5% of votes, you get 5% of the seats.
+
+But to do that, you have to have elect more than one person per jurisdiction.
+
+Right. So it can't be one that we like one person.
+
+So how many?
+
+Not how many people vote in a district, but how many people are going to get elected in a district is what they called district magnitude.
+
+The district magnitude first past the post means the district magnitude is one.
+
+You elect only one person and you cannot make proportional representation with one.
+
+But maybe you elect three people or seven people, but then you have to have semi proportional representation with three or with seven,
+
+which is not going to be as as precise as when you are electing 100 senators, right then Columbia down to 102 or 120.
+
+In Israel you can be more more precise in your representation.
+
+No. So one important variable we are going to ask is what is the district magnitude in your Congress?
+
+In the U.S., it's one proportional representation systems have more than one.
+
+And so there are going to be costs and benefits of going from first past the post to proportional representation and so on.
+
+First past the post means whoever has the largest minority gets the whole thing like just happened in the UK.
+
+You are a minority. You're you're not, you know, the preferred option of the majority of the voters,
+
+but there's a plurality of voters that are sufficiently homogeneous and so on.
+
+So you get almost all of the seats okay.
+
+If you apply that in, uh, in a place and that has some the conflicts, it means that whoever is in the minority has essentially no voice.
+
+And so for them, it might be that you'd rather be in the hills than be and shooting to people then be playing the political game.
+
+So if you want to be more inclusive, you want proportional representation.
+
+And that means increasing district magnitude, allocating the seats more proportionally.
+
+But then you have a parliament that has a harder time making decisions.
+
+Okay. So you're more inclusive in one direction, but you are um, you have more difficult, uh, and decision making processes.
+
+Now, these these rules are going to generate incentives that are going to express themselves in how many parties do you have.
+
+So in. A if you have a more first past the post system, if you are the third party, you are sure to get zero everywhere.
+
+So suppose there is a fight between, say, the traditional Republicans and the MAGA Republicans.
+
+In a proportional representation system, they will split and each one will take their share of the votes to Congress.
+
+But in our first past the post system, if you split and you are not the majority of the, uh, of of the party, you're going to get nothing.
+
+So you have no incentive to split. That's going to reduce the number of effective parties and with fewer expected effective parties in Congress.
+
+By the way, the word effective parties, the word effective is, um, mathematically meaningful term.
+
+Um, it's actually the inverse of the her harassment personal index.
+
+Let me. Let me explain. If you have.
+
+The Hirshman index is you take this.
+
+The shares that say each something gets income here votes whatever.
+
+You square them. Okay.
+
+The shares add up to one, but the square of the shares doesn't add up to one.
+
+And then we're going to get one over that. Okay. So for example, if you have two parties and each party gets 50% of the votes,
+
+then it's you would say intuitively it's as if you have two parties, right?
+
+But 50% of the vote means one party gets.
+
+Gets 50% of the vote square. That's 25.
+
+The other one gets 50 for that square, that's 25, 25 plus 25 is 51.
+
+Over point five is two. Okay.
+
+But if you have one party gets 99% of the vote and the other party gets 1% of the vote, it 99 squared is 0.9 98 or something.
+
+Oh, and the other one squared is 0.01. So it's point 99 one over point 99 is 1.01 parties.
+
+So if one gets 99% of them. So it's as if you had one party okay.
+
+So effective numbers are I'm in love with effective numbers.
+
+And I love to calculate the effective number of products a country exports, the effective number of industries,
+
+effective number of locations in which an industry is located may be more meaningful than that then ubiquity.
+
+And we're playing around with that. All right. So anyway so and then you have a question.
+
+If you have one chamber you have two chambers. So it's a it's a complicated story, you know.
+
+So let me show you these are a district magnitudes in Latin America okay.
+
+So Brazil it's very proportional representation Mexico has very proportional representation on average.
+
+And every district in the lower house you get some 19 people elected in Brazil per.
+
+This is so when you vote you vote for uh, slate in in Mexico it's more like 17.
+
+And in these countries Haiti, Barbados, Trinidad, Bahamas, it's first past the post, one is first past the post.
+
+Okay. So this is a nice way of making it more more continuous.
+
+And the thing is that more representation, more first past the post.
+
+This is district magnitude. And this is effective number of parties in Congress.
+
+So more proportional representation leads to more parties.
+
+That's a rule. How many parties in the Colombian Congress?
+
+35. Uh 2525.
+
+Okay. How many now in Chile? 2222 and this is a recent phenomenon that used to be four.
+
+Right. And you went you made some changes to your electoral rules.
+
+And in no time it went from 4 to 22. Okay. And how many in India the huge number of parties.
+
+But I think you have something called a national party is when you reach a certain scale.
+
+And that's only 6 to 7 all over India.
+
+How many? 6278627, 1.6 billion people, 1.4 billion people.
+
+So it's not in the number of people you have. And there are difference in preferences.
+
+It's in your electoral process.
+
+You have first past the post after those groups and as a consequence become the larger the effective number of parties,
+
+the lower the representation of the President in Congress.
+
+So it's more likely that you have a minority president.
+
+And as a consequence, it's more likely that you have larger deficits.
+
+So Italy has more proportional representation that has larger deficits.
+
+It may be also because they're Italian or maybe because they're Italian.
+
+They have proportional representation. But there is a clear association between proportional representation and deficit.
+
+Yes. Uh, what you just discussed, Peter. And.
+
+This paper is from the 90s. And you have larger debts.
+
+What is a council mechanism of this like? Right.
+
+Proportional representation brings some other more chicken and lobster problems.
+
+Mhm. There is more more of a common pool problem.
+
+There are more people who would not internalize the cost of their bridge.
+
+So I'm looking to have very low deficits because he had a big majority in Parliament.
+
+If you are in Italy and you have a bunch of parties in the coalition and you have to please all parties,
+
+it's going to be harder to impose a harder budget constraint. Also more difficult to raise taxes.
+
+But you yeah. And for some reason there's more cyclicality in the response.
+
+So there's there's a relationship between these political variables and how fiscal policy ends up performance.
+
+So I'm encouraging you to think about. The political institutions of your country and think about what it means for the ability to run fiscal policy.
+
+Really, don't you expect? Um, he's very said democracy.
+
+And there is no difference between more parties or more interesting third party people,
+
+because the congressmen from this district would expect this, much less if it was another party in the quality seats in the same party.
+
+It's an interesting question in South Africa how to effectively one party in the first time.
+
+They don't get a majority if they have proportional representation.
+
+But we have essentially, you know,
+
+the African National Congress was the largest party and in addition wasn't with a coalition with the Communist Party and with some other party.
+
+So everybody was in the coalition. They had an enormous difficulty of making decisions because all the social conflicts were inside the party.
+
+So. Oh, wow. So, so there was a lot of gridlock, in spite of the fact that there was one party.
+
+So. Okay. So now I can go to your country and say, you know,
+
+you have to change your Constitution because the Constitution says that this is the way you elect your people,
+
+but that's going to lead to large deficits in large debt.
+
+So you have to change your constitution, and people are going to correctly took you out of the room and say.
+
+We have much bigger fish to fry. There are these serious problems here, right?
+
+Serious problems, political problems that we need to address.
+
+We are trying to optimize on a much larger board, fiscal deficit, etc.
+
+You know, that's a more technical issue or more something issue.
+
+We will deal with it through some other means, but we're not going to, uh, choose our electoral system based on its fiscal consequences.
+
+Okay. So if that's the case and if you have a other objectives.
+
+And only one and one instrument. You have horrible trade offs.
+
+So you wish there was another instrument that you could use to run a fiscal policy or another policy instrument.
+
+And that other policy instrument is what we call budget institutions.
+
+So budget institutions is the rules of the game. They're the rules of the game under which the different actors play a role.
+
+And so they define a how is the fiscal policy game going to be played.
+
+Okay. And these fiscal um, uh, these budget rules, um, come of of three types of rules.
+
+You have either numerical rules. So it just says, you know, there's a balanced budget.
+
+And 49 of the 50 US states have balanced budget rules.
+
+So the rule is deficit is zero, period.
+
+Okay. Um, you can have procedural rules and you can have rules that affect the transparency of the budget.
+
+Okay. So these are three kinds of rules. And so you have balanced budget rules such as the US.
+
+You have the Maastricht criteria that says that fiscal deficits cannot be more than 3% of GDP, and debt to GDP ratios cannot be more than 60% of GDP.
+
+And they approved it in a nice town in the Netherlands called Maastricht.
+
+And. And it's a very nice town. But no one paid attention to the road because no one has deficits less than 3% of GDP.
+
+And everybody and their brother have debt to GDP ratio is above 60% of GDP.
+
+So it didn't pay. Okay. Then you have the Grand Rudman and Hollings Act in the US, which was really interesting.
+
+Ehm. They agreed on a multi year.
+
+I think it was a seven year program to lower the US deficit and uh, every year they would plan a deficit and that was according to the law.
+
+And every year the deficit, instead of going down according to the law and went up.
+
+But they abided by the law because the law said that the planned budget has to have that.
+
+So they were just cheating on the way the budget was calculated.
+
+And so the Office of Management and Budget had the responsibility of of calculating the budget.
+
+They knew that they had this legal constraint.
+
+So they fiddled around with the estimated taxes and the estimated cost of, of, uh, entitlement programs and so on.
+
+So that they've ex-ante abided by the law, but ex-post, when the results came in,
+
+they had violated the law, but the law was on the ex-ante budget, not on the ex-post budget.
+
+So that gives you an idea of how you can cheat on these things.
+
+And that's the reason why eventually Congress got tired and they took away the power of the OMB to estimate the budget,
+
+and they gave it to the Congressional Budget Office. Okay.
+
+So and okay, so numerical rules are going to differ in different ways on the indicator of performance on the legal rank of the norm.
+
+If the, uh, if the if the numerical target is a law, it's there by law.
+
+Well guess what. The budget is also a law. So if you all have a majority to pass a budget, you have a majority to change the target.
+
+Um, regarding their coverage, for example, is it only for the central government?
+
+Is it for the consolidated government?
+
+Is it?
+
+Because if it's only for the central government, you should create some institutions outside of the central government and run the deficit there.
+
+All right. So. So regarding the stage of the budget process where they apply.
+
+So for example does they. Do they apply to the ex ante budget, the ex post budget etc.
+
+So these are a bunch of of of details. Um.
+
+Numerical rules, if they are enforced.
+
+May may solve some problems. They may impose a harder budget constraint.
+
+They may limit your ability to use the budget than electoral times.
+
+They may solve the chicken and lobster problem because it says, you know, you can choose chicken or lobster, but the total has to be 100, right?
+
+And you can only buy two lobsters for 100.
+
+So. But they'll generate incentives or creative accounting.
+
+They will limit your possibility to act in in an anti cyclical way.
+
+They tend to be inflexible and so on and so on.
+
+And so in general they don't have a very good aim.
+
+I mean they have worked in the US actually the US has balanced budget rules and that has forced states to have rainy day funds.
+
+So they save in good times, put it in the rainy day and in bad years they use money from the rainy day funds, but they don't run a deficit.
+
+And so then there are procedural rules.
+
+And these procedural rules differ in whether we have more hierarchical rules that
+
+concentrate power on fiscal matters or more collegial rules that share power.
+
+And this these things are happened both within the government and between government and Congress.
+
+So in under so first days, as you draft the budget, first question is who has the power to draft the budget?
+
+By the way, let me say Chile is an extreme country in terms of hierarchical.
+
+Okay. A chili has a lot of power of the Ministry of Finance, income in the government,
+
+a lot of power of the executive Vis-a-vis Congress and a lot of power of the central government over the regional and local governments.
+
+It's at an extreme there, if you want Brazil or Argentina or at the other extreme, I wonder,
+
+I think India has a rather weak control by the federal government over the state government.
+
+So there's a lot of autonomy at the state government now.
+
+But spending they have some rules and act, and they've been following the states because they have the Finance Commission.
+
+So recently they were able to control at least the spending part on this part.
+
+Okay.
+
+So so it's interesting, I wrote a paper once in the early 2000, a on on on this issue for India, but I'm glad to hear that they've changed the rules.
+
+And actually this agenda goes into changing the rules. So in so a more a more collegial approach would be, you know, um,
+
+spending ministers draft their own budget and they try to aggregate the budgets and negotiate with a finance minister.
+
+This is especially the case if you have a coalition government where different parties control different different than the ministries,
+
+they are going to be unwilling to give too much power to the finance ministry.
+
+An exception to this is a little bit Israel, where you have many parties in the cabinet, but the finance minister is still very strong.
+
+It depends mostly on his all political power and these relationships with the Prime Minister.
+
+So during the approval process, the question is what modifications can Congress put to the budget?
+
+So, for example, in Chile's extreme case, I don't know if they've changed these rules,
+
+but historically the Congress could only in a not approve spending programs.
+
+Congress could not reallocate spending. So they would either accept the spending programs of the government or cut some of them off.
+
+But they could not say, I'm going to cut this and not to this other one according to the rules.
+
+Secondly, and most importantly, if Congress could not agree on a budget, then the proposal of the government becomes law.
+
+That's Chile and the US. If they don't approve the budget, the government shuts down, right?
+
+So you see it because the government shutdown, then Congress has a lot of power over the Congress know.
+
+And then the question is who's going to be blamed for shutting down the government, etc. in Chile?
+
+You know, either you agree with me or I win, you know, so it's it's a lot of power.
+
+I think that that one has been revised. Now it's still it's still the same.
+
+Um, but uh, today there is uh, the department, the members of Parliament has inveighed.
+
+Um, I think the, the attributions over constitutionally, I mean,
+
+they're not there's more negotiation because they don't respect the Constitution and because they're the Congress.
+
+So anyway, so so it gives you an idea of what are the dimensions on which this game depends.
+
+Okay. And then during budget implementation, a more hierarchical rule would say a Congress has authorized spending.
+
+And the question is, okay, Congress has authorized me to spend.
+
+It does not force me to spend. If I need to cut the budget, I cut the budget.
+
+I can't. More because I have not been authorized, but I can cut the budget in the US.
+
+The executive cannot cut the budget. This is what the college is calling the USA line item veto or and they're good reasons.
+
+So in Latin America in general, the budget is an authorization to spend in the US.
+
+It's an obligation to spend. Okay.
+
+And this is going to matter if you're in a bad time and you have to cut the deficit, well, you can always cut the deficit.
+
+You may have to ask Congress for, you know, or you might need to inform Congress that you're cutting the deficit.
+
+And in the US, the argument is that if, if if the budget was not an obligation to spend,
+
+then negotiations in Congress would break down because they would say, you know, I'm willing to pass your law if you build me this bridge.
+
+But then if you have the discretion not to build me the bridge, then I have no way of negotiating with you.
+
+So actually, for the US political game, it's important that the budget be an obligation to spend and not just an authorization to spend.
+
+So anyway, so we and um, so there are some reasons why you might think that these budget rules might generate more fiscal discipline.
+
+They may solve the common pool problem. They because you are empowering the Minister of Finance and the Minister of Finance realizes
+
+that he has to go out and borrow and understands that capital markets might not accompany you.
+
+So so you are empowering the agent that has most incentives for discipline.
+
+But a it's not going to solve the electoral budget cycle because all the players want to win the election.
+
+And. It's not going to solve other problems.
+
+So let me tell you about a paper I wrote with Alberto Alsina and Rudy Holmes and others.
+
+We asked countries to answer these questions about a, you know,
+
+are there legal constraints on the budget and is there a finance minister has greater authority over spending budgetary issues than other ministers?
+
+What powers does Congress have to amend the budget?
+
+Um, what happens if Congress does not approve the budget?
+
+In it, can the budget mean modified after approval by Who's initiative, etc.?
+
+So sea level would be at one extreme and and the US would be at the other extreme.
+
+Are you and what are the limits on borrowing?
+
+Um, um, can subnational governments borrow independently?
+
+Can they borrow at all in Chile? They can't borrow at all.
+
+In other places, they can only borrow with authorization of of the Finance Commission.
+
+So that's the trick that is being used in India and so on. So we calculated this index for Latin American countries.
+
+And then we played around with it. And and here we have the better budget.
+
+Institutions lead to smaller deficits that better budget institutions lead to lower debt.
+
+That better budget institutions don't lead to more anti cyclical policies.
+
+So it doesn't solve the cyclicality problem and it doesn't solve the electoral and budget electoral deficit problems electoral cycle.
+
+So uh so that's a um a that's um, that's what I wanted to say about budget institutions.
+
+So I don't know if your countries have a deficit problem, have a fiscal problem, Argentinians.
+
+And whenever they do, uh, growth diagnostic of Argentina, they always say the problem in Argentina is fiscal and and the fiscal problem is,
+
+you know, it's because of their, you know, because of something like this.
+
+So this lecture becomes a very important lecture for them. Um, in each country is is different.
+
+And I want you to be thinking about does your country have a fiscal problem?
+
+What kind of fiscal problem does it have? And does it have anything to do either with its constitutional arrangement or with its budget institutions?
+
+I wanted to say yes. How often are this budget like fiscal problem?
+
+That is the binding constraint. That's a signature binding constraint for a country.
+
+Unless the country is in fiscal crisis, most are or many are.
+
+So, um, obviously it's going to be, uh, a, I mean, it's top of mind in, in Ethiopia.
+
+And we're going to talk more about monetary policy in Ethiopia on, on Friday, maybe with classes are on Friday.
+
+Um. A review session on Thursday this week.
+
+Um, so. Hey, Amy, it's, uh, it's it's, uh, dominant problem in Venezuela.
+
+So it's a it's the problem in, uh, in Lebanon.
+
+So I don't know, every time you go to a place, don't assume it's very easy for countries to get in trouble for fiscal reasons.
+
+Colombia. It's unlikely to be the budget constraint, uh, the binding constraint, because Colombia has very strong budget institutions.
+
+They have a fiscal rule. By the way, this whole literature led to a change in the fiscal rules in Latin America.
+
+And many countries adopted ehm, fiscal responsibility rules and so on.
+
+So now it's less of a problem in in many Latin American countries.
+
+Now, the problem the political debate in, in Colombia is are they going to abide by the rules or not abide by the rules.
+
+That's this one. And decentralization is socially right.
+
+Decentralization is another issue that's related to this problem.
+
+Because if you thought you had a chicken and lobster problem at the national level,
+
+multiplied by the number of of states and municipalities, you can you have.
+
+No, there has I'm going to argue and I'm going to be short on this.
+
+I'm going to argue that there's five dimensions of fiscal decentralization.
+
+Okay. Um. Most countries have a structure that is not changing every, every so often they change the rules.
+
+So for example, Nigeria is a country that has moved to a much more federal structure.
+
+The American general has moved to a more federal structure.
+
+Chile, for the first time, now has elected governors in Chile with such a centralist ehm constitution that they don't want the regional identities.
+
+So they didn't give names to their regions, they just gave numbers.
+
+So region one, region two. So. So who can fall in love with number five or number?
+
+How many regions do we have? Uh 16. 16 region.
+
+So 16. Right. So so I don't know if now you're going to change, you're going to give the names.
+
+I have to say that that those are related because, uh, during the military dictatorship,
+
+the guys that redraw the country, but people in the Navy, so they follow what they have for like the novel souls.
+
+So first novels, so second. So that, uh, yes.
+
+Thank you. Like, actually one, two, three, four, five.
+
+I got so right now because they are naming them because as they're creating new ones,
+
+you can start with one and then you get to 15 and then to the two.
+
+So because of this organize it. Right now we are naming them and and like trying to to not to just so them so in fear that they
+
+might develop a sense of us and you know being so Chile's this narrow and super long country.
+
+So you can imagine that. Climate topography everything changes a lot.
+
+Vegetation. So you they might you may want to separate.
+
+So those let's keep them all together. And they the governors were appointed by the president.
+
+And now for the first time they have elected governor. So a little power.
+
+No. Huh. Uh, I'm very little power. No power. Yeah. That's exactly what this slide is about.
+
+When you think about power, I want you to think about five dimensions.
+
+And these are very important. Five dimensions of decentralization.
+
+Israel is too small to have states, but it has municipalities.
+
+So still this is important. And so first question is the power to elect.
+
+Can you choose the god the authorities and what do you choose?
+
+Or do they have an assembly? We have, uh, two chambers.
+
+What do they have? Right. We have a governor. You have the vote for the governor.
+
+Do you vote for the mayor? Yeah. Uh, so Chile just gave the power to elect the governor to two voters.
+
+Second is the power to spend. And what? That is the question.
+
+What are you responsible for? Are you responsible for education, for health, for or is health, uh, national thing?
+
+Are you responsible for for collecting the garbage or is that a municipal thing?
+
+Are you responsible for water or is that, uh, no.
+
+Are you responsible for electricity? For example, the lunatics in, in, in, uh, in South Africa gave municipalities a the responsibility to.
+
+Distribute electricity. So they have 300 municipalities.
+
+So you have 300 electricity distribution companies. Why make it difficult if you can make it impossible.
+
+So yeah. So the power to spend.
+
+The third one is the power to tax. And this power is typically very constrained because for efficiency reasons,
+
+if you want that in the distortion free effects of a tax have to do with how much does the base move when you move the tax rate.
+
+Right. So in an extreme elastic base, if you try to tax it a little bit, it goes all the way.
+
+So you can't raise revenue.
+
+But the idea is that tax bases have a much easier time to move between one municipality and another than to move out of a country.
+
+So that's that's the reason why you want to have national taxation.
+
+But if you have national taxation, then these municipalities or these regional governments, how are they going to collect money?
+
+So there's a trade off between between how much you allow them to tax and how responsible you want them to pay and to be on the spending side.
+
+Then there is the power to borrow. And the question is, are you delegating them the ability to borrow?
+
+And again, Sheila, here is the extreme case. She wouldn't let them even have credit cards.
+
+Right. Because that would imply a debt and so on. So so no ability to borrow at the subnational level.
+
+In Argentina and Brazil, it's the opposite.
+
+It's that, for example, the rich states of Brazil feel that they are contributing too much to the federal government.
+
+So the way they get even is they would run these large deficits default.
+
+And be bailed out by the federal government. So bailouts were the way of getting your money back.
+
+So you say you you you you overspend irresponsibly.
+
+And and then the government finds it super complicated to have a defaulting large state like Sao Paulo or Rio.
+
+And so they would go out and bail them out.
+
+And in the end these guys would reverse kind of like a redistribution policy that was shut down through a change in their,
+
+ehm, fiscal responsibility laws. So the power to borrow in meeting was telling us that that's constrained in the Indian system.
+
+Right. And then because of all of these constraints, you need to have a system of intergovernmental transfers.
+
+And there's enormous variety in the way you generate your system of intergovernmental transfers.
+
+So for example. In and I'm sorry to be.
+
+I'm usually quite the international, but this one,
+
+I'm being a little bit too Latin American because it's it's the part of the world where I know more about this subject.
+
+But in, in, in, not in America, a a like in Colombia, there is this you call it a sequel vehicle?
+
+I think. So there are some rules on how much of the current income of the government has to go to where, and the rule is in the law.
+
+It may be adjusted with the census and population over every decade or so, but for years the average of every four years, every four years.
+
+But there are some rules. You just get money in Chile.
+
+A they are more like a fee for service.
+
+That is. How many children do you have? Here is the money for schools.
+
+Right. So, um. So, um.
+
+In. So, um, what this is.
+
+So there's been a growing number of elected municipal governments in Latin America.
+
+It was going up over, over the years. Uh, now, let me see.
+
+This is how much revenue decentralization there is and this is how much expenditure decentralization there is.
+
+This is a 45 degree line.
+
+So you see, in all countries of the world, there's more expenditure decentralization than revenue decentralization for the regions.
+
+Reasons I explained before when we worked on South Africa.
+
+South Africa is the country that has the most expenditure, um, decentralization for its level of revenue.
+
+Decentralization. Yeah. Given the amount of revenues.
+
+So only 15% of revenues are collected by subnational governments, but 50% of expenditures are done by subnational governments.
+
+So there's a lot of. Now this this vertical imbalance is going to generate.
+
+Oops. It's going to generate. Um. Uh, um, a bit of a common pool problem because if, if regions don't, don't have the money to spend,
+
+they're all going to gang up against the federal government for more money.
+
+Right. And they are expecting to be bailed out now in in South Africa.
+
+The revenue sharing is quite redistributive.
+
+So, uh, this is this is, uh, these are the former homelands, though, um, and these are this is the amount of fiscal transfers that they get.
+
+So you see that the poorer regions get much, much more money. And the other regions, there's a lot of these decentralization of spending.
+
+One important question is, are these.
+

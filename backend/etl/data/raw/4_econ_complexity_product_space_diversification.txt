@@ -1,0 +1,1447 @@
+[Auto-generated transcript. Edits may have been applied for clarity.]
+And therefore out. Right now on I for.
+
+Yeah, yeah. Yeah.
+
+So the program this week started.
+
+I saw you on your way out. Yeah. Yeah. It was, I think.
+
+You must see the website. So I take that you.
+
+Are using different things for five minutes.
+
+Which is. Which is what a de facto was already. You know which one?
+
+They haven't they haven't announced the cutoff for, uh, you know, for someone who's won the 2020.
+
+But I hope it's big so that I don't feel bad about missing.
+
+I think it's going to be just, uh, go to orientation as well as as you.
+
+Just five seconds. Yeah. Um, okay.
+
+Uh, and you're going to see you're going to like, right here.
+
+Yeah, I think that's right. That's right.
+
+Because I. Yeah. Uh oh.
+
+It's that we're going to be a marathon. Okay.
+
+Yeah. We're just going for you classes are there?
+
+Okay. Yeah. Uh, no longer than your watch, so.
+
+I like to think that this is the best for kids.
+
+I realize what I'm trying to hear.
+
+You all over the place. This is the president.
+
+You go from there. Oh, that's pretty bad.
+
+You need two seconds. I think that's kind of what you actually want.
+
+Yeah, you do what? I was getting like this.
+
+All right, all right. All right.
+
+So you said he was very good.
+
+So let's get started. Um, so, uh, you want to announce, uh, housekeeping things?
+
+Uh, John? Yeah, there's not much, but.
+
+And please keep your seats for the rest of the semester so that we can 18th and then speaker.
+
+Uh, these will be posted after class A with based service when hourly rate is on this, um, according to people at home.
+
+One, if you want a 37 discount.
+
+What we sell you. If you want to sell.
+
+Beautiful. Use a schedule for a year.
+
+Most of these hours. And I think that was, uh, please, if you haven't done so, join this, that channel and make sure that you leverage it.
+
+And we are learning too quick to share things. Uh, we are launching or after this thing, you know, maybe you can use some visualization utilization.
+
+If so, please visit there always. So yeah. So this is a major overhaul of your classes are completely new code.
+
+And and we took the opportunity to first of all updated with now 2022 data.
+
+Uh, but also we changed a bunch of visualizations and the whole navigation and so on.
+
+So so actually we're going to use the new visualizations in in this lecture, I'll show you the old ones and the new ones.
+
+And also that next week on Thursday we're going to have our open house a of the growth lab.
+
+And we're going to announce a bunch of, uh, our ship opportunities and, and ways to engage with, with a growth lab.
+
+So um, today.
+
+So let me recap what we did in the last lecture on Tuesday.
+
+Uh, we said that, you know, the essential ingredient of the economy is not just,
+
+you know, capital or labor and human capital, but just knowledge, right.
+
+And that this knowledge takes three forms and takes the form of embodied knowledge in tools.
+
+Codified knowledge encodes recipes, formulas, algorithms, routines,
+
+how to do manuals and know how a that resides only in brains and in particular collective know how.
+
+Because we split, we put different bits of knowhow in different heads, which is the reason why your dentist tends not to be a lawyer, right?
+
+And know how he is like in letters in a game of Scrabble.
+
+So know how he's specific. Different words, uh, require different letters.
+
+So different products require different capabilities and know how is is is what's
+
+going to make the diffusion of technology and knowledge and so on sticky because.
+
+Cause, you know, tools you can share, codes you can share but know how is moves with enormous difficulty from brain to brain.
+
+Production possibilities go up combinatorial with a number of of capability.
+
+So the more letters you have, the more words you can put together.
+
+Remember I had one letter, one word, three letters, four words, four letters, nine words, ten letters, 585 words, and so on.
+
+And poor countries are poor because they have few capabilities.
+
+And poor countries stay poor because they have no incentives to acquire new capabilities.
+
+Let me show you this. This graph, this I think is probably very simple to understand, right?
+
+Now this graph is a graph that relates what is the percentage of the dictionary, sorry, the percentage of the alphabet you have.
+
+And this is the percentage of the dictionary you can write. Okay.
+
+So if I gave you three letters, if I give you 10% of the of the alphabet.
+
+So the alphabet has 30 letters, I give you three letters. How what percentage of the dictionary you could write.
+
+And the answer, as all answers in economics is that it depends.
+
+And if you're going to use that answer remember you say it depends and then you shut up.
+
+Because that way people say oh he's deep okay.
+
+So if if it depends on what what is the grammar of this economy.
+
+Right. If all if all words are one letter long, if all words are one letter long, then you have one word, one letter.
+
+You make one word. You have ten letters. You have to make ten words.
+
+You have 20 letters get 20 words. So you get a very linear relationship between the letters you have and the words you're going to put together.
+
+Okay. But let's assume that all, all words are ten letters long.
+
+If all words are ten letters long, I give you five letters.
+
+How many words can you make? Zero.
+
+Right? If I give you nine letters, how many words can you make?
+
+Still zero, right? If I give you ten letters now, you can say, maybe I can make one.
+
+If I give you 11 letters. Oh, now it's 11.
+
+Choose ten. That's 11. If I give you 12 letters, well, that's 12.
+
+Choose ten. That's 12 times 11 divided by two.
+
+That 66. So suddenly, beyond a certain threshold, this starts, stuff starts to move up.
+
+So, um, in this paper, which is a paper I wrote, was selling algorithm 2011, in the Journal of Economic Growth in.
+
+We try to say, okay, this is sort of like so suppose you have a random number of letters and,
+
+and those letters go randomly into words a this these are the parameters here that that you observe.
+
+The question is can we calibrate the model to the data of the world to figure out if the world is linear, if the world is convex?
+
+Okay. And this is what we found with different data sets.
+
+These are a, you know, with a international trade data, with a harmonized system, with a city, C with Nikes and different classifications.
+
+A the narrowest is this is I, a the harmonized system at six digits is like 6000 products.
+
+Our estimated curve is something like this. So you need a lot of the dictionary to start making words.
+
+Right now the slope of these curves matters because the slope of a curve is what is the payoff of an extra letter.
+
+So if you are here, not only are you getting very little from your letters,
+
+but any extra letter is not very useful because there aren't too many combinations.
+
+If you if I give you an extra letter.
+
+But if you're here and I give you an extra letter, that letter can now combine with all the other letters you have and can generate a lot of stuff.
+
+Okay. So we call this the quiescence drop that you know that in it's you're trapped in the fact that, um, you don't have too many.
+
+There's not enough there for me to want to be there. Right. This is going to generate agglomeration economies.
+
+This is if you have the trade off between putting some letters everywhere or putting all letters somewhere.
+
+So what does it say? I want to be nice. I want to put all letters everywhere.
+
+But suppose you can't put all letters everywhere, and you have to choose between putting some letters everywhere and all letters somewhere.
+
+Then what would you do? Or if you put all letters.
+
+Some letters everywhere you are here, you get nothing everywhere.
+
+If you put all letters somewhere, then maybe that place is here and we're going to get at least one place that has a lot of stuff, right?
+
+But in very little else work. Right? So in some sense, you can imagine that the world has figured out.
+
+I mean, that's one of the reasons why the world looks the way it does,
+
+that you have this incredible agglomerations of economic activity in some places and very little elsewhere.
+
+So anyway. Good.
+
+So as I described in the last lecture, we see the world.
+
+Yes. So empirically, it makes sense that both, uh, axes scale to one.
+
+But theoretically, shouldn't they be exponential? Well, these are shares.
+
+This is share. Suppose that God created the dictionary, and humans have yet to discover all the words that there are to be discovered.
+
+So this is just the percentage of existing of.
+
+Yeah. Of, of of that universe. No. Yes.
+
+How do you measure fractions of capabilities, professor? Um, in this in this model?
+
+Yes, you measure it. We don't.
+
+We don't. That is, we measure these parameters here in this equation to fit some moments of the data.
+
+But I read the paper because we actually, in invented five moments that we needed to fit.
+
+One of the moments being this K1 this the diversity and average ubiquity have this negative slope.
+
+That was one moment that we needed to fit.
+
+And we also, you know, a, a a later on you'll see some of the other moments that we try to fit, but we don't.
+
+We just then we do these curves by just simulating this function.
+
+Once we have the, the parameters, the NPY, the Q DNA and so on.
+
+So in the world is a world that is composed of these three kinds of elements.
+
+One is capabilities, another one is places and another one is products.
+
+Right. And that places are going to make the the products for which they have the capabilities.
+
+And we discovered that the more letters you have, the more products you can make.
+
+The more product, the more letters a product requires, the fewer the countries that can make it.
+
+So the lower the ubiquity, the harder it is to make sense, made in fewer places,
+
+and that consequently places that have more more letters not only make more things,
+
+but they make things that are harder to make, things that are made in fewer places.
+
+Okay,
+
+so now we have redefined the problem of development as the problem of getting more capabilities and expressing them in more words and in longer words.
+
+Okay. That's what development is about. Uh, I don't know if you took, uh, three semesters to get there, but that's what development is about.
+
+And so the question is, how do we get more letters? And the answer has to do with the answer to this problem.
+
+Okay. Um, that to diversify means that you're start doing things that you were not doing before.
+
+That's by definition kind of know.
+
+But so you are doing things you are not doing before, but you typically don't know how to do the things you don't do.
+
+So how do you start doing the things? Uh, how do you start doing new things if to do them, you have to know how to do them,
+
+but you don't know how to do the things you don't do is you can't make watches without watchmakers.
+
+But how do you become a watchmaker in a place that doesn't make watches?
+
+So how do you solve this problem of a new capability that is needed by an industry that does not exist?
+
+And how can an industry exist if that capability is not there?
+
+Okay. That is the chicken and egg problem if you want.
+
+No one complained that this is not a chicken, but a rooster. Uh.
+
+And that, we say, has to do with this classification problem.
+
+There are two animals here that are highly related to each other and one animal that is different.
+
+Very different. Um, and if I asked, you know, which of the two are related to each other?
+
+And which one is different? Because he.
+
+Right. Sorry. Well, I mean, it's obvious that the lion and the zebra come from Africa, right?
+
+But you could say no. The zebra eats grass and the others don't eat grass.
+
+Or they are at different trophic levels. No, but I didn't want that answer.
+
+I wanted a Scrabble answer. And if you use Scrabble, a zebra is just a bear with an extra Z.
+
+And a lion. So if you want to go from bear to zebra, you have to solve one chicken and egg problem.
+
+If you go from bear to zebra, from bear to lion, from bear to zebra, you have one letter missing, one chicken and egg problem.
+
+From bear to lion. You start with four letters you don't need and you need four letters you don't have.
+
+So this would be close and that would be far.
+
+Okay. In Scrabble space. All right.
+
+That intuition. So if you see the letters, it's very easy.
+
+But if you don't see the letters, how would you do it? To know you know which things are close and which things are far.
+
+And where we came up is the following intuition.
+
+If you have the capabilities to make right hand, right hand side choose, you probably have the capabilities to make left hand side choose.
+
+Right. And so you would observe that countries that export right hand side choose also export left hand side choose.
+
+Right. So what's the intuition that if two products use very similar letters, countries that have the capabilities to make product,
+
+they should also have the capabilities to make product B, I should observe that they make both A and B.
+
+Is that clear? So that's what should happen that that we call that the phenotypic level of phenotypes and genotypes.
+
+Genotypes are the genes. The phenotypes are the same or are the animals.
+
+So you observe the animals and you're trying to infer something about not what their genes are,
+
+but how similar are the genes across two two products when you cannot observe the letters?
+
+Yes. Just a clarification. Just a clarification question.
+
+Um, so in your thinking about, um, capabilities, this doesn't just include, say, patterns in science, but it also includes organizational structure.
+
+No. How are people working on things? There's sort of a whole block of things that are encompassed with utilities.
+
+Yeah. So I think of capabilities as including the collective knowhow needed in that step of production and the collective know how and,
+
+and actually the products that are related to things that you cannot shipping.
+
+So things that have to co-locate with you. Right.
+
+So maybe you are a company A you want to have electricity, but you're in a country that cannot get its electricity act together.
+
+And it's very hard to internalize electricity efficiently.
+
+So, so it's it's something it's a non-tradable capability that needs to be there for you to be there.
+
+But it may mean, not necessarily be in your company.
+
+It could be in your supply chain, but a non-tradable supply chain we're going to in, uh, next week, relax a little bit.
+
+The trade ability assumption to allow us to understand you, no more remote places versus less remote places.
+
+And how how does that control.
+
+But so the idea is what we're going to calculate is the conditional probability of U being good at product B if you're good at product B.
+
+So for example here you have three products diodes transistors and semiconductor.
+
+It's mostly semiconductors right. Electronic micro circuits and printed circuits.
+
+These are three products in the classification. This product is made by nine countries.
+
+This product is made by 15 countries. This product is made by 11 countries okay.
+
+It just so happens that of these nine countries eight countries also make this one.
+
+And of these 11 countries, eight countries also make this one.
+
+And of these 15 countries, nine countries make this one and eight countries make that one.
+
+Okay. By the way, it already tells you something of which one is harder to make and which one is easier to make,
+
+and so on, because 15 countries make this one. So probably this one is the easiest one to make, right?
+
+And this one is made by nine and this one by 11. So maybe this one is the second easiest one to make.
+
+And this is the hardest one to make. But um, if you make this one.
+
+So if you're one of these nine, eight of you also are making this one.
+
+Right. So what's the conditional probability of being good at B given that you're good at a.
+
+Well in this case it would be 8/9 here.
+
+In this case if you're going from here to there it would be 8/11.
+
+If you're going from there to here it would be 8/15 okay.
+
+Yes I think it was your first rule. You'd go ahead I don't care.
+
+You can call me first. Okay. Uh, my question was, so what about let's say we take the example of commodities so rare earth metal,
+
+because it's the process of extraction is not that complex in a sense.
+
+You use your microphone. Right.
+
+So if we use if we think of commodities, for example, um, and rare earth metals, for example,
+
+um, uh, I would, I would guess that the extraction process is not very complex.
+
+At the same time, it would be concentrated among a few countries that this size of these resources.
+
+So do you have any do you discriminate between products or you just it's a general result.
+
+I'm just showing now how you go and calculate conditional probabilities.
+
+It's conditional probabilities is just A, A and B divided by the probability of A right.
+
+So maybe mining is mining. You just grab Earth and stockpile it, right?
+
+Maybe I don't know. Zirconium is a weird mineral, right.
+
+And it's exists in very few places. So you would find that its ubiquity is very low.
+
+The product complexity index, you want to say, well, because its ubiquity is very low.
+
+It maybe it's very complex, but the product complexity index doesn't get confused because it says, well,
+
+if zirconium was very complex, then the countries that make it should have a lot of words, a lot of letters.
+
+But if they have a lot of letters, because their economy is a long word, they have a lot of letters.
+
+They should be diversified. So but if the countries that produce their corneum are not very diversified, it's going to punish its complexity.
+
+So the method will tell you the product complexity index is supposed to tell you a little bit how long is that word.
+
+Okay. So we're going to say conditional probabilities is a measure of the distance between A and B.
+
+Okay it but we're going to change it a little bit.
+
+So it's the conditional probability of getting good at product one given that we are good at product two.
+
+But a and by the way M in terms of our algebra it's it's this it's this matrix.
+
+This is the matrix is a matrix of countries and products.
+
+It's pre multiplied by a matrix of diversity.
+
+So it's a diagonal matrix that has zeros everywhere except in the diagonal.
+
+In the diagonal it has one over two. The diversity of the country okay.
+
+Multiplied by the transposed MCP which is again normalized by this diagonal matrix which has in the diagonal one over the ubiquity of the product.
+
+So when you divide by the ubiquity of the product or the diversity of a country, you're making it into a stochastic matrix.
+
+Now it will add up to one. A stochastic matrix is where things add up to one.
+
+So you can interpret them as probabilities okay. So what's so so this is just the conditional probability of being the proximity between 1 and 2 you
+
+would say is the conditional probability of you you making one given that you already make two.
+
+So it's eight given over 15 or 8 over nine okay.
+
+So that's that's what it is now. Yes. Sorry.
+
+What are these products. What means multiple countries to be sorry.
+
+What do you do with products with multiple countries to be one factors like well then when it goes from one country to the other,
+
+it takes the form of an intermediate product and the intermediate product has a code.
+
+So what if the knowledge is the only thing which goes from 100?
+
+Then we're screwed. In.
+
+Yeah, yeah. A little bit of the prior question in terms of ubiquity versus diversity.
+
+I remember in velocity you show graph in which India was below the curve,
+
+and then that was used as a way to say potentially India has the capabilities to increase its diversity, not known to be richer.
+
+Do you not know that one was the economic complexity index and GDP per capita?
+
+Right. It says for its complexity, India is too poor, right?
+
+It should be richer. Okay. That was that graph. Makes sense. So but then we said the following.
+
+There's a lot of noise in the data. And we wanted to get rid of the noise.
+
+So let me tell you a little bit how this conditional probability works.
+
+Suppose you have two products. One is ostrich eggs and one is wine.
+
+Which country makes ostrich eggs? Australia, South Africa.
+
+Okay, so you export ostrich eggs.
+
+What's the conditional probability of making wine given that you make.
+
+Ostrich eggs 100%. 100%. Right.
+
+So you would say, oh, wine and ostriches eggs. Obviously they are related right now.
+
+What's the conditional probability of making okay?
+
+So. So this is one as you as you said. Now, on the other hand, lots of countries produce wine.
+
+What's the probability that a country that produces wine also produces ostrich eggs?
+
+Very soft. That's very low.
+
+Right. Because you have in the denominator we have all the countries that make wine.
+
+In the numerator. You only have South Africa. Okay.
+
+So what we did in order to subtract the noise is we took the minimum of the conditional probabilities.
+
+We said let me calculate it. Know A the probability of B given A and the probability of A given b.
+
+And let's take the minimum, which essentially means that you take the.
+
+If you put in the denominator the product that is the most ubiquitous.
+
+And that way you generate a matrix of distances that is symmetric.
+
+So the distance between A and B is the same distance as the distance between DNA.
+
+Okay. That's just a trick we did. So you end up with something like this.
+
+Okay. It's a matrix of distances Jordan you're you're taking the this MCP matrix.
+
+Which is a matrix of countries and products. Right? And you are going to collapse it into a product product matrix.
+
+Okay. And the product product matrix is going to say, you know, what's the minimum conditional probability of going from A to B.
+
+It's like a distance okay. Now you see this here right.
+
+This is a kind of like weird representation right.
+
+If I put these things in a map it will be much more intuitive because these are cities, right?
+
+In the U.S. if you show me the map of the U.S., then I would say, oh, here is Atlanta.
+
+Yes, the distance to Boston and the distance to Chicago.
+
+Now, this all makes sense to me, right? Because they are in the map.
+
+So no problem. Okay, so if I did this, don't you want to see a map so you can get us on now I understand.
+
+This way. You you don't understand, right? They're just numbers.
+
+But if you see it on the map, I know, I understand, right? Okay, so we decided I was here in 2006.
+
+I had this, and I wanted to see the map. I understood that these were distances.
+
+So I read serendipitously a book by Laszlo Barnabas, which I, I really recommend it.
+
+And the book is called linked, and it was my introduction to network Science.
+
+And so. And suddenly I get an invitation to a talk that he was giving here at Harvard.
+
+So I sent him an email and said, look, can we go out for lunch?
+
+And we went out for lunch. And I explained to him this thing and he said, yeah, sounds interesting, let's collaborate.
+
+And that was the origin of, of the paper. So. So in my mind, I had this metaphor, uh, that I'm an elaborate metaphor in a little while,
+
+but, um, but the idea was that products are like trees in a forest.
+
+And the distance between products has to do.
+
+I have the matrix of distances with these conditional probabilities.
+
+So the distances of products is like the distances of the trees in the forest.
+
+So in this forest a bear and zebra should be close to each other and bear in line would be very far away from each other.
+
+So the question is what's the shape of that forest? And if you if you put it in, you ask the computer to represent it as a network.
+
+That's what it came up with. Okay.
+
+So this was using a software called cityscape.
+
+Is it still commercially used. See site to escape.
+
+And it just is the representation of this matrix here.
+
+It products our circles, and the size of the circle is proportional to world trade in that product.
+
+Okay. And, uh, these circles are connected by these links.
+
+And actually the strength of the link, if you see, is a little bit the color of the they use something which is called the spring.
+
+Algorithm which thinks of of this distance as being like a force on a string.
+
+And these balls like to locate themselves in in space.
+
+This thing here is a garments cluster. This here is um.
+
+And brown is agro. Agro processed food.
+
+And this is construction materials. These are machineries.
+
+These are truck cars and these are trucks. These are chemicals and these are electronics.
+
+And then there's a periphery of products that are very poorly connected.
+
+They're kind of like there's a tree out there, but nothing very near.
+
+This is oil. This is mining. It's kind of like very, very poorly connected products.
+
+This is fish. Okay.
+
+So so that's that's the shape of a forest. That's, you know, you do these conditional probabilities.
+
+That's what comes out okay. If you want to visualize the new, um, industry space uses a different method,
+
+something called you map in this in this space a Cartesian this distance is are not very informative.
+
+Kind of like the information of the link is sort of like in the color of the node of the link and,
+
+and in, but in this space the Cartesian distances are supposed to be meaningful.
+
+They are the first two dimensions of of a polynomial that has more dimensions,
+
+but it's the first two dimensions so, so so the Cartesian distances are are in a meaningful.
+
+But there are more distances than just two dimensions.
+
+So when you do it in in the new atlas, if you hover over a product, it will tell you what are the nearest products to that product.
+
+Okay. But here you know, you have apparel here you have electronics here,
+
+you have chemicals here you have minerals over there at the top you have this machinery and metalworking.
+
+Things are this, this blue, this blue cluster is still there.
+
+Right. The construction goods are kind of here. Agricultural goods are over there.
+
+This is fish and so on. So and so. The shape is recognizable, at least for the ones who are used to the old one.
+
+Yeah. You use algorithm to find which products are and similar to each other.
+
+Um, but it seems like something that can be done manually and maybe even better.
+
+Did you find any products that you didn't expect to be similar to an offering, but like it really reminds finding.
+
+Yeah, well, for example, a thoroughbred.
+
+Horses. Well, it just so happens that thoroughbred horses are exported by Germany and by Belgium, and they export steel and cars and airplanes.
+
+So it will tell you that if you export steel, you export thoroughbred horses.
+
+Uh, so that's noise. That's in the time. Would you prefer to do it manually instead of algorithmically?
+
+Um, we're going to move in a different direction.
+
+We're going to try to look at the letters and have a theory of what the letters are.
+
+And that's what we call the genotypic approach. And in a few minutes I'm going to show you a different ways.
+
+But yeah, you can clean it by hand if you want to say this makes no sense in and actually in some sense we do.
+
+We take out things that we call scrap because everybody has scrap and doesn't tell you anything about your capabilities.
+
+So we take out some some of those products or products are just too small and not very meaningful.
+
+Pablo Andres, quick question.
+
+The math is built from data for a given year or for a given period.
+
+Well, just to again we're concerned with noise.
+
+So we typically take the average of three years.
+
+But you can do it for every year. Not think you can do it for any year.
+
+But there's a lot of, uh, product more related, I think, to, uh, raw materials that are in the, in the very, very off of the market or.
+
+Uh, so it's different effect when you, when you pick different products to get to more complex fruit,
+
+for example, apparel industry or garment industry.
+
+Uh, it's a different path to complex product that, for example, mining or oil that are also in the periphery.
+
+Uh, I'm looking that region as well. Yeah, yeah, yeah. So so, um, a good question gets answered by the next slide.
+
+So what we can do and it's not represented here is calculate these two variables.
+
+One is how long is the word.
+
+How complex is the product. And this is. How connected is the product that is?
+
+How dense is the forest in that part of the of the of the of the forest.
+
+So if you think Tarzan. I don't know if Tarzan was a thing when you were growing up.
+
+It was a thing when I was growing up. Tarzan has been canceled.
+
+Yeah, but he would jump from. From tree to tree.
+
+And if the trees are close to each other, it's easy to jump from tree to tree.
+
+But them. But if they're not close from each other, it's very hard for the monkey for for for for for for Tarzan to jump.
+
+So, um, this is how how dense is the forest around that part?
+
+And this would say oil and mining are down here.
+
+They are very low complexity and very poorly connected text, garments and machinery.
+
+You see garments are super connected and machinery super connected.
+
+So if you make one kind of garment, you have the capabilities to make many other kinds of garments.
+
+If you make one kind of machine, you have the capabilities to make other kinds of machine.
+
+That's what makes the forest dense, okay.
+
+But garments are much less complex than machinery.
+
+Okay, so you might as you orient yourself in this space, you want to know not only how complex is the problem,
+
+but also how how connected it is, because then it's kind of like a stepping stone to the next thing.
+
+One problem. I think that is very interesting, that oil has a very low level of connectedness, and maybe it has to do with the course of resources.
+
+But if you have a whole like natural resource reserve, maybe you can have incentives to develop.
+
+That might be one explanation. It could be that if you know how to make oil, it means that you know how to dig holes on the ground.
+
+So if any other industry needs holes on the ground, they will give you a car because you know how to make holes on the ground.
+
+But it just so happens that very few other industries need to make holes on the ground of sedimentary rocks, right?
+
+So it's kind of like a very it's like the letter X.
+
+It doesn't go into many other things. So it could be that exploration, not a political economy explanation.
+
+But obviously the political economy explanation is so you don't know what's causing this.
+
+But I would put it to you that if you know how to make one kind of machine, you can figure out how to make many other kinds of machines.
+
+If you know how to make holes on the ground, how many other things to do?
+
+Alvaro. Yeah, I don't know if I'm saying correctly that somehow mechanics is just as complex as making ships.
+
+Um, is that kind of noise? Or there is like, uh, uh, technical explanation behind that.
+
+I mean, just is just unacceptable. But yeah, so, so no, it's very interesting.
+
+You know, very few countries make ships and relatively few countries make specialty metals.
+
+Like, everybody can make, uh, simple metal.
+
+So, so by the way, these are categories and these are the real numbers are you can do it with 6000 products.
+
+This is we aggregated to it to be more readable.
+
+But you know that the aim. So.
+
+So you give it as a general orientation of where that bundle of products lies.
+
+There might be some that are super complex, others that are less complex, that are average there.
+
+So the question now if I have the forest, how do I represent the place?
+
+I told you that their products, their capabilities and their places, but we cannot observe the capabilities.
+
+We don't observe the letters. We are trying to infer everything without being able to observe the letters.
+
+So what is a place? A place we say has a set of capabilities.
+
+Okay, but I don't observe the capability. So how do I know that you have the capabilities?
+
+Well, because we are able to make things.
+
+So I can infer that you have to know how to make the things you make.
+
+Because to make the things you need to know how to know how to make them. And if I observe you making them, it means that you know how to make them.
+
+Okay, so so then I want to know what are the capabilities of a place.
+
+And for that, I'm going to use my forest and ask myself, where in this space do you have capabilities expressed in products?
+
+So in the metaphor, where in this space I affirm in this,
+
+in this metaphor is a monkey that lives on the tree, lives off a tree, it exploits a certain tree.
+
+So I can figure out where are the monkeys in this space? And in the old product space.
+
+This is where Venezuela had its monkeys.
+
+In 2021, it had a big gorilla here and and not much else.
+
+And I can compare Venezuela to Mexico. So you see Mexico has many more monkeys.
+
+So in fact, they have many more letters. And the Economic complexity index would confirm that.
+
+But you might say, well, the thing is that Venezuela used to have 30 million people.
+
+Mexico has 130 million people. So maybe it's just because Mexico is bigger.
+
+So I say no, no. Let me compare Mexico to Austria, which is a country of 8 million people.
+
+So this is Venezuela, Mexico, Austria, Mexico, Austria.
+
+Mexico, Austria. Okay, so many more monkeys in Austria, even though there are only 8 million people, right?
+
+Em. Now this is with a new atlas. This is Venezuela.
+
+This is Mexico and this is Austria. So, Mexico.
+
+Austria. You see how it's taken over Mexico?
+
+Austria. See how they're taking over Mexico.
+
+Okay, so so now the question is, do these monkeys move?
+
+Juan Pablo, do you have many countries that produce petroleum and also a lot of other routes because, um, is a well, remember.
+
+So a forward here, it will depend.
+
+So there are most oil exporting countries tend to be quite concentrated, but they're mainly oil exporting countries.
+
+So that that ubiquity of oil is relatively high.
+
+So that will go in the denominator. And then the numerator will go how many countries make electronics and oil.
+
+So Mexico is one arm. But very very few other oil exporting countries also make electronics.
+
+So it will say electronics and oil are far more important.
+
+Okay good. So so now we want to know if monkeys move.
+
+Okay. And in. And to show you that monkeys do move.
+
+I'm going to compare Thailand with Ghana and okay.
+
+And these are two countries that started with similar levels of low education.
+
+But Ghana increased its education more than Thailand.
+
+And education in Ghana is in English.
+
+Education in Thailand is entirely which is a nice language, but there are very few people outside of Thailand that speak Thai.
+
+So you could say, well, if you know, since know how is education, then we know Ghana will beat the [INAUDIBLE] out of Thailand, right?
+
+But this is Ghana and this is Thailand in the product space.
+
+By the way a I am highlighting.
+
+So I am leaving in opaque the the product space.
+
+And I'm just highlighting in these places where the monkeys are. Okay.
+
+So you see that both started with very few monkeys in in 1965.
+
+Okay. So and I want you to pay attention to to how these things move.
+
+So this is 65, 70, 75, 80, 85 1995 2000 2005 2010.
+
+I'll do it again. Okay. Okay. Okay.
+
+8595 2025 2000. Okay.
+
+Let me go more slowly. Once more. So they both start like nowhere.
+
+Then suddenly you have these two monkeys in the garment cluster, and then, boom, monkeys jump all over the garment cluster and boom!
+
+Now they've moved to this full cluster, and we get these two monkeys here in the electronics cluster,
+
+and then, boom, they take over the whole electronics cluster.
+
+Right. And look at the garment cluster. Now they've taken over and on.
+
+And in 1990 and now we started to get monkeys in the central cluster of machinery.
+
+In 2000, 2000. And now they're developing these monkeys here and these monkeys there.
+
+And they're starting to abandon the monkeys in the garments cluster.
+
+Okay. So this was Ghana's exports in 2019.
+
+In 1962, when we started, hey, it's mostly cocoa and minerals and wood.
+
+This color means you eat it. This color means comes out of the earth, but you don't eat it.
+
+Okay. And so and this was 1962.
+
+This is Ghana in 2010. So they move from cocoa beans to cocoa butter, cocoa based cocoa, unsweetened cocoa powder.
+
+It seems to show some diversification by the same.
+
+Manganese is more or less the same colors. And this is what happened to exports per capita at constant dollars.
+
+They started around $200 of exports per capita, and they ended up at around $100 of exports per capita in constant dollars.
+
+These were the exports of Thailand in 1962.
+
+Same colors. You know, again, this this, you eat, this you don't eat and some minerals and stuff.
+
+And this is Thailand now. And they move from $50 of exports per capita to $2,400 of exports.
+
+Okay. And so their GDP completely diverged.
+
+How? Schooling did not diverge. And Ghana was beating Thailand in this period.
+
+But GDP diverged and monkeys diverged.
+
+Okay, so monkeys do move okay. Now I can look at, you know, diversification of countries over the product space.
+
+Oh, and how many monkeys jumped, by the way, when we say.
+
+A monkey jumps, typically we mean you were producing very little of the stuff and suddenly
+
+you produce a lot of other stuff and bruising very little or producing a lot.
+
+We quantify using this concept called reveal comparative advantage and revealed
+
+comparative advantage is simply how big is this product in your export basket?
+
+Relative to how big is this product in the world's export basket?
+
+So for example, if in Venezuela, oil exports are 90% of Venezuela's exports, but oil represents 5% of global exports, 90% divided by 5% gives you 18.
+
+That's a huge revealed comparative advantage in oil.
+
+Okay. But if we produce 1% of cars and our exports and cars are 5% of global exports, then we would have 1% divided by 5%.
+
+That would be 20%. If my revealed comparative advantage is one, it means that I'm exporting with the same intensity as the world.
+
+Okay. So typically we say a monkey A is there when you have revealed comparative advantage above one.
+
+That's but it's actually some little bar that you can move in the in the atlas, and you can choose your answer here.
+
+Yes. When we were looking at the maps of Ghana and Thailand, um, what we're looking at, exports or just production, even domestic only exports,
+
+because all of this is done with international trade data,
+
+because international trade data has the same classification for all countries, because products move across country.
+
+So there's a bill of lading in the exporting country, in the importing country.
+
+So they have harmonized stuff. The problem with production is that it's much harder to find harmonized data sets that use the same classification,
+
+but it's very easy to do subnational. So it's much easier to look at production subnational.
+
+And we have this other website called metaverse, which is a website of cities.
+
+And in that website we look at production, both tradable and non-tradable government, non-government.
+
+Everything is there. But in this. So you see, this is the number of monkeys that jumped between 2000 and 2015.
+
+76 monkeys jumped in China, 70 in in Thailand, 48 in Vietnam.
+
+Okay. And and they added enormous $331 billion in new products.
+
+Right. $50 billion in Vietnam.
+
+That's 500 and $545 per capita in new dollars.
+
+That's the record here, right? So Vietnam is doing very well, but we were working on Sri Lanka and in Sri Lanka we saw very few monkeys jumping.
+
+Um, actually, we can ask a question and I think you should ask the question,
+
+am I observing the number of jumps I would expect, given how you're positioned in the product space?
+
+That is, are you screwed because your monkeys are on the periphery, or are you screwed because your monkeys are [INAUDIBLE]?
+
+Right or lazy or drunk.
+
+So all of this, you know, you can see countries transformation.
+
+This is China's market share in the world.
+
+And by the way, the US produces market share graphs.
+
+The US market share in the world in a in China became 10% of the world's government market around 1988 or so.
+
+Okay. And then it became 10% of the world's electronics market in three around the year 2001 or so.
+
+And then it became 10% of my senior market, I don't know, around 2020.
+
+So you see that they're moving from garments to electronics to machinery.
+
+So there's a certain method to the madness. This is Thailand.
+
+These are garments and these are these are garments.
+
+Okay. Then they move to electronics and then they move to machinery.
+
+And once they move to electronics and machinery they started to move out of garments.
+
+This is Tunisia. We move them to garments.
+
+Then they moved a little bit into electronics and a little bit into machinery, but not unlike the others.
+
+And this is Sri Lanka. We moved into garments and the state in garments and very little else.
+
+Right. So, so it begs the question why?
+
+Why did they get stuck and so on. So.
+
+We ask you a question do monkeys prefer to jump short distances?
+
+Okay. And for here I'm going to introduce a set of terms.
+
+One term is density. In this term everybody uses density.
+
+Nobody in this literature everybody uses density. Nobody knows why it's called density.
+
+And the idea is the density of the monkeys around a tree.
+
+You want to know how densely surrounded by monkeys is this tree.
+
+So you want to look at a tree, and you want to know how far the monkeys are in the, in the vicinity.
+
+Okay. Um, we're going to define something we call the Complexity Outlook Index, which is how well you are positioned in the product space.
+
+How close are you, your monkeys, to good empty trees?
+
+Are your monkeys well positioned for diversification because they have many bear two zebra links that they can exploit?
+
+Where are they in the boom box of being a lion with nothing nearby?
+
+Okay, and complexity outlook game.
+
+This is going to be a measure per product of how strategic would be for you to conquer a particular tree,
+
+because it would help you continue to jump into other trees.
+
+Okay. So I'm going to define these tree terms. So fruit density is is this idea here I'm going to this here is the product space.
+
+This is the distance between product B and product B prime okay.
+
+So you are in product B you are in product your country C you are in product B I'm in product
+
+B I'm going to look at all the products that you make weighted by how far they are from you.
+
+All the products that you make MCP means it's one.
+
+If you make it, it's zero. If you don't make it. So all the products that you make, you're going to add A11 times the distance.
+
+So this is the weighted distance of the products of the products that you made, the distance to this particular product divided by all of this.
+
+So this is a normalization factor. So this is how close are your monkeys to this empty tree.
+
+This is going to be a country product measure. It's going to be for this country.
+
+This product is near or this product is far is near because there are many monkeys around it.
+
+Okay. So before we had a distance between two products.
+
+Now this is a distance between a country and a product. So this is between a country.
+
+And the pandemic has to do with a distance of all of its monkeys to the product.
+
+Okay. So this is this is density. How well positioned you are in the product space is this other formula that says how close are you.
+
+This is going to be a country variable not a country product variable.
+
+It's going to be a country variable. It's going to be one number per country.
+
+So we're going to add over all the countries.
+
+So. This is going to be. How close are you?
+
+So the distance between the density. How close are you?
+
+This is the density. This variable we have here. Density. So this is the density.
+
+How close are you to the products you are not making?
+
+Weighted by how sexy are those products. So this is how close are you to empty to go to empty trees.
+
+Okay. How close are your monkeys to go to empty trees.
+
+And and this is what you have here on the x axis.
+
+You have how many letters you have. This is the economic complexity index.
+
+And on the y axis is how well positioned you are in the product space.
+
+Okay. This is the complexity outlook index okay.
+
+And it says India is the best located country.
+
+So it has it has many empty trees near its monkeys, many good empty trees near its monkeys.
+
+But the other country I was making fun of was Greece.
+
+Right. And Greece is the second one here. So it also has it was at the opposite end of the regression line.
+
+There was two poor. Two rich were how little they know how to do.
+
+Okay. Venezuela by the way is here. So Venezuela not only has very few letters, but it's a it's very poorly positioned in the product space.
+
+Mexico is here okay. And Austria is here now why is Austria so low?
+
+They have many letters. They have more letters and Mexico. But why is Austria so low?
+
+Why is Austria so low? Before I go to your questions, why is Austria so we have time?
+
+I would guess that I would guess that there are very few entries.
+
+Correct. So they have already absorbed all of the technology there is to absorb there.
+
+Monkeys are everywhere, so the only way Austria can progress is if Austria plants new trees or invents new products.
+
+Does innovation of the global frontier? Yeah, and that's typically what happens to the advanced countries that they have.
+
+They already do everything. There is no development by just starting to do things that the world knows how to do.
+
+But you didn't know how to do. Okay.
+
+Yes. So like looking at this, uh, graph, I think like Austria and Sweden all have like the same,
+
+uh, complexity, but like, they have, like, different, uh, like, you know, like empty.
+
+Yeah, yeah. Japan has more empty trees because Japan has actually abandoned quite a few things.
+
+So that's, that's like they, they have potential, but they're not doing it.
+
+Yeah. Uh, by the way, we we just finished a paper actually, with a GMO on Japan.
+
+I'd like your opinion. Okay. Yeah, maybe we're completely wrong.
+
+We applied kind of complexity thing.
+
+We are trying to solve the puzzle. Why is it that Japan is so complex?
+
+It's number one in complexity, in know numbers and and and right.
+
+Does it grow so little. And we came up with the response when you know um, could you explain like the x axis y um,
+
+the number of letters can be that it's normalized to zero is the average.
+
+Oh. Uh, yes.
+
+This is easy, IRA. It's Asia. Asia normalized to zero.
+
+Okay. So now this shows that your position, your your ECI is going to grow as a function of how well positioned you are in the product space.
+
+So here we run regressions where the dependent variable is economic complexity index.
+
+And the independent variable is your initial economic complexity and your initial complexity outlook how well positioned during the product space.
+
+And this says that obviously your future economic complexity five years down the
+
+road or ten years down the road is related to your initial economic complexity,
+
+but your complexity outlook helps explain how quickly you you move.
+
+That is, if you are well positioned in the product space, you tend to have an easier time of diversification and your complexity increases.
+
+And actually, because you have this lag term, you can figure out what is the long term effect of economic complexity.
+
+So you see, you have to take this term and one minus this term to calculate the long term effect of economic complexity.
+
+So in the end you kind of like grow to a position that has to do with how well how well positioned are you were in the beginning.
+
+Okay. So. We are now going to run a growth regression.
+
+And in this growth regression now we are putting growth on the left hand side growth in the dependent variable.
+
+And we are going to put initial GDP per capita.
+
+And this is the traditional convergence term. And we're going to put the increase in natural resource exports per capita.
+
+We are not trying to explain that. We're just taking it as something not explained by the model okay.
+
+And then we put the initial economic complexity index and the complexity outlook index.
+
+And they both come in and they increase the explanatory power significantly.
+
+And when you put both of them together they both come in.
+
+So a so, so we think that we've now captured a variable that seems to be related to growth that, you know,
+
+countries if you have more than enough letter to be richer than you are saying, like India, you are going to grow fast.
+
+And if you're well-positioned, the product space, you're going to grow fast.
+
+So India is going to grow fast. So that's now okay.
+
+And so so now we are going to make these two variables that we used in this equation.
+
+The first one is your current economic complexity index conditional on your initial level of income.
+
+So this is this will be this will make it good for India bad for Greece okay.
+
+And that's this variable here okay.
+
+So this error term. And the other one is how well positioned during the product space.
+
+So that gives us a two by two matrix in which and the x axis is do you have more than enough letters to be richer than you are.
+
+Is your ECI above your expected? Is your income above or below your expected income given your ECI?
+
+And are you well positioned in the product space or not?
+
+And this is the happy place where you have more than enough letters to be richer than you are, and in addition, you're close to empty trees.
+
+This one is a little bit like a no, it's it's you have more than enough letters to be written, and you are, but it's hard for you to find new trees.
+
+This in Austria was kind of like here, this one needs more letters like Greece, but it's easy for them to get them because they're well positioned.
+
+And these one needs more letters, say like Venezuela. But it's hard for them to get more letters because they're very far away from the forest.
+
+Okay. So now we have kind of like a way of thinking of strategy given the cards you are dealt with.
+
+And since we did all of this empirically, you know, we can very quickly do it.
+
+And by the way, this is with all data, the odds loss does it with current data.
+
+Okay. It does it for you.
+
+Now in addition you can ask yourself the question how strategic is a product for a country?
+
+Would it be particularly useful to you to get into this industry and to capture that?
+
+What we do is we calculate your position in the product space, assuming that you don't make this product.
+
+And we calculate your position in the product space, assuming that you do capture that tree that you do get into.
+
+So what is the delta in terms of improving your position in the product space?
+
+If you were to jump to that tree okay.
+
+And this is also something that the Atlas does for you, it will create these kinds of graphs where this is density.
+
+This is how far is the product from your monkeys.
+
+And this is how strategic it would be for you to move in that direction.
+
+We call it opportunity game. Okay, now, it's interesting that in South Africa, the sexy things that the more strategic things are farther away.
+
+In Germany. The more strategic things are nearby and the things that are farther away are less sexy.
+
+But each country is going to have one of these groups, and this is useful.
+
+This is kind of like risk and this kind of return.
+
+And ideally you want to move here. Right. But here there's nothing.
+
+So if you want to move nearby you don't want very long jumps then your opportunities are very lousy.
+
+Right. But if you want out an industry that will generate more options, then you know you will have to have longer distances.
+
+But if you are really going to jump to this distance, you might as well go here then down here.
+
+Right? So if you think this is risk and this is return, so it helps you orient yourself strategically in terms of which products to target.
+
+Okay. Okay. So so this is our our new atlas with our new product space.
+
+And as I as I mentioned a it it's.
+
+A it's brand new. It's version 10.0.
+
+So play with it. But let me show you some other spaces.
+
+One, one. You know, I took the MQB matrix and I collapsed it into a p matrix by using countries to,
+
+to calculate a distance between products, and it made it into a product space.
+
+One thing that occurred to us that why don't we just reverse it?
+
+And I have start with a country product matrix, and I use products to calculate the distance between countries.
+
+So two countries are going to be similar if they make similar things say with similar intensity.
+
+So if you take the exports of Korea and the exports of Japan, you get this correlation that the two export baskets look very similar.
+
+Okay. As a correlation of point 71. So a we calculated the similarity of the export baskets of different countries.
+
+And then saying okay, these two countries seem to have the same letters because they make the same things.
+
+So instead of thinking of a product based let's think of a country space okay.
+
+So the Czech Republic and Germany, Finland and Sweden, Lithuania and Latvia, it's very interesting.
+
+Cote d'Ivoire and Ghana. What we found is that no neighbors produce the same things.
+
+So we published a paper in 2013 where the lead author was my PhD student, Danny Bahar, that said,
+
+this is evidence of knowledge spillovers that you do what your neighbor does because
+
+it's easier to learn from your neighbors than to learn from people who are far away.
+
+And we created this a country space.
+
+Okay. And where each each country is, is a node here.
+
+And it's connected to the two countries it's most connected to.
+
+And the link is either blue or red,
+
+depending on if your similarity comes from natural resource products or you similarity comes from industrial products because you say,
+
+well, you're like your neighbor because you share the same geology, the same geography, in the same climate as your neighbor.
+
+So maybe you have the same agricultural and the same minerals, but the red ones is not.
+
+The red ones is all manufacturer thing.
+
+And it's very interesting that Germany is very similar to Austria, which is very similar to Slovenia, by the way, Slovenia is right there,
+
+which is very similar to Italy, which is right there, right here, which is very similar to Spain, which is very similar to Portugal, and so on.
+
+So this in our mind suggests, and especially if the link is very red, and it suggests a similarity in in knowledge spillovers,
+
+Bangladesh is very similar to Sri Lanka, which is very similar to in Cambodia, which is very similar in this case to Salvador.
+
+And the similarity there comes from garments. These are all garment exporters, that's all.
+
+So we can calculate country space density in the same way as we calculated product space density okay.
+
+So to. Yeah. It's to say, you know, the products make sense.
+
+You say? You make product A, I would expect you to make product B because A and B are related.
+
+Huh. In this case, you say you make shoes.
+
+You are like Italy. Italy should be making shoes.
+
+Okay, so if you're close, you should be making the same things.
+
+So the product spacing is countries are more likely to start exporting products that are similar to the products they currently export.
+
+The countries space says countries are more likely to export products that similar countries already export.
+
+Okay, so you're looking for similarities.
+
+And once you're looking at similarities across products, the other one, you're looking at similarities across countries.
+
+So what we did is this we said ourselves, imagine I give you the MCP, the matrix of countries and products,
+
+and I erase a number, I erase an entry and I ask you to guess how much it say, this is shoes in Spain.
+
+You say I, I erase the information of shoes in Spain. And I ask you, how many shoes does Spain?
+
+Produce or export. You have the whole matrix. Well, one answer would be.
+
+Let me see the intensity with which Spain produces similar goods like shoes.
+
+And I'm going to use that to guess how many shoes you produce.
+
+And then I'm going to look at what countries are like Spain and where to look.
+
+How many shoes do they produce? One is a products based density.
+
+One is the country's space density. And it's also happens that both have predict this number that I raised.
+
+And then I can look at the number okay.
+
+And it does a pretty good job at predicting how many shoes the Spain export by looking at how many things like shoes,
+
+the Spain export and how many shoes are exported by countries like Spain.
+
+Okay, there's a pretty good job. But this is the exciting part.
+
+If this doesn't get you excited, don't get into research. Know we said, okay, I can predict this number I hit okay.
+
+I can predict the number that I hit. And I'm in predicting I make a mistake.
+
+I make a mistake. Okay. Is the mistake noise or is it a mistake?
+
+Does the mistake contain information? Is that.
+
+So I'm going to take that residual, the mistake I made.
+
+And I'm going to use it to predict future growth, or I'm going to use it to predict whether the monkey's going to jump there.
+
+Okay. Well, and guess what? The residual product space is predictive of future growth.
+
+The predictive country space is predictive of future growth. If you put them both the residual is predictive of future growth.
+
+Okay. So both of them come in.
+
+If you add information for example a in a the initial industry location exports or the initial population or the global industry size or you know,
+
+all these other controls, the stuff remains the same.
+
+If you actually put product industry fixed effects and location fixed effects, the stuff remains all the same.
+
+If you even put information such as how much did the industry grow in the world and how much did exports grow in this country?
+
+Information you would not have had at the beginning. We call that radial growth.
+
+If you had grown, if this export had grown like all the other exports of the country, or if the market share of this country had remained constant.
+
+Vis-a-vis you know, the world market. If you control for that, you still remain the same.
+
+So. So that means that we are capturing something that is more fundamental, that current production capture, something about potential production.
+
+And we call that paper implied comparative advantage.
+
+So we can sort of like I can observe your comparative advantage, but I can guess your comparative advantage in things you're currently not making.
+
+Okay. So this kind of like is a way of getting at the risk of moving in a certain direction.
+
+I think you. Yeah. Um, can you expand a bit, uh, the result, because, uh, the perceive approach is based on negative sign.
+
+So you feel it's the residual of the previous equation?
+
+Okay. So it has the right thing and we can calculate how good is our prediction.
+
+And these predictions are good essentially out of decades out their best.
+
+They're not good at one year to the next. This is one year to the next.
+
+Such a. But they're much better in.
+
+So you're capturing even some longer term thing, which is amazing because typically predictions are good in the short run end up in the long term.
+
+This one works well in the longer term.
+
+A this was all done with international trade data.
+
+Here we have expanded to using other data. So this one uses industry data.
+
+And this is what powers the industry space in the metaverse.
+
+You have everything here. You have good services and everything.
+
+Um, we have um, we tried to do this genotypic approach by taking a stand and saying, you know what these capabilities are?
+
+These capabilities are occupations. And since occupations going across industries,
+
+if you have another industry that's hiring people without occupation, those workers are available to you.
+
+If they can be used in this in this industry. Okay.
+
+And we created a genotypic, a genotypic product space where two products, two industries are similar.
+
+If they use similar occupations okay, then you can say do does your country have the occupations that this blue industry would need?
+
+How many missing occupations would there be if you wanted to move in that industry.
+
+But it also tells you which are the missing occupations.
+
+So what is the missing human capital that is preventing you from moving?
+
+So that's a first. The first one, this is applying the same thing to occupation.
+
+But here now a note is an occupation. And there are these data sets that describe occupation in terms of the knowledge,
+
+skills and abilities that you need to have to perform that occupation.
+
+So we can take two occupations are similar if they require similar knowledge, skills and abilities.
+
