@@ -90,3 +90,46 @@ def clean_transcript(transcript_text: str) -> str:
     except Exception as e:
         print(f"Error cleaning transcript: {str(e)}")
         raise
+
+def extract_lecture_metadata(clean_transcript: str, lecture_number: int) -> LectureTranscript:
+    """
+    Extract structured metadata from a cleaned lecture transcript using OpenAI API and Pydantic.
+    
+    Args:
+        clean_transcript (str): The already cleaned transcript text.
+        lecture_number (int): The lecture number for identification.
+    
+    Returns:
+        LectureTranscript: A Pydantic model instance containing structured information about the lecture.
+    """
+    try:
+        # Using the parse method with the Pydantic model
+        completion = client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are an expert assistant analyzing lecture transcripts from the 'Development Policy Strategy' class 
+                    taught by Ricardo Hausmann (Director of Harvard's Growth Lab). Extract the essential information from the transcript."""
+                },
+                {
+                    "role": "user",
+                    "content": f"Here is a cleaned lecture transcript #{lecture_number} from the Development Policy Strategy class. Please extract the key information:\n\n{clean_transcript}"
+                }
+            ],
+            response_format=LectureTranscript,
+            temperature=0.3
+        )
+        
+        # Get the parsed data directly as a LectureTranscript object
+        lecture_data = completion.choices[0].message.parsed
+        
+        # Ensure lecture number is set
+        if lecture_data.lecture_number != lecture_number:
+            lecture_data.lecture_number = lecture_number
+            
+        return lecture_data
+        
+    except Exception as e:
+        print(f"Error extracting metadata for lecture {lecture_number}: {str(e)}")
+        raise
