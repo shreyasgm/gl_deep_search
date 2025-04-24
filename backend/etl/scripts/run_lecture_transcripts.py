@@ -133,3 +133,50 @@ def extract_lecture_metadata(clean_transcript: str, lecture_number: int) -> Lect
     except Exception as e:
         print(f"Error extracting metadata for lecture {lecture_number}: {str(e)}")
         raise
+
+def process_single_transcript(file_path: Path, output_dir: str) -> None:
+    """
+    Process a single transcript file and save the structured result to output directory.
+
+    Args:
+        file_path (Path): Path to the raw transcript file.
+        output_dir (str): Directory to save processed transcript file.
+    """
+    try:
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+        
+        print(f"Processing file: {file_path.name}")
+        
+        # Read transcript content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            transcript_text = f.read()
+        
+        # Extract lecture number from filename or use index if not possible
+        try:
+            # Filenames start with lecture number like "01_lecture.txt"
+            lecture_num = int(''.join(filter(str.isdigit, file_path.stem)))
+        except:
+            lecture_num = 0  # Default if unable to extract number
+            print(f"Warning: Could not extract lecture number from filename {file_path.name}. Using 0 as default.")
+        
+        # Step 1: Clean the transcript
+        print(f"Cleaning transcript...")
+        cleaned_transcript = clean_transcript(transcript_text)
+        
+        # Step 2: Extract metadata using the cleaned transcript
+        print(f"Extracting metadata...")
+        structured_data = extract_lecture_metadata(cleaned_transcript, lecture_num)
+        
+        # Save as JSON
+        output_file = Path(output_dir) / f"lecture_{lecture_num:02d}_processed.json"
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(structured_data.model_dump_json(indent=2, ensure_ascii=False))
+        
+        print(f"Successfully processed and saved: {output_file}")
+        
+        return True
+            
+    except Exception as e:
+        print(f"Error processing {file_path.name}: {str(e)}")
+        return False
