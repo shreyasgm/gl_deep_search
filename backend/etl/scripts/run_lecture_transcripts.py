@@ -25,29 +25,9 @@ class LectureTranscript(BaseModel):
     """ Model representing structured information from a lecture transcript """
     lecture_number: int
     title: str
-    main_topics: List[str] = Field(..., min_items=1)
+    main_topics: list[str]
     summary: str
-    transcript: str = Field(..., min_length=100)
-
-    # Add custom field validators    
-    @field_validator('summary')
-    def validate_summary_length(cls, summary, values):
-        """Ensure summary is appropriate length relative to transcript."""
-        # This validator receives both the field value and a dict of previously validated values
-        if 'transcript' in values:
-            transcript = values['transcript']
-            
-            # Calculate appropriate summary length
-            min_length = 200  # Minimum 200 characters
-            max_length = len(transcript) * 0.15  # No more than 15% of transcript length
-            
-            if len(summary) < min_length:
-                raise ValueError(f"Summary is too short. Expected at least {min_length:.0f} characters.")
-            
-            if len(summary) > max_length:
-                raise ValueError(f"Summary is too long. Expected no more than {max_length:.0f} characters.")
-                
-        return summary.strip()
+    transcript: str
     
 def clean_transcript(transcript_text: str) -> str:
     """
@@ -105,7 +85,7 @@ def extract_lecture_metadata(clean_transcript: str, lecture_number: int) -> Lect
     try:
         # Using the parse method with the Pydantic model
         completion = client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano-2025-04-14",
             messages=[
                 {
                     "role": "system",
@@ -193,7 +173,11 @@ def process_single_transcript(file_path: Path, output_dir: str, intermediate_dir
         # Save as JSON
         output_file = Path(output_dir) / f"lecture_{lecture_num:02d}_processed.json"
         with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(json.dumps(structured_data, indent=2, ensure_ascii=False))
+            # Convert Pydantic model to dict first
+            model_dict = structured_data.model_dump()
+
+            # Serialize the dict to JSON
+            f.write(json.dumps(model_dict, indent=2, ensure_ascii=False))
         
         print(f"Successfully processed and saved: {output_file}")
         
