@@ -173,9 +173,9 @@ The OpenAlex file downloader follows a more complex process than the GrowthLab d
 5. **Download methods**:
    - **HTTP download** for open access papers using aiohttp
    - **scidownl download** for papers not available through open access
-     - Uses a subprocess to run the scidownl command-line tool
-     - Creates a temporary directory for the download
-     - Moves the downloaded file to the destination path
+     - Directly uses the scidownl library through imported function
+     - Configures appropriate parameters like DOI format and output path
+     - Handles validation and error checking of the downloaded file
 
 6. **File validation**:
    - Checks file size (minimum and maximum thresholds)

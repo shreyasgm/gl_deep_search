@@ -19,7 +19,7 @@ from typing import (
     Any,
     TypeVar,
 )
-from urllib.parse import unquote, urlparse
+from urllib.parse import urlparse
 
 import aiofiles
 import aiohttp
@@ -213,51 +213,28 @@ class OpenAlexFileDownloader:
         Returns:
             Path where the file should be saved
         """
-        # Extract filename from URL or generate a safe filename
-        url_path = file_url.split("?")[0].split("#")[0]  # Remove query params
-        parsed_url = urlparse(url_path)
-        file_name = unquote(parsed_url.path.split("/")[-1])
+        # Clean URL by removing query parameters and fragments
+        clean_url = file_url.split("?")[0].split("#")[0]
 
-        # Special handling for DOIs to force PDF extension
-        if "doi.org" in url_path:
-            # Generate a filename based on the DOI
-            doi_part = url_path.split("doi.org/")[-1]
-            url_hash = hashlib.md5(doi_part.encode()).hexdigest()[:8]
-            file_name = f"{url_hash}.pdf"
-        # If the URL doesn't contain a filename or extension, try to determine one
-        elif not file_name or "." not in file_name:
-            # Generate a filename if none exists
-            url_hash = hashlib.md5(file_url.encode()).hexdigest()[:8]
+        # Get the file extension from the URL path
+        url_path = urlparse(clean_url).path
+        ext = Path(url_path).suffix.lower()
 
-            # Try to guess extension from content type if available
-            ext = ".pdf"  # Default extension for academic papers
-            content_type = mimetypes.guess_type(file_url)[0]
-            if content_type:
-                if content_type == "application/pdf":
-                    ext = ".pdf"
-                elif content_type == "application/msword":
-                    ext = ".doc"
-                elif (
-                    content_type
-                    == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"  # noqa: E501
-                ):
-                    ext = ".docx"
-                elif content_type.startswith("text/"):
-                    ext = ".txt"
-                elif content_type.startswith("image/"):
-                    ext = f".{content_type.split('/')[-1]}"
+        # If no extension found, use empty string
+        if not ext:
+            ext = ""
 
-            file_name = f"{url_hash}{ext}"
+        # Generate MD5 hash of the cleaned file URL
+        url_hash = hashlib.md5(clean_url.encode()).hexdigest()
 
         # Use the publication ID to create a directory
         pub_id = publication.paper_id
-
         if not pub_id:
             # Generate ID if not set
             pub_id = publication.generate_id()
 
-        # Path structure: data/raw/documents/openalex/<publication_id>/<filename>
-        relative_path = f"raw/documents/openalex/{pub_id}/{file_name}"
+        # Path structure: data/raw/documents/openalex/<publication_id>/<url_hash><ext>
+        relative_path = f"raw/documents/openalex/{pub_id}/{url_hash}{ext}"
 
         return self.storage.get_path(relative_path)
 
@@ -324,6 +301,88 @@ class OpenAlexFileDownloader:
         # If we got here, we couldn't find an open access version
         return False, None
 
+    async def _resolve_url_and_check_content(
+        self,
+        session: aiohttp.ClientSession,
+        url: str,
+        max_redirects: int = 5,
+    ) -> tuple[str | None, str | None, bool]:
+        """
+        Resolve a URL by following redirects and check its content type.
+
+        Args:
+            session: aiohttp session to use
+            url: URL to resolve
+            max_redirects: Maximum number of redirects to follow
+
+        Returns:
+            Tuple of (final_url, content_type, is_direct_download)
+            - final_url: The resolved URL after following redirects
+            - content_type: The content type of the final resource
+            - is_direct_download: Whether this appears to be a direct file download
+        """
+        current_url = url
+        redirect_count = 0
+
+        while redirect_count < max_redirects:
+            try:
+                # Make HEAD request to check content type and follow redirects
+                async with session.head(
+                    current_url,
+                    allow_redirects=False,
+                    timeout=aiohttp.ClientTimeout(total=30),
+                ) as response:
+                    # Handle redirects
+                    if response.status in (301, 302, 303, 307, 308):
+                        redirect_count += 1
+                        location = response.headers.get("Location")
+                        if not location:
+                            logger.warning(
+                                f"No Location header in redirect from {current_url}"
+                            )
+                            return None, None, False
+
+                        # Handle relative redirects
+                        if not location.startswith(("http://", "https://")):
+                            parsed = urlparse(current_url)
+                            location = f"{parsed.scheme}://{parsed.netloc}{location}"
+
+                        current_url = location
+                        continue
+
+                    # Check if this is a direct file download
+                    content_type = response.headers.get("Content-Type", "").lower()
+                    content_disposition = response.headers.get(
+                        "Content-Disposition", ""
+                    ).lower()
+
+                    # Check for direct file indicators
+                    is_direct_download = (
+                        # Content type indicates a file
+                        any(
+                            ct in content_type
+                            for ct in [
+                                "application/pdf",
+                                "application/octet-stream",
+                                "application/msword",
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            ]
+                        )
+                        or
+                        # Content-Disposition indicates a file
+                        "attachment" in content_disposition
+                        or "filename=" in content_disposition
+                    )
+
+                    return current_url, content_type, is_direct_download
+
+            except aiohttp.ClientError as e:
+                logger.warning(f"Error resolving URL {current_url}: {e}")
+                return None, None, False
+
+        logger.warning(f"Too many redirects for URL {url}")
+        return None, None, False
+
     async def _download_file_with_aiohttp(
         self,
         session: aiohttp.ClientSession,
@@ -345,6 +404,38 @@ class OpenAlexFileDownloader:
         Returns:
             DownloadResult with information about the download
         """
+        # First resolve the URL and check content type
+        (
+            final_url,
+            content_type,
+            is_direct_download,
+        ) = await self._resolve_url_and_check_content(session, url)
+
+        if not final_url:
+            return DownloadResult(
+                url=url,
+                success=False,
+                file_path=destination,
+                error="Failed to resolve URL or too many redirects",
+                open_access=True,
+                source="http",
+            )
+
+        if not is_direct_download:
+            logger.warning(
+                f"URL {final_url} appears to be a landing page or "
+                f"non-downloadable content. "
+                f"Content-Type: {content_type}"
+            )
+            return DownloadResult(
+                url=url,
+                success=False,
+                file_path=destination,
+                error="URL points to a landing page or non-downloadable content",
+                open_access=True,
+                source="http",
+            )
+
         # Check if file already exists and get its size for resume
         file_size = 0
         if destination.exists() and resume:
@@ -365,7 +456,7 @@ class OpenAlexFileDownloader:
         # Download with progress tracking
         try:
             # Make range request if resuming, otherwise normal request
-            async with session.get(url, headers=headers) as response:
+            async with session.get(final_url, headers=headers) as response:
                 # Handle response
                 if response.status == 416:  # Range Not Satisfiable
                     # File is already complete
