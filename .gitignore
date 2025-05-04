@@ -4,7 +4,6 @@ CLAUDE.md
 data/raw/
 data/intermediate/
 data/processed/
-backend/etl/data/
 *.csv
 *.json
 *.xlsx
