@@ -185,6 +185,14 @@ def process_single_transcript(
                 {file_path.name}. Using 0 as default."""
             )
 
+        # Check if the output file already exists
+        output_file = Path(output_dir) / f"lecture_{lecture_num:02d}_processed.json"
+        if output_file.exists():
+            logger.info(
+                f"Output file already exists: {output_file}. Skipping processing."
+            )
+            return True
+
         logger.info(f"Processing file: {file_path.name} (Lecture #{lecture_num})")
 
         # Handle intermediate directory for cleaned transcripts
@@ -258,34 +266,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input",
         "-i",
-        default=str(
-            Path(project_root) / "backend" / "etl" / "data" / "raw" / "transcripts"
-        ),
+        default=str(Path(project_root) / "data" / "raw" / "lecture_transcripts"),
         help="Directory containing raw transcript files",
     )
     parser.add_argument(
         "--output",
         "-o",
-        default=str(
-            Path(project_root)
-            / "backend"
-            / "etl"
-            / "data"
-            / "processed"
-            / "transcripts"
-        ),
+        default=str(Path(project_root) / "data" / "processed" / "lecture_transcripts"),
         help="Directory to save processed transcript files",
     )
     parser.add_argument(
         "--intermediate",
         "-m",
         default=str(
-            Path(project_root)
-            / "backend"
-            / "etl"
-            / "data"
-            / "intermediate"
-            / "transcripts"
+            Path(project_root) / "data" / "intermediate" / "lecture_transcripts"
         ),
         help="Directory to save cleaned transcript files",
     )
