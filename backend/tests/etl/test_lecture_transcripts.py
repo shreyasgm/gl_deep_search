@@ -41,14 +41,14 @@ def test_clean_transcript(sample_raw_transcript):
     assert len(cleaned) > 0, "Cleaned transcript should not be empty."
 
     # Ensure the cleaned transcript starts with meaningful content
-    assert not cleaned.startswith("um") and not cleaned.startswith(
-        "uh"
-    ), "Cleaned transcript should not start with filler words."
+    assert not cleaned.startswith("um") and not cleaned.startswith("uh"), (
+        "Cleaned transcript should not start with filler words."
+    )
 
     # Ensure the cleaned transcript is shorter than the raw transcript
-    assert len(cleaned) < len(
-        limited_raw_transcript
-    ), "Cleaned transcript should be shorter than the raw transcript."
+    assert len(cleaned) < len(limited_raw_transcript), (
+        "Cleaned transcript should be shorter than the raw transcript."
+    )
 
 
 # Unit test for extract_lecture_metadata
