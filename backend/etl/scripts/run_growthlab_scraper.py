@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Simple script to run the GrowthLab scraper
+Adding a useless comment here to test precommit hook lifestyle
 """
 
 import argparse
