@@ -982,6 +982,7 @@ all = [
     { name = "seaborn" },
     { name = "sentence-transformers" },
     { name = "streamlit" },
+    { name = "tiktoken" },
     { name = "types-aiofiles" },
     { name = "types-beautifulsoup4" },
     { name = "types-pyyaml" },
@@ -1030,6 +1031,7 @@ etl = [
     { name = "scrapy" },
     { name = "seaborn" },
     { name = "sentence-transformers" },
+    { name = "tiktoken" },
     { name = "unstructured" },
 ]
 frontend = [
@@ -1117,6 +1119,7 @@ requires-dist = [
     { name = "sentence-transformers", marker = "extra == 'etl'" },
     { name = "sentence-transformers", marker = "extra == 'service'" },
     { name = "streamlit", marker = "extra == 'frontend'" },
+    { name = "tiktoken", marker = "extra == 'etl'", specifier = ">=0.9.0" },
     { name = "tqdm" },
     { name = "types-aiofiles", marker = "extra == 'dev'" },
     { name = "types-beautifulsoup4", marker = "extra == 'dev'" },

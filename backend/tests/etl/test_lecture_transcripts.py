@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -10,11 +11,36 @@ from backend.etl.scripts.run_lecture_transcripts import (
     process_single_transcript,
 )
 
+# Check if we're running in CI (GitHub Actions)
+in_github_actions = os.environ.get("GITHUB_ACTIONS") == "true"
+
+# Skip all data-dependent tests in GitHub Actions
+skip_data_tests = pytest.mark.skipif(
+    in_github_actions, reason="Skipping tests that require data files in GitHub Actions"
+)
+
+# Sample text for testing when real data is not available
+SAMPLE_TEXT = """
+Welcome to Development Policy Strategy. I'm Ricardo Hausmann, the instructor.
+Today we'll discuss economic growth theories and their policy implications.
+First, we'll cover the basics of growth accounting.
+Then we'll move on to structural transformation and productivity.
+Finally, we'll discuss the importance of economic complexity in development.
+"""
+
 
 # Fixture to load a sample raw transcript
 @pytest.fixture
 def sample_raw_transcript():
+    # In GitHub Actions, use the sample text
+    if in_github_actions:
+        return SAMPLE_TEXT
+
+    # In local environment, use real data file
     raw_transcript_path = Path("data/raw/lecture_transcripts/0_intro.txt")
+    if not raw_transcript_path.exists():
+        return SAMPLE_TEXT
+
     with open(raw_transcript_path, encoding="utf-8") as f:
         return f.read()
 
@@ -22,9 +48,17 @@ def sample_raw_transcript():
 # Fixture to load a sample cleaned transcript
 @pytest.fixture
 def sample_cleaned_transcript():
+    # In GitHub Actions, use the sample text
+    if in_github_actions:
+        return SAMPLE_TEXT
+
+    # In local environment, use real data file
     cleaned_transcript_path = Path(
         "data/intermediate/lecture_transcripts/lecture_00_cleaned.txt"
     )
+    if not cleaned_transcript_path.exists():
+        return SAMPLE_TEXT
+
     with open(cleaned_transcript_path, encoding="utf-8") as f:
         return f.read()
 
@@ -61,11 +95,15 @@ def test_extract_lecture_metadata(sample_cleaned_transcript):
 
 
 # Integration test for process_single_transcript using real data
+@skip_data_tests
 def test_process_single_transcript(tmp_path):
     # Use a real raw transcript file
     raw_transcript_path = Path(
         "data/raw/lecture_transcripts/1_malthusian_economics.txt"
     )
+
+    if not raw_transcript_path.exists():
+        pytest.skip("Test transcript file does not exist")
 
     # Define output and intermediate directories
     output_dir = tmp_path / "processed"

@@ -11,6 +11,7 @@ import os
 import time
 from pathlib import Path
 
+import tiktoken
 from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel
@@ -215,6 +216,18 @@ def process_single_transcript(
             with open(file_path, encoding="utf-8") as f:
                 transcript_text = f.read()
 
+            # Apply max_tokens limit if specified
+            max_tokens = getattr(args, "max_tokens", None)
+            if max_tokens and max_tokens > 0:
+                # Use tiktoken for accurate token counting
+                encoding = tiktoken.encoding_for_model("gpt-4")
+                tokens = encoding.encode(transcript_text)
+                if len(tokens) > max_tokens:
+                    logger.info(
+                        f"Limiting transcript from {len(tokens)} to {max_tokens} tokens"
+                    )
+                    transcript_text = encoding.decode(tokens[:max_tokens])
+
             logger.info("Cleaning transcript...")
             cleaned_transcript = clean_transcript(transcript_text)
 
@@ -287,6 +300,11 @@ if __name__ == "__main__":
         "--single",
         "-s",
         help="Process a single file (provide filename only, not full path)",
+    )
+    parser.add_argument(
+        "--max_tokens",
+        type=int,
+        help="Limit transcript processing to first N tokens (for testing)",
     )
 
     args = parser.parse_args()
