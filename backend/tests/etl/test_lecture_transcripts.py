@@ -21,11 +21,12 @@ skip_data_tests = pytest.mark.skipif(
 
 # Sample text for testing when real data is not available
 SAMPLE_TEXT = """
-Welcome to Development Policy Strategy. I'm Ricardo Hausmann, the instructor.
-Today we'll discuss economic growth theories and their policy implications.
-First, we'll cover the basics of growth accounting.
-Then we'll move on to structural transformation and productivity.
-Finally, we'll discuss the importance of economic complexity in development.
+Um, welcome to, uh, Development Policy Strategy. I'm, I'm Professor Brian Xavier.
+So, um, today we'll discuss, uh, economic growth theories and their policy implications.
+First, we'll, we'll cover the basics of growth accounting.
+Then, um, then we'll move on to structural transformation and productivity.
+And finally, uh, we'll discuss the importance of economic complexity in development.
+So, does anyone have any questions? No? Okay, great.
 """
 
 
