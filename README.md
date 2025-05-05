@@ -4,11 +4,11 @@ An agentic RAG system that helps users query Growth Lab-specific unstructured da
 
 ## 🔍 Project Overview
 
-Growth Lab Deep Search is an agentic AI system designed to answer complex questions about the Growth Lab's research and publications or about the world through the lens of the Growth Lab. The system incorporates:
+Growth Lab Deep Search is an agentic AI system designed to answer complex questions about the Growth Lab's research and publications. The system incorporates:
 
 **Key Features:**
 
-- Automated Extract, Transform, Load (ETL) pipeline for harvesting Growth Lab publications and academic papers
+- Automated ETL pipeline for harvesting Growth Lab publications and academic papers
 - Advanced OCR processing of PDF documents using modern tools
 - Vector embeddings with hybrid search
 - Agentic RAG system based on LangGraph
