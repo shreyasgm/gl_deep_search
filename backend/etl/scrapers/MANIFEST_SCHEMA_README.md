@@ -1,6 +1,6 @@
 # Publication Tracking Manifest Schema
 
-This repository contains the implementation of a manifest schema for tracking publications through the ETL pipeline for the Growth Lab Deep Search project.
+This document describes the manifest schema for tracking publications through the ETL pipeline for the Growth Lab Deep Search project, which has now been fully integrated into the pipeline.
 
 ## Components Created
 
@@ -21,63 +21,64 @@ This repository contains the implementation of a manifest schema for tracking pu
    - Support for both SQLite (development) and PostgreSQL (production)
    - Automatic database initialization
    - Environment variable configuration
+   - Enhanced to properly handle multiple SQL statements
 
-4. **Test Script**: `/backend/etl/scripts/test_publication_tracking.py`
-   - Scrapes sample publications from Growth Lab website
-   - Stores metadata in the tracking database
-   - Simulates status updates through the ETL pipeline
-   - Demonstrates querying and displaying stored data
+4. **ETL Integration**: `/backend/etl/utils/publication_tracker.py`
+   - PublicationTracker utility class for managing tracking operations
+   - Methods for adding and updating publications at each pipeline stage
+   - Querying methods to find publications for each stage of processing
 
-5. **Environment Configuration**:
+5. **FileDownloader Integration**: `/backend/etl/utils/gl_file_downloader.py`
+   - Automatic tracking of publication download status
+   - Integration with PublicationTracker to update database entries
+   - Proper error handling and status updates
+
+6. **Test Scripts**:
+   - `/backend/etl/scripts/test_download_tracking.py`: Tests downloading with tracking
+   - `/backend/etl/scripts/test_query_publications.py`: Queries tracked publications
+   - `/backend/etl/scripts/reset_publication_status.py`: Utility to reset statuses for reprocessing
+
+7. **Environment Configuration**:
    - `.env.example` files for ETL and service components
    - Database connection configuration
    - Storage path configuration
 
-6. **Docker Compose Setup**: `/docker-compose.yml`
-   - PostgreSQL database service
-   - API service with database connection
-   - ETL service for scrapers and processors
-   - Volume configuration for data persistence
-
 ## Testing the Implementation
 
-To test this implementation, you'll need:
+To test this implementation, you can run the following scripts:
 
-1. Required Python packages:
+1. Download publications with tracking:
    ```
-   pip install aiohttp sqlmodel pydantic python-dotenv sqlalchemy bs4 requests
-   ```
-
-2. Run the test script:
-   ```
-   cd /path/to/gl_deep_search
-   python -m backend.etl.scripts.test_publication_tracking
+   python backend/etl/scripts/test_download_tracking.py
    ```
 
-This will:
-- Initialize the database
-- Scrape a few sample publications from the Growth Lab website
-- Store their metadata in the tracking database
-- Simulate updates to their download and processing status
-- Display the stored data from the database
+2. Query tracked publications:
+   ```
+   python backend/etl/scripts/test_query_publications.py
+   ```
 
-## Next Steps
+3. Reset publication statuses:
+   ```
+   python backend/etl/scripts/reset_publication_status.py [--stage STAGE]
+   ```
+   Where STAGE can be: download, processing, embedding, ingestion, or all
 
-1. **Integration with Scrapers**:
-   - Modify existing scrapers to update tracking metadata
-   - Add tracking to download processes
+## Integration Details
 
-2. **API Endpoint Development**:
-   - Create REST API endpoints for querying tracking status
-   - Implement filtering and sorting options
+The publication tracking system is now fully integrated into the ETL pipeline:
 
-3. **Dashboard Integration**:
-   - Connect tracking database to a dashboard for visualization
-   - Display ETL pipeline status and metrics
+1. **Scraper Integration**:
+   - Publications are automatically added to tracking when discovered
+   - The PublicationTracker.add_publication() method creates or updates tracking records
 
-4. **Error Handling and Retry Logic**:
-   - Implement automated retry for failed publications
-   - Add error logging and notification
+2. **Download Integration**:
+   - The FileDownloader now tracks download status in the database
+   - Status is updated to IN_PROGRESS at start and DOWNLOADED or FAILED on completion
+   - Error messages are captured for failed downloads
+
+3. **Future Processing Integration**:
+   - The infrastructure is in place to track processing, embedding, and ingestion
+   - Utility methods are available for each stage of the pipeline
 
 ## Schema Details
 
@@ -90,7 +91,7 @@ The publication tracking schema includes the following key fields:
 - `authors`: Publication authors
 - `year`: Publication year
 - `abstract`: Publication abstract
-- `file_urls`: Associated file URLs (stored as JSON)
+- `file_urls_json`: Associated file URLs (stored as JSON)
 - `content_hash`: Hash for detecting content changes
 
 ### ETL Pipeline Stages

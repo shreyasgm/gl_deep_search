@@ -23,7 +23,9 @@ import aiohttp
 import tqdm.asyncio
 
 from backend.etl.models.publications import GrowthLabPublication
+from backend.etl.models.tracking import DownloadStatus
 from backend.etl.scrapers.growthlab import GrowthLabScraper
+from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
@@ -60,6 +62,7 @@ class FileDownloader:
     - Resume of partial downloads
     - Intelligent caching (won't re-download existing files unless overwrite=True)
     - Progress tracking
+    - Publication tracking in database
     """
 
     def __init__(
@@ -67,6 +70,7 @@ class FileDownloader:
         storage: StorageBase | None = None,
         concurrency_limit: int = 3,
         config_path: Path | None = None,
+        publication_tracker: PublicationTracker | None = None,
     ):
         """
         Initialize the file downloader.
@@ -75,9 +79,13 @@ class FileDownloader:
             storage: Storage backend to use (defaults to factory-configured storage)
             concurrency_limit: Maximum number of concurrent downloads
             config_path: Path to configuration file
+            publication_tracker: PublicationTracker instance for tracking download status
         """
         # Storage configuration
         self.storage = storage or get_storage()
+
+        # Publication tracking
+        self.publication_tracker = publication_tracker or PublicationTracker()
 
         # Load configuration or use defaults
         self.config = self._load_config(config_path)
@@ -199,6 +207,10 @@ class FileDownloader:
         Returns:
             Path where the file should be saved
         """
+        # Convert HttpUrl to string if needed
+        if not isinstance(file_url, str):
+            file_url = str(file_url)
+            
         # Extract filename from URL or generate a safe filename
         url_path = file_url.split("?")[0].split("#")[0]  # Remove query params
         file_name = url_path.split("/")[-1]
@@ -261,6 +273,10 @@ class FileDownloader:
         Returns:
             DownloadResult with information about the download
         """
+        # Convert HttpUrl to string if needed
+        if not isinstance(url, str):
+            url = str(url)
+            
         # Check if file already exists and get its size for resume
         file_size = 0
         if destination.exists() and resume:
@@ -443,6 +459,10 @@ class FileDownloader:
         Returns:
             DownloadResult with information about the download
         """
+        # Convert HttpUrl to string if needed
+        if not isinstance(url, str):
+            url = str(url)
+            
         # Check if file already exists and skip if not overwriting
         if destination.exists() and not overwrite and not resume:
             logger.info(f"File {destination} already exists, skipping download")
@@ -633,116 +653,105 @@ class FileDownloader:
         Download files for a list of publications.
 
         Args:
-            publications: List of publications to download files for
+            publications: List of publications to download
             overwrite: Whether to overwrite existing files
-            limit: Maximum number of publications to process (for testing)
-            progress_bar: Whether to show a progress bar
+            limit: Maximum number of publications to download (None for all)
+            progress_bar: Whether to show progress bar
 
         Returns:
             List of download results by publication
         """
-        # Start client session if not already created
-        session = await self._get_session()
-
-        # Apply limit if specified
-        if limit and limit > 0:
-            publications = publications[:limit]
-            logger.info(f"Limited to downloading files for {limit} publications")
-
-        # Find all file URLs to download
-        all_downloads = []
-        for pub in publications:
-            if not pub.file_urls:
-                continue
-
-            for url in pub.file_urls:
-                # Convert HttpUrl to string
-                url_str = str(url)
-
-                # Get destination path
-                dest_path = self._get_file_path(pub, url_str)
-
-                all_downloads.append((pub, url_str, dest_path))
-
-        # Log download plan
-        logger.info(f"Found {len(all_downloads)} files to download")
-
-        # Download files with progress tracking
         results = []
 
-        # Create tasks for all downloads
-        tasks = []
-        for pub, url, dest_path in all_downloads:
-            # Cast URL to string to ensure compatibility
-            url_str = str(url)
-            task = self.download_file(
-                url=url_str,
-                destination=dest_path,
-                referer=str(pub.pub_url) if pub.pub_url else None,
-                overwrite=overwrite,
-                resume=True,
+        # Limit the number of publications if specified
+        pub_list = list(publications)
+        if limit is not None and limit > 0:
+            pub_list = pub_list[:limit]
+        
+        # Track publications in database before downloading
+        for pub in pub_list:
+            self.publication_tracker.add_publication(pub)
+            
+        # Create progress bar
+        pbar = None
+        if progress_bar:
+            pbar = tqdm.asyncio.tqdm(
+                total=len(pub_list), 
+                desc="Downloading publications"
             )
-            # Store publication, URL string, and task in tasks
-            # We must use string to avoid HttpUrl type error
-            tasks.append((pub, url_str, task))
 
-        # Process downloads with progress bar
-        with tqdm.asyncio.tqdm(
-            total=len(tasks),
-            desc="Downloading files",
-            disable=not progress_bar,
-        ) as pbar:
-            for pub, url_str, download_task in tasks:
-                try:
-                    # Await the download task
-                    result = await download_task
+        try:
+            # Get or create session
+            session = await self._get_session()
 
-                    # Record the result with publication info
-                    pub_result = {
-                        "publication_id": pub.paper_id,
-                        "publication_title": pub.title,
-                        "url": url_str,  # Already converted to string above
+            # Create download task for each publication
+            for pub in pub_list:
+                pub_result = {
+                    "publication_id": pub.paper_id,
+                    "title": pub.title,
+                    "downloads": []
+                }
+                
+                # Update publication status to IN_PROGRESS
+                self.publication_tracker.update_download_status(
+                    pub.paper_id, 
+                    DownloadStatus.IN_PROGRESS
+                )
+
+                # Download each file URL
+                for url in pub.file_urls:
+                    # Get destination path
+                    dest_path = self._get_file_path(pub, url)
+                    
+                    # Download the file
+                    result = await self.download_file(
+                        url,
+                        dest_path,
+                        referer=str(pub.pub_url) if pub.pub_url else None,
+                        overwrite=overwrite,
+                    )
+                    
+                    pub_result["downloads"].append({
+                        "url": str(url),
                         "success": result.success,
-                        "file_path": result.file_path,
-                        "file_size": result.file_size,
-                        "cached": result.cached,
+                        "path": str(result.file_path) if result.file_path else None,
                         "error": result.error,
-                    }
-                    results.append(pub_result)
-
-                    # Update progress
+                        "file_size": result.file_size,
+                        "content_type": result.content_type,
+                        "cached": result.cached,
+                        "validation": result.validation_info,
+                    })
+                
+                # Update publication download status based on results
+                download_success = any(d["success"] for d in pub_result["downloads"])
+                download_errors = [d["error"] for d in pub_result["downloads"] if d["error"]]
+                
+                if download_success:
+                    self.publication_tracker.update_download_status(
+                        pub.paper_id, 
+                        DownloadStatus.DOWNLOADED
+                    )
+                else:
+                    error_msg = "; ".join(download_errors) if download_errors else "Download failed"
+                    self.publication_tracker.update_download_status(
+                        pub.paper_id, 
+                        DownloadStatus.FAILED,
+                        error=error_msg
+                    )
+                
+                results.append(pub_result)
+                
+                if pbar:
                     pbar.update(1)
+                
+                # Rate limiting delay
+                await asyncio.sleep(self.download_delay)
 
-                    # Success/failure message
-                    if result.success:
-                        status = "cached" if result.cached else "downloaded"
-                        pbar.set_postfix_str(f"Last: {status}")
-                    else:
-                        pbar.set_postfix_str(f"Last: failed - {result.error}")
-
-                except Exception as e:
-                    # Record unexpected errors
-                    logger.error(f"Unexpected error downloading {url_str}: {e}")
-                    pub_result = {
-                        "publication_id": pub.paper_id,
-                        "publication_title": pub.title,
-                        "url": url_str,  # Already converted to string
-                        "success": False,
-                        "error": f"Unexpected error: {str(e)}",
-                    }
-                    results.append(pub_result)
-                    pbar.update(1)
-                    pbar.set_postfix_str(f"Last: error - {str(e)}")
-
-        # Close the session
-        if self._session and not self._session.closed:
-            await self._session.close()
-            self._session = None
-
-        # Log summary
-        self._log_download_summary()
-
-        return results
+            return results
+        
+        finally:
+            if pbar:
+                pbar.close()
 
     def _log_download_summary(self) -> None:
         """Log a summary of download statistics."""
@@ -788,19 +797,30 @@ async def download_growthlab_files(
     config_path: Path | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Download files for Growth Lab publications.
+    Download files for all Growth Lab publications.
 
     Args:
         storage: Storage backend to use
-        publication_data_path: Path to publication CSV (defaults to standard location)
+        publication_data_path: Path to publication data CSV file
         overwrite: Whether to overwrite existing files
-        limit: Maximum number of publications to process (for testing)
-        concurrency: Maximum concurrent downloads
+        limit: Maximum number of publications to download
+        concurrency: Maximum number of concurrent downloads
         config_path: Path to configuration file
 
     Returns:
-        List of download results
+        List of download results by publication
     """
+    # Initialize publication tracker
+    publication_tracker = PublicationTracker()
+    
+    # Initialize downloader
+    downloader = FileDownloader(
+        storage=storage,
+        concurrency_limit=concurrency,
+        config_path=config_path,
+        publication_tracker=publication_tracker,
+    )
+
     # Get storage
     storage = storage or get_storage()
 
@@ -829,13 +849,6 @@ async def download_growthlab_files(
     logger.info(
         f"Found {len(publications_with_files)}/{len(publications)} "
         "publications with file URLs"
-    )
-
-    # Create downloader and download files
-    downloader = FileDownloader(
-        storage=storage,
-        concurrency_limit=concurrency,
-        config_path=config_path,
     )
 
     results = await downloader.download_publications(
