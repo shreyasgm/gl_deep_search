@@ -27,6 +27,10 @@ dependencies = [
     "python-dotenv>=1",
     "loguru",
     "tqdm",
+    "pre-commit>=4.1.0",
+    "ruff>=0.11.0",
+    "mypy>=1.15.0",
+    "black>=25.1.0",
 ]
 
 [project.urls]
@@ -171,6 +175,8 @@ lint.unfixable = ["D", "ANN"]
 # Make documentation and type annotation rules generate warnings instead of errors
 [tool.ruff.lint.per-file-ignores]
 "**/*" = ["D", "ANN", "E722", "F841"]  # Ignore documentation, type annotations, bare except, and unused vars
+"**/test_*.py" = ["T201"]  # Ignore print statements in test files
+"**/tests/**/*.py" = ["T201"]  # Ignore print statements in test files
 
 # Configure specific documentation rules
 [tool.ruff.lint.pydocstyle]

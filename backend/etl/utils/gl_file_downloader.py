@@ -79,7 +79,7 @@ class FileDownloader:
             storage: Storage backend to use (defaults to factory-configured storage)
             concurrency_limit: Maximum number of concurrent downloads
             config_path: Path to configuration file
-            publication_tracker: PublicationTracker instance for tracking download status
+            publication_tracker: tracking download status
         """
         # Storage configuration
         self.storage = storage or get_storage()
@@ -144,10 +144,9 @@ class FileDownloader:
             "min_file_size": 1024,  # 1KB
             "max_file_size": 100 * 1024 * 1024,  # 100MB
             "user_agent_list": [
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",  # noqa: E501
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",  # noqa: E501
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",  # noqa: E501
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/120.0.0.0",  # noqa: E501
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
             ],
         }
 
@@ -174,7 +173,9 @@ class FileDownloader:
             user_agents = self.config.get(
                 "user_agent_list",
                 [
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"  # noqa: E501
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/122.0.0.0 Safari/537.36"
                 ],
             )
             user_agent = random.choice(user_agents)
@@ -182,7 +183,11 @@ class FileDownloader:
             # Default headers
             headers = {
                 "User-Agent": user_agent,
-                "Accept": "application/pdf,application/octet-stream,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,*/*",  # noqa: E501
+                "Accept": (
+                    "application/pdf,application/octet-stream,"
+                    "application/msword,application/vnd.openxmlformats-officedocument"
+                    ".wordprocessingml.document,*/*"
+                ),
                 "Accept-Language": "en-US,en;q=0.9",
                 "Connection": "keep-alive",
             }
@@ -210,7 +215,7 @@ class FileDownloader:
         # Convert HttpUrl to string if needed
         if not isinstance(file_url, str):
             file_url = str(file_url)
-            
+
         # Extract filename from URL or generate a safe filename
         url_path = file_url.split("?")[0].split("#")[0]  # Remove query params
         file_name = url_path.split("/")[-1]
@@ -276,7 +281,7 @@ class FileDownloader:
         # Convert HttpUrl to string if needed
         if not isinstance(url, str):
             url = str(url)
-            
+
         # Check if file already exists and get its size for resume
         file_size = 0
         if destination.exists() and resume:
@@ -462,7 +467,7 @@ class FileDownloader:
         # Convert HttpUrl to string if needed
         if not isinstance(url, str):
             url = str(url)
-            
+
         # Check if file already exists and skip if not overwriting
         if destination.exists() and not overwrite and not resume:
             logger.info(f"File {destination} already exists, skipping download")
@@ -667,17 +672,16 @@ class FileDownloader:
         pub_list = list(publications)
         if limit is not None and limit > 0:
             pub_list = pub_list[:limit]
-        
+
         # Track publications in database before downloading
         for pub in pub_list:
             self.publication_tracker.add_publication(pub)
-            
+
         # Create progress bar
         pbar = None
         if progress_bar:
             pbar = tqdm.asyncio.tqdm(
-                total=len(pub_list), 
-                desc="Downloading publications"
+                total=len(pub_list), desc="Downloading publications"
             )
 
         try:
@@ -686,23 +690,22 @@ class FileDownloader:
 
             # Create download task for each publication
             for pub in pub_list:
-                pub_result = {
+                pub_result: dict[str, Any] = {
                     "publication_id": pub.paper_id,
                     "title": pub.title,
-                    "downloads": []
+                    "downloads": [],
                 }
-                
+
                 # Update publication status to IN_PROGRESS
                 self.publication_tracker.update_download_status(
-                    pub.paper_id, 
-                    DownloadStatus.IN_PROGRESS
+                    pub.paper_id, DownloadStatus.IN_PROGRESS
                 )
 
                 # Download each file URL
                 for url in pub.file_urls:
                     # Get destination path
                     dest_path = self._get_file_path(pub, url)
-                    
+
                     # Download the file
                     result = await self.download_file(
                         url,
@@ -710,45 +713,52 @@ class FileDownloader:
                         referer=str(pub.pub_url) if pub.pub_url else None,
                         overwrite=overwrite,
                     )
-                    
-                    pub_result["downloads"].append({
-                        "url": str(url),
-                        "success": result.success,
-                        "path": str(result.file_path) if result.file_path else None,
-                        "error": result.error,
-                        "file_size": result.file_size,
-                        "content_type": result.content_type,
-                        "cached": result.cached,
-                        "validation": result.validation_info,
-                    })
-                
+
+                    pub_result["downloads"].append(
+                        {
+                            "url": str(url),
+                            "success": result.success,
+                            "path": str(result.file_path) if result.file_path else None,
+                            "error": result.error,
+                            "file_size": result.file_size,
+                            "content_type": result.content_type,
+                            "cached": result.cached,
+                            "validation": result.validation_info,
+                        }
+                    )
+
                 # Update publication download status based on results
                 download_success = any(d["success"] for d in pub_result["downloads"])
-                download_errors = [d["error"] for d in pub_result["downloads"] if d["error"]]
-                
+                download_errors = [
+                    d["error"] for d in pub_result["downloads"] if d["error"]
+                ]
+
                 if download_success:
                     self.publication_tracker.update_download_status(
-                        pub.paper_id, 
-                        DownloadStatus.DOWNLOADED
+                        pub.paper_id, DownloadStatus.DOWNLOADED
                     )
                 else:
-                    error_msg = "; ".join(download_errors) if download_errors else "Download failed"
-                    self.publication_tracker.update_download_status(
-                        pub.paper_id, 
-                        DownloadStatus.FAILED,
-                        error=error_msg
+                    error_msg = (
+                        "; ".join(download_errors)
+                        if download_errors
+                        else "Download failed"
                     )
-                
+                    self.publication_tracker.update_download_status(
+                        pub.paper_id,
+                        DownloadStatus.FAILED,
+                        error=error_msg,
+                    )
+
                 results.append(pub_result)
-                
+
                 if pbar:
                     pbar.update(1)
-                
+
                 # Rate limiting delay
                 await asyncio.sleep(self.download_delay)
 
             return results
-        
+
         finally:
             if pbar:
                 pbar.close()
@@ -780,9 +790,7 @@ class FileDownloader:
             f"  - Successfully downloaded: {successful} "
             f"({successful / total * 100:.1f}%)"
         )
-        logger.info(
-            f"  - Used cached files: {cached} " f"({cached / total * 100:.1f}%)"
-        )
+        logger.info(f"  - Used cached files: {cached} ({cached / total * 100:.1f}%)")
         logger.info(f"  - Failed: {failed} ({failed / total * 100:.1f}%)")
         logger.info(f"Total data downloaded: {size_str}")
         logger.info("-" * 50)
@@ -812,7 +820,7 @@ async def download_growthlab_files(
     """
     # Initialize publication tracker
     publication_tracker = PublicationTracker()
-    
+
     # Initialize downloader
     downloader = FileDownloader(
         storage=storage,
