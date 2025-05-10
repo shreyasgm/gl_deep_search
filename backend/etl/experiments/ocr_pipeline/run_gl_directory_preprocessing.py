@@ -100,13 +100,14 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
 
     df = df.explode("file_urls").rename(columns={"file_urls": "file_url"})
     df["missing_fileurl"] = df["file_url"].isna()
-    df["file_url"] = df["file_url"].astype(str).str.strip().replace("nan", None)
+    df["file_url"] = df["file_url"].astype(str).str.strip()
+    df["file_url"] = df["file_url"].replace(["", "None", "nan"], None)
 
     def build_row(row):
         url = row["file_url"]
         pub_id = row["paper_id"]
 
-        if not url or url == "None":
+        if not url or str(url).strip().lower() in {"none", "nan", ""}:
             return pd.Series({"file_id": None, "file_name": None, "file_path": None})
 
         url_path = url.split("?")[0].split("#")[0]
@@ -132,7 +133,7 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
     df = pd.concat([df, file_metadata], axis=1)
 
     # Detect language final pass
-    df[["language", "language_source"]] = df.apply(detect_language, axis=1, result_type="expand")
+    df[["language", "language_source"]] = df.apply(detect_language, axis=1, result_type='expand')
 
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_csv, index=False)
