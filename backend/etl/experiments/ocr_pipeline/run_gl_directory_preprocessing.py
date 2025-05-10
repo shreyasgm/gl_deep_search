@@ -131,7 +131,11 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
         pub_id = row["paper_id"]
 
         if not url or str(url).strip().lower() in {"none", "nan", ""}:
-            return pd.Series({"file_id": None, "file_name": None, "file_path": None})
+            return pd.Series({
+                "file_id": f"{pub_id}_nofile",
+                "file_name": None,
+                "file_path": None
+            })
 
         url_path = url.split("?")[0].split("#")[0]
         file_name_candidate = url_path.split("/")[-1]
