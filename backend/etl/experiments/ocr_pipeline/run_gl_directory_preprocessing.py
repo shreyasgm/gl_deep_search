@@ -4,7 +4,7 @@ import mimetypes
 from pathlib import Path
 
 import pandas as pd
-from langdetect import detect, DetectorFactory
+from langdetect import DetectorFactory, detect
 
 DetectorFactory.seed = 0  # make language detection deterministic
 
@@ -14,13 +14,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def guess_extension(file_url: str) -> str:
     content_type = mimetypes.guess_type(file_url)[0]
     if content_type == "application/pdf":
         return ".pdf"
     elif content_type == "application/msword":
         return ".doc"
-    elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    elif (
+        content_type
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ):
         return ".docx"
     elif content_type and content_type.startswith("text/"):
         return ".txt"
@@ -42,6 +46,7 @@ def parse_file_urls(field):
             return [field]
     return list(field)
 
+
 def infer_language_from_filename(file_name: str) -> str:
     if not file_name:
         return "unknown"
@@ -49,8 +54,26 @@ def infer_language_from_filename(file_name: str) -> str:
 
     lang_map = {
         "en": ["english", "_en", "-en", "report", "policy", "summary"],
-        "es": ["spanish", "_es", "-es", "esp", "informe", "resumen", "crecimiento", "complejidad", "diagnostico"],
-        "fr": ["french", "_fr.", "-fr.", "fr.", "execsumfr", "-français", "-francais"], #fixed here issue with franchsing being detected as french
+        "es": [
+            "spanish",
+            "_es",
+            "-es",
+            "esp",
+            "informe",
+            "resumen",
+            "crecimiento",
+            "complejidad",
+            "diagnostico",
+        ],
+        "fr": [
+            "french",
+            "_fr.",
+            "-fr.",
+            "fr.",
+            "execsumfr",
+            "-français",
+            "-francais",
+        ],  # fixed here issue with franchsing being detected as french
         "ar": ["arabic", "-ar", "_ar", "execsumar"],
         "pt": ["portuguese", "_pt", "-pt"],
     }
@@ -123,31 +146,33 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
         file_path = f"raw/documents/growthlab/{pub_id}/{file_name}"
         file_id = f"{pub_id}_{hashlib.md5(url.encode()).hexdigest()[:8]}"
 
-        return pd.Series({
-            "file_id": file_id,
-            "file_name": file_name,
-            "file_path": file_path
-        })
+        return pd.Series(
+            {"file_id": file_id, "file_name": file_name, "file_path": file_path}
+        )
 
     file_metadata = df.apply(build_row, axis=1)
     df = pd.concat([df, file_metadata], axis=1)
 
     # Detect language final pass
-    df[["language", "language_source"]] = df.apply(detect_language, axis=1, result_type='expand')
+    df[["language", "language_source"]] = df.apply(
+        detect_language, axis=1, result_type="expand"
+    )
 
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_csv, index=False)
     logger.info(f"✅ Saved file-level dataset to: {output_csv}")
 
+
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Explode GrowthLab publications to file-level data.")
+    parser = argparse.ArgumentParser(
+        description="Explode GrowthLab publications to file-level data."
+    )
     parser.add_argument("--input", required=True, help="Path to publication-level CSV")
     parser.add_argument("--output", required=True, help="Path to output file-level CSV")
     args = parser.parse_args()
 
     expand_publications_to_file_level(
-        input_csv=Path(args.input),
-        output_csv=Path(args.output)
+        input_csv=Path(args.input), output_csv=Path(args.output)
     )
