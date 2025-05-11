@@ -1,5 +1,6 @@
 import fitz  # PyMuPDF
 
+
 def is_pdf_text_based(filepath, min_text_threshold=100):
     doc = fitz.open(filepath)
     total_text = 0
@@ -8,6 +9,7 @@ def is_pdf_text_based(filepath, min_text_threshold=100):
         total_text += len(text.strip())
     doc.close()
     return total_text > min_text_threshold
+
 
 # Example usage
 pdf_path = "example.pdf"
