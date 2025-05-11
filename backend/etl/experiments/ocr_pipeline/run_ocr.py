@@ -4,6 +4,7 @@ import argparse
 import json
 import pathlib
 
+#also here I realised that my excel seems to have lost the columns for language lol. but not for now
 
 # Mock functions to replace with actual tool wrappers
 def parse_marker(pdf_path):

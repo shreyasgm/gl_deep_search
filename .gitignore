@@ -224,3 +224,4 @@ poetry.toml
 pyrightconfig.json
 
 **/CLAUDE.local.md
+*.ipynb
