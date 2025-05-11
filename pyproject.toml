@@ -26,9 +26,7 @@ dependencies = [
     "pydantic>=2",
     "python-dotenv>=1",
     "loguru",
-    "tqdm",
-    "polars>=1.29.0",
-    "pyarrow>=19.0.1",
+    "tqdm"
 ]
 
 [project.urls]
@@ -53,6 +51,18 @@ etl = [
     "unstructured",
     "docling",
     "marker-pdf",
+    "pdfplumber",
+    "mistralai",
+    "PyPDF2",
+    "pymupdf",
+    "pytesseract",
+    "tesserocr",
+    "EasyOCR",
+    "pymupdf4llm",
+    "deepdoctection",
+    "layoutparser",
+    "pdf2image",
+    "ocrmypdf",
     # Vector databases and embeddings
     "qdrant-client",
     "sentence-transformers",
@@ -61,6 +71,8 @@ etl = [
     # Data
     "pandas",
     "numpy",
+    "polars>=1.29.0",
+    "pyarrow>=19.0.1",
     "seaborn",
     # Cloud storage
     "google-cloud-storage",
