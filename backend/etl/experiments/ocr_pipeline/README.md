@@ -1,94 +1,106 @@
-# OCR Pipeline for Academic Papers
+# OCR Pipeline
 
-This pipeline is designed to process academic papers, with a focus on handling both text-based and image-based PDFs. It includes tools for document preprocessing, language detection, OCR processing, and text extraction.
+This directory contains scripts for processing PDFs from the GrowthLab dataset, using OCR when necessary.
 
-## Project Evolution
+## Overview
 
-The project has evolved through several key phases:
+The OCR pipeline processes PDFs through several steps:
 
-1. **Initial Setup** (354eebe)
-   - Initial observations and setup of OCR pipeline
-   - Established basic project structure
+1. Download PDFs from a list of URLs
+2. Check if each PDF is text-based or requires OCR
+3. Perform OCR on documents that need it
+4. Save extracted text for further processing
 
-2. **Pipeline Structure and Logging** (6e4003d)
-   - Switched to logging for better debugging
-   - Established preferred pipeline structure
-   - Fixed column handling in data processing
+## Modular Script Approach
 
-3. **Language Detection and File Management** (b00f736)
-   - Implemented robust language detection system
-   - Added support for multiple languages including Arabic and French
-   - Created system to handle multiple files per publication
-   - Improved handling of edge cases in language detection
-   - Added language source tracking for debugging
-   - Fixed issues with language detection in filenames and abstracts
+The entire pipeline is now contained in a single modular script (`ocr_pipeline.py`) that allows you to:
 
-4. **Document Processing and Selection** (8dc8ce0)
-   - Developed main document selector
-   - Implemented scoring system for document selection
-   - Rewrote components using polars for better performance
-   - Fixed issues with document selection logic
+1. Run individual components separately for testing
+2. Execute the complete pipeline in one command
+3. Reuse code between different parts of the pipeline
 
-5. **OCR Implementation** (357f019)
-   - Added run_ocr.py with wrapper for parse_marker
-   - Implemented initial OCR processing capabilities
-   - Set up testing framework for OCR engines
-   - Added support for multiple OCR tools (Llamaparse, Marker, Docling, Mistral OCR API, Unstructured, Deepdoctection)
+## Usage
 
-6. **PDF Analysis and Processing** (7d852ec)
-   - Added preflight_pdf.py for PDF type detection
-   - Implemented decision point for OCR vs. text parsing
-   - Enhanced text-based parsing capabilities
-   - Added support for handling multi-part documents
-   - Improved handling of text-based PDFs
+### Complete Pipeline
 
-## Components
+Run the entire pipeline with a single command:
 
-### Core Scripts
+```bash
+python ocr_pipeline.py pipeline --csv data/publevel.csv --output-dir processed_papers
+```
 
-1. **run_gl_directory_preprocessing.py**
-   - Handles initial document processing
-   - Manages file organization and preparation
+### Individual Components
 
-2. **run_download_sample.py**
-   - Downloads sample documents for testing
-   - Manages document acquisition
+You can also run individual components separately:
 
-3. **run_ocr.py**
-   - Implements OCR processing
-   - Integrates with various OCR engines
+#### 1. Download Documents
 
-4. **run_parser.py**
-   - Handles text extraction and parsing
-   - Processes both OCR and native text content
+```bash
+python ocr_pipeline.py download --csv data/publevel.csv --output-dir downloaded_papers
+```
 
-5. **preflight_pdf.py**
-   - Analyzes PDFs to determine if OCR is needed
-   - Checks PDF type and content
+Options:
+- `--csv`: Path to CSV file with document data (default: data/publevel.csv)
+- `--output-dir`: Directory to store downloaded files (default: downloaded_papers)
+- `--concurrency`: Number of concurrent downloads (default: 3)
+- `--all`: Download all files, not just samples
 
-## Features
+#### 2. Analyze PDFs
 
-- **Language Detection**: Robust system for detecting document language
-- **Multi-file Handling**: Support for publications with multiple associated files
-- **OCR Processing**: Integration with multiple OCR engines
-- **Text Extraction**: Capable of handling both text-based and image-based PDFs
-- **PDF Analysis**: Tools for determining PDF type and processing requirements
+```bash
+python ocr_pipeline.py analyze downloaded_papers --output analysis_results.json
+```
 
-## Structure
+Options:
+- `--output`: Path to save analysis results (default: analysis_results.json)
 
-PDF → (preflight_pdf.py) → Text-based?
-    ├── Yes → Marker / Llamaparse / Docling → Markdown or JSON
-    └── No  → OCR (e.g., Mistral OCR API) → Parsed text → Llamaparse / Docling
+#### 3. Run OCR
 
+```bash
+python ocr_pipeline.py ocr --analysis-file analysis_results.json --engine tesseract --output-dir ocr_results
+```
 
-## Dependencies
+Options:
+- `--analysis-file`: JSON file with analysis results
+- `--engine`: OCR engine to use (default: tesseract)
+- `--output-dir`: Directory to store OCR results (default: ocr_results)
 
-The project's dependencies are managed through pyproject.toml. Please refer to the project's root directory for the complete list of dependencies.
+### Pipeline Options
 
-## Ongoing
+When running the full pipeline:
 
-- Need to verify that my checkpoint file (preflight_pdf.py) works well, maybe with downloading all pdfs
-- I need to compare between parsers
-- I also need to compare between OCR engines
-- Set up as a more modular pipeline with parallel processing w/ dask
-- More robust Support for additional languages and document types; filtering things like presentation decks early. I had a langdetect thing upstream, maybe need to fix that because the latest excel seems to have dropped that column
+```bash
+python ocr_pipeline.py pipeline [options]
+```
+
+Options:
+- `--csv`: Path to CSV file with document data (default: data/publevel.csv)
+- `--output-dir`: Directory to store processed files (default: processed_papers)
+- `--engine`: OCR engine to use (default: tesseract)
+- `--concurrency`: Number of concurrent operations (default: 3)
+- `--all`: Process all files, not just samples
+
+## Output
+
+The pipeline generates the following outputs:
+
+1. Downloaded PDF files in the output directory, organized by paper_id
+2. OCR results in JSON format for non-text-based PDFs
+3. A summary JSON file (`pipeline_results.json`) with information about each processed document
+
+## Development
+
+To add new OCR engines or extend the pipeline functionality, modify the `ocr_pipeline.py` script.
+
+### Key Components in the Module
+
+The script is organized into functional modules:
+
+- **Download Module**: Functions for downloading PDFs from URLs
+- **PDF Analysis Module**: Functions for analyzing whether PDFs are text-based
+- **OCR Module**: Functions for performing OCR on PDFs
+- **Full Pipeline**: Functions that orchestrate the entire workflow
+
+### Adding New OCR Engines
+
+To add a new OCR engine, extend the `ocr_document()` function in the OCR module section of the script.
