@@ -74,17 +74,21 @@ The project has evolved through several key phases:
 - **Text Extraction**: Capable of handling both text-based and image-based PDFs
 - **PDF Analysis**: Tools for determining PDF type and processing requirements
 
-## Usage
+## Structure
 
-[Usage instructions to be added based on specific implementation details]
+PDF → (preflight_pdf.py) → Text-based?
+    ├── Yes → Marker / Llamaparse / Docling → Markdown or JSON
+    └── No  → OCR (e.g., Mistral OCR API) → Parsed text → Llamaparse / Docling
+
 
 ## Dependencies
 
 The project's dependencies are managed through pyproject.toml. Please refer to the project's root directory for the complete list of dependencies.
 
-## Future Work
+## Ongoing
 
-- Enhanced OCR engine integration
-- Improved text extraction accuracy
-- Better handling of complex document layouts
-- Support for additional languages and document types 
+- Need to verify that my checkpoint file (preflight_pdf.py) works well, maybe with downloading all pdfs
+- I need to compare between parsers
+- I also need to compare between OCR engines
+- Set up as a more modular pipeline with parallel processing w/ dask
+- More robust Support for additional languages and document types; filtering things like presentation decks early. I had a langdetect thing upstream, maybe need to fix that because the latest excel seems to have dropped that column
