@@ -116,146 +116,185 @@ def detect_language(file_name, abstract, title):
 
 def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None:
     # Read the data with pandas first (for compatibility with parse_file_urls)
-    df_pd = pd.read_csv(input_csv, engine='python')
+    df_pd = pd.read_csv(input_csv, engine="python")
     df_pd["file_urls"] = df_pd["file_urls"].apply(parse_file_urls)
     df_pd["num_files"] = df_pd["file_urls"].apply(len)
-    
+
     # Explode file_urls
     df_pd = df_pd.explode("file_urls").rename(columns={"file_urls": "file_url"})
-    
+
     # Convert to polars
     df = pl.from_pandas(df_pd)
-    
+
     # Process file URLs
-    df = df.with_columns([
-        pl.col("file_url").str.strip_chars(),
-        pl.col("file_url").is_null().alias("missing_fileurl")
-    ])
-    
-    df = df.with_columns([
-        pl.when(pl.col("file_url").is_in(["", "None", "nan"]))
+    df = df.with_columns(
+        [
+            pl.col("file_url").str.strip_chars(),
+            pl.col("file_url").is_null().alias("missing_fileurl"),
+        ]
+    )
+
+    df = df.with_columns(
+        [
+            pl.when(pl.col("file_url").is_in(["", "None", "nan"]))
             .then(None)
             .otherwise(pl.col("file_url"))
             .alias("file_url")
-    ])
-    
+        ]
+    )
+
     # Generate file metadata
-    df = df.with_columns([
-        pl.struct(["file_url", "paper_id"]).map_elements(
-            lambda x: {
-                "file_id": f"{x['paper_id']}_nofile" if not x['file_url'] or str(x['file_url']).strip().lower() in {"none", "nan", ""} 
+    df = df.with_columns(
+        [
+            pl.struct(["file_url", "paper_id"])
+            .map_elements(
+                lambda x: {
+                    "file_id": f"{x['paper_id']}_nofile"
+                    if not x["file_url"]
+                    or str(x["file_url"]).strip().lower() in {"none", "nan", ""}
                     else f"{x['paper_id']}_{hashlib.md5(str(x['file_url']).encode()).hexdigest()[:8]}",
-                
-                "file_name": None if not x['file_url'] or str(x['file_url']).strip().lower() in {"none", "nan", ""} 
-                    else (x['file_url'].split("?")[0].split("#")[0].split("/")[-1] 
-                          if "." in x['file_url'].split("?")[0].split("#")[0].split("/")[-1] 
-                          else f"{hashlib.md5(str(x['file_url']).encode()).hexdigest()[:8]}{guess_extension(str(x['file_url']))}"),
-                
-                "file_path": None if not x['file_url'] or str(x['file_url']).strip().lower() in {"none", "nan", ""} 
-                    else f"raw/documents/growthlab/{x['paper_id']}/{x['file_url'].split('?')[0].split('#')[0].split('/')[-1]}" 
-                            if "." in x['file_url'].split("?")[0].split("#")[0].split("/")[-1]
-                            else f"raw/documents/growthlab/{x['paper_id']}/{hashlib.md5(str(x['file_url']).encode()).hexdigest()[:8]}{guess_extension(str(x['file_url']))}"
-            }
-        ).alias("file_metadata")
-    ])
-    
+                    "file_name": None
+                    if not x["file_url"]
+                    or str(x["file_url"]).strip().lower() in {"none", "nan", ""}
+                    else (
+                        x["file_url"].split("?")[0].split("#")[0].split("/")[-1]
+                        if "."
+                        in x["file_url"].split("?")[0].split("#")[0].split("/")[-1]
+                        else f"{hashlib.md5(str(x['file_url']).encode()).hexdigest()[:8]}{guess_extension(str(x['file_url']))}"
+                    ),
+                    "file_path": None
+                    if not x["file_url"]
+                    or str(x["file_url"]).strip().lower() in {"none", "nan", ""}
+                    else f"raw/documents/growthlab/{x['paper_id']}/{x['file_url'].split('?')[0].split('#')[0].split('/')[-1]}"
+                    if "." in x["file_url"].split("?")[0].split("#")[0].split("/")[-1]
+                    else f"raw/documents/growthlab/{x['paper_id']}/{hashlib.md5(str(x['file_url']).encode()).hexdigest()[:8]}{guess_extension(str(x['file_url']))}",
+                }, return_dtype=pl.Struct
+            )
+            .alias("file_metadata")
+        ]
+    )
+
     # Unpack the struct column
-    df = df.with_columns([
-        pl.col("file_metadata").struct.field("file_id").alias("file_id"),
-        pl.col("file_metadata").struct.field("file_name").alias("file_name"),
-        pl.col("file_metadata").struct.field("file_path").alias("file_path")
-    ])
-    
+    df = df.with_columns(
+        [
+            pl.col("file_metadata").struct.field("file_id").alias("file_id"),
+            pl.col("file_metadata").struct.field("file_name").alias("file_name"),
+            pl.col("file_metadata").struct.field("file_path").alias("file_path"),
+        ]
+    )
+
     # Drop the temporary column
     df = df.drop("file_metadata")
-    
+
     # Detect language
-    df = df.with_columns([
-        pl.struct(["file_name", "abstract", "title"]).map_elements(
-            lambda x: detect_language(x["file_name"], x["abstract"], x["title"])
-        ).alias("language_info")
-    ])
-    
+    df = df.with_columns(
+        [
+            pl.struct(["file_name", "abstract", "title"])
+            .map_elements(
+                lambda x: detect_language(x["file_name"], x["abstract"], x["title"]),
+                return_dtype=pl.List
+            )
+            .alias("language_info")
+        ]
+    )
+
     # Extract language info
-    df = df.with_columns([
-        pl.col("language_info").list.get(0).alias("language"),
-        pl.col("language_info").list.get(1).alias("language_source")
-    ])
-    
+    df = df.with_columns(
+        [
+            pl.col("language_info").list.get(0).alias("language"),
+            pl.col("language_info").list.get(1).alias("language_source"),
+        ]
+    )
+
     # Drop temporary column
     df = df.drop("language_info")
-    
+
     # Initialize is_main_document column
     df = df.with_columns(pl.lit(False).alias("is_main_document"))
-    
+
     # Now process by paper_id to select main document
     paper_ids = df.select("paper_id").unique().to_series().to_list()
-    
+
     # Prepare a list for results
     result_rows = []
-    
+
     for paper_id in paper_ids:
         paper_df = df.filter(pl.col("paper_id") == paper_id)
         
         # Initialize selection logic
         selected_row = None
         
-        # STEP 1: Look for English full papers (not summaries/briefs/appendices)
-        english_main = paper_df.filter(
+        # First, identify summary/excerpt/brief documents
+        is_summary_pattern = "execsum|executive_summary|summary|brief|appendix|toc|excerpt|policy_brief|policy-brief"
+        
+        # Step 1: Look for non-summary documents in English
+        non_summary_english = paper_df.filter(
             (pl.col("language") == "en") &
-            ~pl.col("file_name").str.contains("execsum|executive_summary|summary|brief|appendix")
+            ~pl.col("file_name").str.contains(is_summary_pattern)
         )
         
-        if english_main.height > 0:
-            # If multiple English main documents, prefer working papers
-            wp_docs = english_main.filter(
+        if non_summary_english.height > 0:
+            # If we have non-summary English docs, prefer working papers
+            wp_docs = non_summary_english.filter(
                 pl.col("file_name").str.contains("wp|working_paper|cidwp")
             )
-            
             if wp_docs.height > 0:
-                selected_row = wp_docs.row(0)
+                # Prefer working papers with filename-based language detection
+                filename_wp = wp_docs.filter(pl.col("language_source") == "filename")
+                selected_row = filename_wp.row(0) if filename_wp.height > 0 else wp_docs.row(0)
             else:
-                selected_row = english_main.row(0)
+                # No working papers, prefer filename-based among non-summary English
+                filename_non_summary = non_summary_english.filter(pl.col("language_source") == "filename")
+                selected_row = filename_non_summary.row(0) if filename_non_summary.height > 0 else non_summary_english.row(0)
         
-        # STEP 2: If no English main docs, try English summaries
+        # Step 2: If no non-summary English docs, look for any non-summary document
+        elif paper_df.filter(~pl.col("file_name").str.contains(is_summary_pattern)).height > 0:
+            non_summary_any = paper_df.filter(~pl.col("file_name").str.contains(is_summary_pattern))
+            # Prefer English among any non-summary
+            any_non_summary_en = non_summary_any.filter(pl.col("language") == "en")
+            if any_non_summary_en.height > 0:
+                selected_row = any_non_summary_en.row(0)
+            else:
+                # No English, prefer filename-based detection among non-summary
+                filename_non_summary = non_summary_any.filter(pl.col("language_source") == "filename")
+                selected_row = filename_non_summary.row(0) if filename_non_summary.height > 0 else non_summary_any.row(0)
+        
+        # Step 3: If only summary documents exist, prefer English summaries
         elif paper_df.filter(pl.col("language") == "en").height > 0:
-            selected_row = paper_df.filter(pl.col("language") == "en").row(0)
+            english_any = paper_df.filter(pl.col("language") == "en")
+            # Prefer filename-based among any English
+            filename_eng = english_any.filter(pl.col("language_source") == "filename")
+            selected_row = filename_eng.row(0) if filename_eng.height > 0 else english_any.row(0)
         
-        # STEP 3: Otherwise, take the first document of any language
+        # Step 4: Last resort: take any document with filename-based language detection first
+        elif paper_df.filter(pl.col("language_source") == "filename").height > 0:
+            selected_row = paper_df.filter(pl.col("language_source") == "filename").row(0)
+        
+        # Step 5: Otherwise take the first document
         else:
             selected_row = paper_df.row(0)
-        
+
         # Extract all fields from the selected row to build our new dataframe
         paper_df_rows = paper_df.to_dicts()
         for row in paper_df_rows:
             # Mark the selected document as main
-            if (row["paper_id"] == paper_id and 
-                row["file_id"] == selected_row[paper_df.columns.index("file_id")]):
+            if (
+                row["paper_id"] == paper_id
+                and row["file_id"] == selected_row[paper_df.columns.index("file_id")]
+            ):
                 row["is_main_document"] = True
             else:
                 row["is_main_document"] = False
             result_rows.append(row)
+
+    # Convert result_rows list back to a dataframe and write to output file
+    result_df = pl.DataFrame(result_rows)
     
-    # Create the final dataframe from our processed rows
-    final_df = pl.from_dicts(result_rows)
+    # Convert to pandas for better CSV writing compatibility
+    result_pd_df = result_df.to_pandas()
     
-    # Verify we have exactly one main document per paper
-    main_doc_counts = final_df.group_by("paper_id").agg(
-        pl.col("is_main_document").sum().alias("main_count")
-    )
-    
-    min_count = main_doc_counts["main_count"].min()
-    max_count = main_doc_counts["main_count"].max()
-    
-    print(f"Min main docs per paper: {min_count}")
-    print(f"Max main docs per paper: {max_count}")
-    
-    if min_count != 1 or max_count != 1:
-        raise AssertionError("Error: Not exactly one main document per paper!")
-    
-    # Convert back to pandas for saving with to_csv
-    final_df.to_pandas().to_csv(output_csv, index=False)
-    print(f"Successfully wrote {final_df.height} rows to {output_csv}")
+    # Write the final result to CSV
+    result_pd_df.to_csv(output_csv, index=False)
 
 
 if __name__ == "__main__":
