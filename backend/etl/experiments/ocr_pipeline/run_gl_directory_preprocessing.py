@@ -114,9 +114,8 @@ def detect_language(row):
     # Step 4: If all fail
     return "unknown", "unknown"
 
-
 def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None:
-    df = pd.read_csv(input_csv)
+    df = pd.read_csv(input_csv, engine='python')
 
     df["file_urls"] = df["file_urls"].apply(parse_file_urls)
     df["num_files"] = df["file_urls"].apply(len)
@@ -162,10 +161,58 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
         detect_language, axis=1, result_type="expand"
     )
 
-    output_csv.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output_csv, index=False)
-    logger.info(f"✅ Saved file-level dataset to: {output_csv}")
+    # Initialize is_main_document column as all False
+    df["is_main_document"] = False
 
+    # Process each paper_id separately
+    for paper_id, paper_group in df.groupby("paper_id"):
+        # If only one document, mark it as main and continue
+        if len(paper_group) == 1:
+            # Use iloc to ensure we're only accessing the first row
+            first_idx = paper_group.index[0]
+            df.loc[first_idx, "is_main_document"] = True
+            logger.info(f"Paper {paper_id}: Marked single document at index {first_idx} as main")
+            continue
+        
+        # For multiple documents, calculate scores
+        scores = []
+        
+        for idx, row in paper_group.iterrows():
+            score = 0
+            file_name = row["file_name"].lower() if pd.notna(row["file_name"]) else ""
+            
+            # Scoring logic - similar to before
+            if any(indicator in file_name for indicator in ["execsum", "brief", "summary", "policy_brief", "presentation", "appendix"]):
+                score -= 50
+                
+            if row["language"] == "en":
+                score += 30
+                
+            if "wp" in file_name or "working_paper" in file_name:
+                score += 20
+                
+            if any(suffix in file_name for suffix in ["_en", "_es", "_fr", "_ar", "_pt"]):
+                score -= 10
+                
+            if not any(special in file_name for special in ["execsum", "brief", "summary", "policy_brief", "presentation", "appendix", "_en", "_es", "_fr", "_ar", "_pt"]):
+                score += 15
+                
+            scores.append((idx, score))
+        
+        # Find highest scoring document and mark it
+        best_idx, _ = max(scores, key=lambda x: x[1])
+        
+        # Set ONLY the best document to True
+        df.loc[best_idx, "is_main_document"] = True
+        
+        # Debug output
+        logger.info(f"Paper {paper_id}: Marked document at index {best_idx} as main (out of {len(paper_group)} documents)")
+
+    # Add more verification
+    main_docs_df = df[df["is_main_document"]]
+    logger.info(f"Unique paper IDs: {df['paper_id'].nunique()}")
+    logger.info(f"Main documents selected: {len(main_docs_df)}")
+    logger.info(f"Unique paper IDs in main docs: {main_docs_df['paper_id'].nunique()}")
 
 if __name__ == "__main__":
     import argparse
