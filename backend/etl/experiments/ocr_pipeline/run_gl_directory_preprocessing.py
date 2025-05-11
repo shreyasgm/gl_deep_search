@@ -114,6 +114,69 @@ def detect_language(file_name, abstract, title):
     return "unknown", "unknown"
 
 
+def add_ocr_flags(df):
+    """
+    Add to_ocr and sample flags to the dataframe.
+
+    Args:
+        df: A polars DataFrame with columns 'missing_fileurl' and 'is_main_document'
+
+    Returns:
+        pandas.DataFrame with additional 'to_ocr' and 'sample' columns
+    """
+    import numpy as np
+
+    # Convert to pandas for easier processing
+    temp_df = df.to_pandas()
+
+    # Add to_ocr flag - documents that have a file and are main documents
+    temp_df["to_ocr"] = (~temp_df["missing_fileurl"]) & temp_df["is_main_document"]
+
+    # Set random seed for reproducibility
+    np.random.seed(42)
+
+    # Sample approximately 10% of the to_ocr documents
+    temp_df["sample"] = False
+    to_ocr_indices = temp_df[temp_df["to_ocr"]].index
+
+    if len(to_ocr_indices) > 0:
+        sample_size = max(1, int(len(to_ocr_indices) * 0.1))  # 1% sample
+        sampled_indices = np.random.choice(
+            to_ocr_indices, size=sample_size, replace=False
+        )
+        temp_df.loc[sampled_indices, "sample"] = True
+
+    return temp_df
+
+
+def generate_file_metadata(file_url: str, paper_id: str) -> dict:
+    if not file_url or str(file_url).strip().lower() in {"none", "nan", ""}:
+        return {
+            "file_id": f"{paper_id}_nofile",
+            "file_name": None,
+            "file_path": None,
+        }
+
+    hash_prefix = hashlib.md5(file_url.encode()).hexdigest()[:8]
+    clean_url = file_url.split("?")[0].split("#")[0]
+    file_name_fragment = clean_url.split("/")[-1]
+
+    has_extension = "." in file_name_fragment
+    if has_extension:
+        file_name = file_name_fragment
+    else:
+        ext = guess_extension(file_url)
+        file_name = f"{hash_prefix}{ext}"
+
+    file_path = f"raw/documents/growthlab/{paper_id}/{file_name}"
+
+    return {
+        "file_id": f"{paper_id}_{hash_prefix}",
+        "file_name": file_name,
+        "file_path": file_path,
+    }
+
+
 def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None:
     # Read the data with pandas first (for compatibility with parse_file_urls)
     df_pd = pd.read_csv(input_csv, engine="python")
@@ -143,35 +206,14 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
         ]
     )
 
-    # Generate file metadata
+    # Generate file metadata using a helper for readability and maintainability
     df = df.with_columns(
-        [
-            pl.struct(["file_url", "paper_id"])
-            .map_elements(
-                lambda x: {
-                    "file_id": f"{x['paper_id']}_nofile"
-                    if not x["file_url"]
-                    or str(x["file_url"]).strip().lower() in {"none", "nan", ""}
-                    else f"{x['paper_id']}_{hashlib.md5(str(x['file_url']).encode()).hexdigest()[:8]}",
-                    "file_name": None
-                    if not x["file_url"]
-                    or str(x["file_url"]).strip().lower() in {"none", "nan", ""}
-                    else (
-                        x["file_url"].split("?")[0].split("#")[0].split("/")[-1]
-                        if "."
-                        in x["file_url"].split("?")[0].split("#")[0].split("/")[-1]
-                        else f"{hashlib.md5(str(x['file_url']).encode()).hexdigest()[:8]}{guess_extension(str(x['file_url']))}"
-                    ),
-                    "file_path": None
-                    if not x["file_url"]
-                    or str(x["file_url"]).strip().lower() in {"none", "nan", ""}
-                    else f"raw/documents/growthlab/{x['paper_id']}/{x['file_url'].split('?')[0].split('#')[0].split('/')[-1]}"
-                    if "." in x["file_url"].split("?")[0].split("#")[0].split("/")[-1]
-                    else f"raw/documents/growthlab/{x['paper_id']}/{hashlib.md5(str(x['file_url']).encode()).hexdigest()[:8]}{guess_extension(str(x['file_url']))}",
-                }, return_dtype=pl.Struct
-            )
-            .alias("file_metadata")
-        ]
+        pl.struct(["file_url", "paper_id"])
+        .map_elements(
+            lambda x: generate_file_metadata(x["file_url"], x["paper_id"]),
+            return_dtype=pl.Struct,
+        )
+        .alias("file_metadata")
     )
 
     # Unpack the struct column
@@ -192,7 +234,7 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
             pl.struct(["file_name", "abstract", "title"])
             .map_elements(
                 lambda x: detect_language(x["file_name"], x["abstract"], x["title"]),
-                return_dtype=pl.List
+                return_dtype=pl.List,
             )
             .alias("language_info")
         ]
@@ -220,19 +262,22 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
 
     for paper_id in paper_ids:
         paper_df = df.filter(pl.col("paper_id") == paper_id)
-        
+
         # Initialize selection logic
         selected_row = None
-        
+
         # First, identify summary/excerpt/brief documents
-        is_summary_pattern = "execsum|executive_summary|summary|brief|appendix|toc|excerpt|policy_brief|policy-brief"
-        
+        is_summary_pattern = (
+            "execsum|executive_summary|summary|brief|appendix|toc|excerpt|"
+            "policy_brief|policy-brief"
+        )
+
         # Step 1: Look for non-summary documents in English
         non_summary_english = paper_df.filter(
-            (pl.col("language") == "en") &
-            ~pl.col("file_name").str.contains(is_summary_pattern)
+            (pl.col("language") == "en")
+            & ~pl.col("file_name").str.contains(is_summary_pattern)
         )
-        
+
         if non_summary_english.height > 0:
             # If we have non-summary English docs, prefer working papers
             wp_docs = non_summary_english.filter(
@@ -241,35 +286,60 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
             if wp_docs.height > 0:
                 # Prefer working papers with filename-based language detection
                 filename_wp = wp_docs.filter(pl.col("language_source") == "filename")
-                selected_row = filename_wp.row(0) if filename_wp.height > 0 else wp_docs.row(0)
+                selected_row = (
+                    filename_wp.row(0) if filename_wp.height > 0 else wp_docs.row(0)
+                )
             else:
                 # No working papers, prefer filename-based among non-summary English
-                filename_non_summary = non_summary_english.filter(pl.col("language_source") == "filename")
-                selected_row = filename_non_summary.row(0) if filename_non_summary.height > 0 else non_summary_english.row(0)
-        
+                filename_non_summary = non_summary_english.filter(
+                    pl.col("language_source") == "filename"
+                )
+                selected_row = (
+                    filename_non_summary.row(0)
+                    if filename_non_summary.height > 0
+                    else non_summary_english.row(0)
+                )
+
         # Step 2: If no non-summary English docs, look for any non-summary document
-        elif paper_df.filter(~pl.col("file_name").str.contains(is_summary_pattern)).height > 0:
-            non_summary_any = paper_df.filter(~pl.col("file_name").str.contains(is_summary_pattern))
+        elif (
+            paper_df.filter(
+                ~pl.col("file_name").str.contains(is_summary_pattern)
+            ).height
+            > 0
+        ):
+            non_summary_any = paper_df.filter(
+                ~pl.col("file_name").str.contains(is_summary_pattern)
+            )
             # Prefer English among any non-summary
             any_non_summary_en = non_summary_any.filter(pl.col("language") == "en")
             if any_non_summary_en.height > 0:
                 selected_row = any_non_summary_en.row(0)
             else:
                 # No English, prefer filename-based detection among non-summary
-                filename_non_summary = non_summary_any.filter(pl.col("language_source") == "filename")
-                selected_row = filename_non_summary.row(0) if filename_non_summary.height > 0 else non_summary_any.row(0)
-        
+                filename_non_summary = non_summary_any.filter(
+                    pl.col("language_source") == "filename"
+                )
+                selected_row = (
+                    filename_non_summary.row(0)
+                    if filename_non_summary.height > 0
+                    else non_summary_any.row(0)
+                )
+
         # Step 3: If only summary documents exist, prefer English summaries
         elif paper_df.filter(pl.col("language") == "en").height > 0:
             english_any = paper_df.filter(pl.col("language") == "en")
             # Prefer filename-based among any English
             filename_eng = english_any.filter(pl.col("language_source") == "filename")
-            selected_row = filename_eng.row(0) if filename_eng.height > 0 else english_any.row(0)
-        
-        # Step 4: Last resort: take any document with filename-based language detection first
+            selected_row = (
+                filename_eng.row(0) if filename_eng.height > 0 else english_any.row(0)
+            )
+
+        # Step 4: Last resort: take any document with filename-based lang
         elif paper_df.filter(pl.col("language_source") == "filename").height > 0:
-            selected_row = paper_df.filter(pl.col("language_source") == "filename").row(0)
-        
+            selected_row = paper_df.filter(pl.col("language_source") == "filename").row(
+                0
+            )
+
         # Step 5: Otherwise take the first document
         else:
             selected_row = paper_df.row(0)
@@ -289,10 +359,10 @@ def expand_publications_to_file_level(input_csv: Path, output_csv: Path) -> None
 
     # Convert result_rows list back to a dataframe and write to output file
     result_df = pl.DataFrame(result_rows)
-    
-    # Convert to pandas for better CSV writing compatibility
-    result_pd_df = result_df.to_pandas()
-    
+
+    # Add OCR flags and convert to pandas
+    result_pd_df = add_ocr_flags(result_df)
+
     # Write the final result to CSV
     result_pd_df.to_csv(output_csv, index=False)
 

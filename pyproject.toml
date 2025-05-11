@@ -27,6 +27,8 @@ dependencies = [
     "python-dotenv>=1",
     "loguru",
     "tqdm",
+    "polars>=1.29.0",
+    "pyarrow>=19.0.1",
 ]
 
 [project.urls]
