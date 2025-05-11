@@ -87,8 +87,7 @@ The project's dependencies are managed through pyproject.toml. Please refer to t
 
 ## Ongoing
 
-- Need to verify that my checkpoint file (preflight_pdf.py) works well, maybe with downloading all pdfs
-- I need to compare between parsers
-- I also need to compare between OCR engines
-- Set up as a more modular pipeline with parallel processing w/ dask
+- I need to see if my new modular setup works and start building the 'run' pipeline from scratch
+- set up notes to compare between parsers seems we dont need ocr
+- use the dask parallelisation setup you used before but on the running script
 - More robust Support for additional languages and document types; filtering things like presentation decks early. I had a langdetect thing upstream, maybe need to fix that because the latest excel seems to have dropped that column
