@@ -928,9 +928,15 @@ name = "gl-deep-search"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "black" },
     { name = "loguru" },
+    { name = "mypy" },
+    { name = "pre-commit" },
     { name = "pydantic" },
+    { name = "pytest" },
     { name = "python-dotenv" },
+    { name = "ruff" },
+    { name = "sqlmodel" },
     { name = "tqdm" },
 ]
 
@@ -1070,6 +1076,7 @@ requires-dist = [
     { name = "asyncio", marker = "extra == 'etl'" },
     { name = "backoff", marker = "extra == 'etl'" },
     { name = "beautifulsoup4", marker = "extra == 'etl'" },
+    { name = "black", specifier = ">=25.1.0" },
     { name = "browser-use", marker = "extra == 'dev'" },
     { name = "cohere", marker = "extra == 'etl'" },
     { name = "cohere", marker = "extra == 'service'" },
@@ -1101,9 +1108,11 @@ requires-dist = [
     { name = "pandas", marker = "extra == 'frontend'" },
     { name = "pandas-stubs", marker = "extra == 'dev'" },
     { name = "playwright", marker = "extra == 'dev'" },
+    { name = "pre-commit", specifier = ">=4.1.0" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pydantic-settings", marker = "extra == 'service'" },
+    { name = "pytest", specifier = ">=7.4.0" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
@@ -1118,6 +1127,7 @@ requires-dist = [
     { name = "seaborn", marker = "extra == 'etl'" },
     { name = "sentence-transformers", marker = "extra == 'etl'" },
     { name = "sentence-transformers", marker = "extra == 'service'" },
+    { name = "sqlmodel", specifier = ">=0.0.8" },
     { name = "streamlit", marker = "extra == 'frontend'" },
     { name = "tiktoken", marker = "extra == 'etl'", specifier = ">=0.9.0" },
     { name = "tqdm" },

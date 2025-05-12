@@ -23,7 +23,9 @@ import aiohttp
 import tqdm.asyncio
 
 from backend.etl.models.publications import GrowthLabPublication
+from backend.etl.models.tracking import DownloadStatus
 from backend.etl.scrapers.growthlab import GrowthLabScraper
+from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
@@ -60,6 +62,7 @@ class FileDownloader:
     - Resume of partial downloads
     - Intelligent caching (won't re-download existing files unless overwrite=True)
     - Progress tracking
+    - Publication tracking in database
     """
 
     def __init__(
@@ -67,6 +70,7 @@ class FileDownloader:
         storage: StorageBase | None = None,
         concurrency_limit: int = 3,
         config_path: Path | None = None,
+        publication_tracker: PublicationTracker | None = None,
     ):
         """
         Initialize the file downloader.
@@ -75,9 +79,13 @@ class FileDownloader:
             storage: Storage backend to use (defaults to factory-configured storage)
             concurrency_limit: Maximum number of concurrent downloads
             config_path: Path to configuration file
+            publication_tracker: tracking download status
         """
         # Storage configuration
         self.storage = storage or get_storage()
+
+        # Publication tracking
+        self.publication_tracker = publication_tracker or PublicationTracker()
 
         # Load configuration or use defaults
         self.config = self._load_config(config_path)
@@ -136,10 +144,9 @@ class FileDownloader:
             "min_file_size": 1024,  # 1KB
             "max_file_size": 100 * 1024 * 1024,  # 100MB
             "user_agent_list": [
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",  # noqa: E501
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",  # noqa: E501
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",  # noqa: E501
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/120.0.0.0",  # noqa: E501
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
             ],
         }
 
@@ -166,7 +173,9 @@ class FileDownloader:
             user_agents = self.config.get(
                 "user_agent_list",
                 [
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"  # noqa: E501
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/122.0.0.0 Safari/537.36"
                 ],
             )
             user_agent = random.choice(user_agents)
@@ -174,7 +183,11 @@ class FileDownloader:
             # Default headers
             headers = {
                 "User-Agent": user_agent,
-                "Accept": "application/pdf,application/octet-stream,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,*/*",  # noqa: E501
+                "Accept": (
+                    "application/pdf,application/octet-stream,"
+                    "application/msword,application/vnd.openxmlformats-officedocument"
+                    ".wordprocessingml.document,*/*"
+                ),
                 "Accept-Language": "en-US,en;q=0.9",
                 "Connection": "keep-alive",
             }
@@ -199,6 +212,10 @@ class FileDownloader:
         Returns:
             Path where the file should be saved
         """
+        # Convert HttpUrl to string if needed
+        if not isinstance(file_url, str):
+            file_url = str(file_url)
+
         # Extract filename from URL or generate a safe filename
         url_path = file_url.split("?")[0].split("#")[0]  # Remove query params
         file_name = url_path.split("/")[-1]
@@ -261,6 +278,10 @@ class FileDownloader:
         Returns:
             DownloadResult with information about the download
         """
+        # Convert HttpUrl to string if needed
+        if not isinstance(url, str):
+            url = str(url)
+
         # Check if file already exists and get its size for resume
         file_size = 0
         if destination.exists() and resume:
@@ -443,6 +464,10 @@ class FileDownloader:
         Returns:
             DownloadResult with information about the download
         """
+        # Convert HttpUrl to string if needed
+        if not isinstance(url, str):
+            url = str(url)
+
         # Check if file already exists and skip if not overwriting
         if destination.exists() and not overwrite and not resume:
             logger.info(f"File {destination} already exists, skipping download")
@@ -633,21 +658,24 @@ class FileDownloader:
         Download files for a list of publications.
 
         Args:
-            publications: List of publications to download files for
+            publications: List of publications to download
             overwrite: Whether to overwrite existing files
-            limit: Maximum number of publications to process (for testing)
-            progress_bar: Whether to show a progress bar
+            limit: Maximum number of publications to download (None for all)
+            progress_bar: Whether to show progress bar
 
         Returns:
             List of download results by publication
         """
-        # Start client session if not already created
-        session = await self._get_session()
+        results = []
 
-        # Apply limit if specified
-        if limit and limit > 0:
-            publications = publications[:limit]
-            logger.info(f"Limited to downloading files for {limit} publications")
+        # Limit the number of publications if specified
+        pub_list = list(publications)
+        if limit is not None and limit > 0:
+            pub_list = pub_list[:limit]
+
+        # Track publications in database before downloading
+        for pub in pub_list:
+            self.publication_tracker.add_publication(pub)
 
         # Find all file URLs to download
         all_downloads = []
@@ -739,17 +767,15 @@ class FileDownloader:
                     }
                     results.append(pub_result)
                     pbar.update(1)
-                    pbar.set_postfix_str(f"Last: error - {str(e)}")
 
-        # Close the session
-        if self._session and not self._session.closed:
-            await self._session.close()
-            self._session = None
+                # Rate limiting delay
+                await asyncio.sleep(self.download_delay)
 
-        # Log summary
-        self._log_download_summary()
+            return results
 
-        return results
+        finally:
+            if pbar:
+                pbar.close()
 
     def _log_download_summary(self) -> None:
         """Log a summary of download statistics."""
@@ -793,19 +819,30 @@ async def download_growthlab_files(
     config_path: Path | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Download files for Growth Lab publications.
+    Download files for all Growth Lab publications.
 
     Args:
         storage: Storage backend to use
-        publication_data_path: Path to publication CSV (defaults to standard location)
+        publication_data_path: Path to publication data CSV file
         overwrite: Whether to overwrite existing files
-        limit: Maximum number of publications to process (for testing)
-        concurrency: Maximum concurrent downloads
+        limit: Maximum number of publications to download
+        concurrency: Maximum number of concurrent downloads
         config_path: Path to configuration file
 
     Returns:
-        List of download results
+        List of download results by publication
     """
+    # Initialize publication tracker
+    publication_tracker = PublicationTracker()
+
+    # Initialize downloader
+    downloader = FileDownloader(
+        storage=storage,
+        concurrency_limit=concurrency,
+        config_path=config_path,
+        publication_tracker=publication_tracker,
+    )
+
     # Get storage
     storage = storage or get_storage()
 
@@ -834,13 +871,6 @@ async def download_growthlab_files(
     logger.info(
         f"Found {len(publications_with_files)}/{len(publications)} "
         "publications with file URLs"
-    )
-
-    # Create downloader and download files
-    downloader = FileDownloader(
-        storage=storage,
-        concurrency_limit=concurrency,
-        config_path=config_path,
     )
 
     results = await downloader.download_publications(
