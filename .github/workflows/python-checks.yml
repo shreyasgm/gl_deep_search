@@ -7,56 +7,56 @@ on:
     branches: [ main ]
 
 jobs:
-  lint-and-type-check:
+  checks:
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      # Step 1: Set up the base Python version.
+      # actions/setup-python is often faster as runners cache Python installs.
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'uv'
+          # Remove the 'cache: uv' line here; caching is handled by setup-uv.
 
-      - name: Install uv
-        run: |
-          pip install uv
+      # Step 2: Install and configure uv using the official action.
+      # Pinning the version is recommended for reproducibility.
+      # Enable caching based on the lock file (uv.lock is assumed based on your pre-commit).
+      - name: Install and configure uv
+        uses: astral-sh/setup-uv@v1 # Use v1 or a specific pinned version
+        with:
+          # Optional: Pin to a specific uv version (e.g., matching pre-commit)
+          # version: "0.1.38" # Example version, adjust as needed
+          enable-cache: true
+          # Assuming you use uv.lock because of the uv-lock pre-commit hook.
+          # If using requirements files, change this glob accordingly.
+          cache-dependency-glob: "uv.lock"
 
+      # Step 3: Install project dependencies, including dev tools, using uv sync.
+      # This creates/updates a virtual environment based on pyproject.toml and uv.lock.
+      # Assumes ruff, mypy, pytest, pydantic, types-*, loguru are listed as
+      # project or dev/optional dependencies in your pyproject.toml.
+      # Using --locked ensures the lock file is respected.
+      # Using --all-extras --dev ensures development tools and extras are installed.
+      # Adjust flags if your setup differs (e.g., remove --all-extras if not needed).
       - name: Install dependencies
-        run: |
-          uv pip install -e ".[dev]"
+        run: uv sync --locked --extra etl --extra dev
 
-      - name: Run ruff check
-        run: |
-          uv run ruff check .
+      # Step 4: Run checks using 'uv run' to execute within the managed environment.
+      - name: Run ruff linter check
+        run: uv run ruff check .
 
-      - name: Run ruff format check
-        run: |
-          uv run ruff format --check .
+      - name: Run ruff formatter check
+        run: uv run ruff format --check .
 
       - name: Run mypy type checking
-        run: |
-          uv run mypy .
+        # Add arguments from your pre-commit config
+        run: uv run mypy . --ignore-missing-imports
 
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'uv'
-
-      - name: Install uv
-        run: |
-          pip install uv
-
-      - name: Install dependencies
-        run: |
-          uv pip install -e ".[dev]"
-
+      # Step 5: Run tests using 'uv run'
       - name: Run tests
-        run: |
-          uv run pytest
+        run: uv run pytest

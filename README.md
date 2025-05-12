@@ -126,7 +126,14 @@ gl_deep_search/
    git clone https://github.com/shreyasgm/gl_deep_search.git
    cd gl_deep_search
    ```
-2. Run `uv` in the CLI to check that it is available. After this, run `uv sync` in to install dependencies and create the `.venv` file
+2. Run `uv` in the CLI to check that it is available. After this, run `uv sync` to install dependencies and create the virtual environment. This command will only install the core dependencies specified in the `pyproject.toml` file. To install dependencies that belong to a specific component (*i.e.*, optional dependencies) use:
+   ```bash
+   # For a single optional component
+   uv sync --extra etl
+
+   # For multiple optional components
+   uv sync --extra etl, frontend, [other groups]
+   ```
 
 3. To add new packages to the project, use the following format:
    ```bash

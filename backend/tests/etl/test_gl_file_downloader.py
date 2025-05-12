@@ -478,7 +478,7 @@ async def test_integration_end_to_end(storage, tmp_path):
 
         # Log all results for debugging
         for i, r in enumerate(results):
-            logger.debug(f"Result {i+1}:")
+            logger.debug(f"Result {i + 1}:")
             logger.debug(f"  URL: {r['url']}")
             logger.debug(f"  Success: {r['success']}")
             logger.debug(f"  File path: {r.get('file_path')}")
@@ -493,14 +493,14 @@ async def test_integration_end_to_end(storage, tmp_path):
         # For each successful download, verify the file exists
         for result in successful:
             # Verify the file was downloaded and exists
-            assert result[
-                "file_path"
-            ].exists(), f"File {result['file_path']} does not exist"
+            assert result["file_path"].exists(), (
+                f"File {result['file_path']} does not exist"
+            )
 
             # Verify file size is reasonable
-            assert (
-                result["file_size"] > 1000
-            ), f"File {result['file_path']} is too small: {result['file_size']} bytes"
+            assert result["file_size"] > 1000, (
+                f"File {result['file_path']} is too small: {result['file_size']} bytes"
+            )
     except Exception as e:
         logger.error(f"Exception during test: {e}")
         raise

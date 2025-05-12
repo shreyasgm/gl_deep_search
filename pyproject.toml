@@ -50,28 +50,25 @@ etl = [
     "scrapy",
     "backoff",
     "asyncio",
-    "aiohttp>=3.8.0,!=3.11.14",  # Avoid yanked version 3.11.14
+    "aiohttp>=3.8.0,!=3.11.14", # Avoid yanked version 3.11.14
     "aiofiles",
-
     # PDF processing and OCR
     "langdetect",
     "unstructured",
     "docling",
     "marker-pdf",
-
     # Vector databases and embeddings
     "qdrant-client",
     "sentence-transformers",
     "openai",
     "cohere",
-
     # Data
     "pandas",
     "numpy",
     "seaborn",
-
     # Cloud storage
     "google-cloud-storage",
+    "tiktoken>=0.9.0",
 ]
 
 # Backend service dependencies
@@ -127,8 +124,8 @@ dev = [
     "playwright",
 
     # Linting, formatting, type checking
-    "ruff",
-    "mypy",
+    "ruff==0.11.0",
+    "mypy==1.15.0",
     "types-requests",
     "types-PyYAML",
     "types-tqdm",

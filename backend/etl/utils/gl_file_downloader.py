@@ -677,81 +677,95 @@ class FileDownloader:
         for pub in pub_list:
             self.publication_tracker.add_publication(pub)
 
-        # Create progress bar
-        pbar = None
-        if progress_bar:
-            pbar = tqdm.asyncio.tqdm(
-                total=len(pub_list), desc="Downloading publications"
+        # Find all file URLs to download
+        all_downloads = []
+        for pub in publications:
+            if not pub.file_urls:
+                continue
+
+            for url in pub.file_urls:
+                # Convert HttpUrl to string
+                url_str = str(url)
+
+                # Get destination path
+                dest_path = self._get_file_path(pub, url_str)
+
+                # Store the original HttpUrl object, not the string
+                all_downloads.append((pub, url, dest_path))
+
+        # Log download plan
+        logger.info(f"Found {len(all_downloads)} files to download")
+
+        # Download files with progress tracking
+        results = []
+
+        # Create tasks for all downloads
+        tasks = []
+        for pub, url, dest_path in all_downloads:
+            # Cast URL to string to ensure compatibility
+            url_str = str(url)
+            task = self.download_file(
+                url=url_str,
+                destination=dest_path,
+                referer=str(pub.pub_url) if pub.pub_url else None,
+                overwrite=overwrite,
+                resume=True,
             )
+            # Store publication, URL string, and task in tasks
+            # We must use string to avoid HttpUrl type error
+            tasks.append((pub, url, task))
 
-        try:
-            # Get or create session
-            session = await self._get_session()
+        # Process downloads with progress bar
+        with tqdm.asyncio.tqdm(
+            total=len(tasks),
+            desc="Downloading files",
+            disable=not progress_bar,
+        ) as pbar:
+            for pub, url, download_task in tasks:
+                try:
+                    # Convert url to string for logging and results
+                    url_str = str(url)
 
-            # Create download task for each publication
-            for pub in pub_list:
-                pub_result: dict[str, Any] = {
-                    "publication_id": pub.paper_id,
-                    "title": pub.title,
-                    "downloads": [],
-                }
+                    # Await the download task
+                    result = await download_task
 
-                # Update publication status to IN_PROGRESS
-                self.publication_tracker.update_download_status(
-                    pub.paper_id, DownloadStatus.IN_PROGRESS
-                )
+                    # Record the result with publication info
+                    pub_result = {
+                        "publication_id": pub.paper_id,
+                        "publication_title": pub.title,
+                        "url": url_str,
+                        "success": result.success,
+                        "file_path": result.file_path,
+                        "file_size": result.file_size,
+                        "cached": result.cached,
+                        "error": result.error,
+                    }
+                    results.append(pub_result)
 
-                # Download each file URL
-                for url in pub.file_urls:
-                    # Get destination path
-                    dest_path = self._get_file_path(pub, url)
+                    # Update progress
+                    pbar.update(1)
 
-                    # Download the file
-                    result = await self.download_file(
-                        url,
-                        dest_path,
-                        referer=str(pub.pub_url) if pub.pub_url else None,
-                        overwrite=overwrite,
-                    )
+                    # Success/failure message
+                    if result.success:
+                        status = "cached" if result.cached else "downloaded"
+                        pbar.set_postfix_str(f"Last: {status}")
+                    else:
+                        pbar.set_postfix_str(f"Last: failed - {result.error}")
 
-                    pub_result["downloads"].append(
-                        {
-                            "url": str(url),
-                            "success": result.success,
-                            "path": str(result.file_path) if result.file_path else None,
-                            "error": result.error,
-                            "file_size": result.file_size,
-                            "content_type": result.content_type,
-                            "cached": result.cached,
-                            "validation": result.validation_info,
-                        }
-                    )
+                except Exception as e:
+                    # Convert url to string for logging and results
+                    url_str = str(url)
 
-                # Update publication download status based on results
-                download_success = any(d["success"] for d in pub_result["downloads"])
-                download_errors = [
-                    d["error"] for d in pub_result["downloads"] if d["error"]
-                ]
-
-                if download_success:
-                    self.publication_tracker.update_download_status(
-                        pub.paper_id, DownloadStatus.DOWNLOADED
-                    )
-                else:
-                    error_msg = (
-                        "; ".join(download_errors)
-                        if download_errors
-                        else "Download failed"
-                    )
-                    self.publication_tracker.update_download_status(
-                        pub.paper_id,
-                        DownloadStatus.FAILED,
-                        error=error_msg,
-                    )
-
-                results.append(pub_result)
-
-                if pbar:
+                    # Record unexpected errors
+                    logger.error(f"Unexpected error downloading {url_str}: {e}")
+                    pub_result = {
+                        "publication_id": pub.paper_id,
+                        "publication_title": pub.title,
+                        "url": url_str,
+                        "success": False,
+                        "error": f"Unexpected error: {str(e)}",
+                    }
+                    results.append(pub_result)
                     pbar.update(1)
 
                 # Rate limiting delay
