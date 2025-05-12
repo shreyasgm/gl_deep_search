@@ -31,6 +31,8 @@ dependencies = [
     "ruff>=0.11.0",
     "mypy>=1.15.0",
     "black>=25.1.0",
+    "sqlmodel>=0.0.8",
+
 ]
 
 [project.urls]
