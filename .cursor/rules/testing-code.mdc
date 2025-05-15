@@ -1,0 +1,163 @@
+---
+description: Testing code
+globs: 
+alwaysApply: false
+---
+# Cursor Rule: Generate Pytest Tests
+
+## Rule Description
+When generating test files for Python code, follow these pytest conventions and best practices.
+
+## File Structure
+1. Test files should be named with `test_` prefix
+2. Test files should be placed in a `tests` directory
+3. Test functions should be named with `test_` prefix
+4. Test classes should be named with `Test` prefix
+
+## Test Organization
+1. Use descriptive test names that explain what's being tested
+2. Follow the Arrange-Act-Assert pattern
+3. Group related tests in classes when appropriate
+4. Use fixtures for setup and teardown
+5. Use parametrize for testing multiple scenarios
+
+## Test Patterns
+
+### Basic Test Structure
+```python
+def test_function_name():
+    # Arrange
+    input_data = "test"
+    
+    # Act
+    result = function_to_test(input_data)
+    
+    # Assert
+    assert result == expected_output
+```
+
+### Using Fixtures
+```python
+@pytest.fixture
+def sample_data():
+    return {"key": "value"}
+
+def test_with_fixture(sample_data):
+    result = function_to_test(sample_data)
+    assert result is not None
+```
+
+### Async Tests
+```python
+@pytest.mark.asyncio
+async def test_async_function():
+    result = await async_function_to_test()
+    assert result is not None
+```
+
+### Parameterized Tests
+```python
+@pytest.mark.parametrize("input_data,expected", [
+    ("test1", "result1"),
+    ("test2", "result2"),
+])
+def test_multiple_cases(input_data, expected):
+    result = function_to_test(input_data)
+    assert result == expected
+```
+
+### Class-based Tests
+```python
+class TestYourClass:
+    def test_method(self):
+        instance = YourClass()
+        result = instance.method()
+        assert result is not None
+```
+
+## Test Categories
+1. Unit Tests: Test individual functions and methods
+2. Integration Tests: Test interactions between components
+3. End-to-End Tests: Test complete workflows
+
+## Test Markers
+Use appropriate markers for different test types:
+- `@pytest.mark.asyncio` for async tests
+- `@pytest.mark.integration` for integration tests
+- `@pytest.mark.slow` for slow-running tests
+- `@pytest.mark.skip` for tests to skip
+- `@pytest.mark.xfail` for expected failures
+
+## Assertion Patterns
+1. Use simple assertions:
+```python
+assert result == expected
+assert result is not None
+assert isinstance(result, expected_type)
+```
+
+2. Use pytest's built-in assertion helpers:
+```python
+pytest.approx()  # For floating-point comparisons
+pytest.raises()  # For testing exceptions
+```
+
+## Best Practices
+1. Keep tests independent and isolated
+2. Test both success and failure cases
+3. Use meaningful assertions
+4. Mock external dependencies
+5. Keep tests fast and focused
+6. Use appropriate test markers
+7. Follow the project's existing patterns
+8. Include docstrings for complex tests
+9. Use type hints in test functions
+10. Maintain test coverage
+
+## Example Test File
+```python
+import pytest
+from your_module import YourClass
+
+@pytest.fixture
+def sample_instance():
+    return YourClass()
+
+class TestYourClass:
+    def test_initialization(self, sample_instance):
+        """Test that the class initializes correctly."""
+        assert sample_instance is not None
+    
+    @pytest.mark.asyncio
+    async def test_async_method(self, sample_instance):
+        """Test async method functionality."""
+        result = await sample_instance.async_method()
+        assert result is not None
+    
+    @pytest.mark.parametrize("input_data,expected", [
+        ("test1", "result1"),
+        ("test2", "result2"),
+    ])
+    def test_multiple_cases(self, sample_instance, input_data, expected):
+        """Test multiple input scenarios."""
+        result = sample_instance.method(input_data)
+        assert result == expected
+```
+
+## Test Configuration
+1. Use `pytest.ini` or `pyproject.toml` for project-specific configuration
+2. Configure test markers
+3. Set up test coverage reporting
+4. Configure test timeouts
+5. Set up test parallelization if needed
+
+## Running Tests
+Common pytest commands:
+- `pytest` - Run all tests
+- `pytest tests/test_file.py` - Run specific test file
+- `pytest tests/test_file.py::test_function` - Run specific test
+- `pytest -v` - Run with verbose output
+- `pytest -k "test_name"` - Run tests matching pattern
+- `pytest -m "marker"` - Run tests with specific marker
+- `pytest --cov=module` - Run with coverage reporting
+
