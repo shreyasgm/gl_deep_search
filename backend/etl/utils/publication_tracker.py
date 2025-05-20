@@ -57,7 +57,7 @@ class PublicationTracker:
         self.openalex_client = OpenAlexClient()
 
     async def discover_publications(
-        self
+        self,
     ) -> list[tuple[GrowthLabPublication | OpenAlexPublication, str]]:
         """
         Discover new publications using configured scrapers.
@@ -69,7 +69,9 @@ class PublicationTracker:
 
         try:
             # Discover from GrowthLab
-            growthlab_pubs = await self.growthlab_scraper.extract_and_enrich_publications()
+            growthlab_pubs = (
+                await self.growthlab_scraper.extract_and_enrich_publications()
+            )
             publications.extend([(pub, "growthlab") for pub in growthlab_pubs])
 
             # Discover from OpenAlex

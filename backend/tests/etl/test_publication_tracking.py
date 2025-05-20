@@ -202,8 +202,8 @@ class TestPublicationTracker:
             sample_openalex_publication: Sample OpenAlex publication
         """
         # Configure mocks
-        mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications = AsyncMock(
-            return_value=[sample_growthlab_publication]
+        mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications = (
+            AsyncMock(return_value=[sample_growthlab_publication])
         )
         mock_publication_tracker.openalex_client.fetch_publications = AsyncMock(
             return_value=[sample_openalex_publication]
@@ -235,8 +235,8 @@ class TestPublicationTracker:
             caplog: Fixture for capturing log messages
         """
         # Make the scrapers raise exceptions
-        mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications.side_effect = (
-            Exception("Test error")
+        mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications.side_effect = Exception(
+            "Test error"
         )
 
         # Verify the method raises the exception
