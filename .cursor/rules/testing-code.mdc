@@ -1,12 +1,23 @@
 ---
 description: Testing code
-globs: 
+globs:
 alwaysApply: false
 ---
-# Cursor Rule: Generate Pytest Tests
+Cursor Rule: Generate Pytest Tests
 
 ## Rule Description
 When generating test files for Python code, follow these pytest conventions and best practices.
+
+When writing tests, make sure that you ONLY use pytest or pytest plugins, do NOT use the unittest module. All tests should have typing annotations as well. All tests should be in ./tests. Be sure to create all necessary files and folders. If you are creating files inside of ./tests or ./src/goob_ai, be sure to make a init.py file if one does not exist.
+
+All tests should be fully annotated and should contain docstrings. Be sure to import the following if TYPE_CHECKING:
+
+from _pytest.capture import CaptureFixture
+from _pytest.fixtures import FixtureRequest
+from _pytest.logging import LogCaptureFixture
+from _pytest.monkeypatch import MonkeyPatch
+from pytest_mock.plugin import MockerFixture
+
 
 ## File Structure
 1. Test files should be named with `test_` prefix
@@ -28,10 +39,10 @@ When generating test files for Python code, follow these pytest conventions and 
 def test_function_name():
     # Arrange
     input_data = "test"
-    
+
     # Act
     result = function_to_test(input_data)
-    
+
     # Assert
     assert result == expected_output
 ```
@@ -127,13 +138,13 @@ class TestYourClass:
     def test_initialization(self, sample_instance):
         """Test that the class initializes correctly."""
         assert sample_instance is not None
-    
+
     @pytest.mark.asyncio
     async def test_async_method(self, sample_instance):
         """Test async method functionality."""
         result = await sample_instance.async_method()
         assert result is not None
-    
+
     @pytest.mark.parametrize("input_data,expected", [
         ("test1", "result1"),
         ("test2", "result2"),
@@ -159,5 +170,5 @@ Common pytest commands:
 - `pytest -v` - Run with verbose output
 - `pytest -k "test_name"` - Run tests matching pattern
 - `pytest -m "marker"` - Run tests with specific marker
-- `pytest --cov=module` - Run with coverage reporting
 
+- `pytest --cov=module` - Run with coverage reporting

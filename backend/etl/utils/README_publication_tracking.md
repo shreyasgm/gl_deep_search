@@ -45,13 +45,13 @@ tracking_records = tracker.add_publications(publications)
 ```python
 # Update download status
 tracker.update_download_status(
-    publication_id="pub123", 
+    publication_id="pub123",
     status=DownloadStatus.IN_PROGRESS
 )
 
 # Later, update with success or failure
 tracker.update_download_status(
-    publication_id="pub123", 
+    publication_id="pub123",
     status=DownloadStatus.DOWNLOADED
 )
 
@@ -122,22 +122,22 @@ for pub in publications:
     try:
         # Update status to IN_PROGRESS
         tracker.update_processing_status(
-            pub.publication_id, 
+            pub.publication_id,
             ProcessingStatus.IN_PROGRESS
         )
-        
+
         # Perform processing
         # ...
-        
+
         # Update status to PROCESSED on success
         tracker.update_processing_status(
-            pub.publication_id, 
+            pub.publication_id,
             ProcessingStatus.PROCESSED
         )
     except Exception as e:
         # Update status to FAILED on error
         tracker.update_processing_status(
-            pub.publication_id, 
+            pub.publication_id,
             ProcessingStatus.FAILED,
             error=str(e)
         )
@@ -145,17 +145,4 @@ for pub in publications:
 
 ## Reset for Reprocessing
 
-To reset publications for reprocessing, use the reset script:
-
-```
-python backend/etl/scripts/reset_publication_status.py --stage [download|processing|embedding|ingestion|all]
-```
-
-Or programmatically:
-
-```python
-from backend.etl.scripts.reset_publication_status import reset_download_status
-
-# Reset all download statuses
-reset_download_status()
-``` 
+To reset publications for reprocessing, create a  the reset script (was eliminated for simplicity)

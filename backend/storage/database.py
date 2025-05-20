@@ -14,8 +14,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlmodel import SQLModel
 
-from ..models.publications import Base as PublicationsBase
-from ..models.tracking import Base as TrackingBase
+from backend.etl.models.publications import Base as PublicationsBase
+from backend.etl.models.tracking import SQLModel as TrackingBase
 
 logger = logging.getLogger(__name__)
 

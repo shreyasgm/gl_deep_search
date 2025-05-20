@@ -11,34 +11,34 @@ CREATE TABLE IF NOT EXISTS publication_tracking (
     abstract TEXT,                            -- Publication abstract
     file_urls TEXT,                           -- JSON array of associated file URLs
     content_hash VARCHAR(64),                 -- Hash of content to detect changes
-    
+
     -- Discovery stage
     discovery_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- When publication was first identified
-    
+
     -- Download stage
     download_status VARCHAR(20) NOT NULL DEFAULT 'Pending',  -- Pending, Downloaded, Failed
     download_timestamp TIMESTAMP,                            -- When download was completed or failed
     download_attempt_count INTEGER NOT NULL DEFAULT 0,       -- Number of download attempts
-    
+
     -- Processing stage
     processing_status VARCHAR(20) NOT NULL DEFAULT 'Pending',  -- Pending, Processed, OCR_Failed, Chunking_Failed
     processing_timestamp TIMESTAMP,                            -- When processing was completed or failed
     processing_attempt_count INTEGER NOT NULL DEFAULT 0,       -- Number of processing attempts
-    
+
     -- Embedding stage
     embedding_status VARCHAR(20) NOT NULL DEFAULT 'Pending',  -- Pending, Embedded, Failed
     embedding_timestamp TIMESTAMP,                            -- When embedding was completed or failed
     embedding_attempt_count INTEGER NOT NULL DEFAULT 0,       -- Number of embedding attempts
-    
+
     -- Ingestion stage
     ingestion_status VARCHAR(20) NOT NULL DEFAULT 'Pending',  -- Pending, Ingested, Failed
     ingestion_timestamp TIMESTAMP,                            -- When ingestion was completed or failed
     ingestion_attempt_count INTEGER NOT NULL DEFAULT 0,       -- Number of ingestion attempts
-    
+
     -- General tracking
     last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- Timestamp of last modification
     error_message TEXT,                                         -- Most recent error message (if any)
-    
+
     -- Constraints
     CHECK (download_status IN ('Pending', 'In Progress', 'Downloaded', 'Failed')),
     CHECK (processing_status IN ('Pending', 'In Progress', 'Processed', 'OCR_Failed', 'Chunking_Failed', 'Failed')),

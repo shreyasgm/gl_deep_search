@@ -33,6 +33,8 @@ dependencies = [
     "black>=25.1.0",
     "sqlmodel>=0.0.8",
     "pytest>=7.4.0",
+    "aiohttp>=3.8.0,!=3.11.14", # Avoid yanked version 3.11.14
+    "aiofiles",
 ]
 
 [project.urls]
@@ -139,6 +141,10 @@ dev = [
     # Documentation
     "mkdocs",
     "mkdocs-material",
+
+    "sqlmodel>=0.0.8",
+    "aiohttp>=3.8.0,!=3.11.14", # Avoid yanked version 3.11.14
+    "aiofiles",
 ]
 
 # Dependencies for running in production

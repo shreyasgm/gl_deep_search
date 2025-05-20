@@ -7,18 +7,11 @@ import json
 from enum import Enum
 
 import sqlalchemy as sa
-from pydantic import validator
+from pydantic import field_validator
 from sqlmodel import Field, MetaData, SQLModel
 
 # Create metadata instance
 metadata = MetaData()
-
-
-# Create Base class
-class Base(SQLModel):
-    """Base class for all models"""
-
-    metadata = metadata
 
 
 class DownloadStatus(str, Enum):
@@ -59,10 +52,19 @@ class IngestionStatus(str, Enum):
     FAILED = "Failed"
 
 
-class PublicationTracking(Base):
+class PublicationTracking(SQLModel, table=True):
     """Model for tracking publications through the ETL pipeline"""
 
     __tablename__ = "publication_tracking"
+    __table_args__ = {
+        "extend_existing": True,
+        "schema": None,
+        "sqlite_autoincrement": True,
+        "mysql_engine": "InnoDB",
+        "mysql_charset": "utf8mb4",
+        "mysql_collate": "utf8mb4_unicode_ci",
+        "comment": "",
+    }
 
     # Core identification fields
     publication_id: str = Field(primary_key=True)
@@ -72,7 +74,8 @@ class PublicationTracking(Base):
     year: int | None = None
     abstract: str | None = None
     file_urls_json: str | None = Field(
-        sa_column=sa.Column("file_urls", sa.Text), default=None
+        sa_column=sa.Column("file_urls", sa.Text),
+        default=None,
     )
     content_hash: str | None = None
 
@@ -109,8 +112,9 @@ class PublicationTracking(Base):
     error_message: str | None = None
 
     # Year validation
-    @validator("year")
-    def validate_year(self, v):
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v: int | None) -> int | None:
         """Validate that year is within a reasonable range"""
         if v is not None and (v < 1900 or v > 2100):
             raise ValueError("Year must be between 1900 and 2100")
@@ -143,7 +147,9 @@ class PublicationTracking(Base):
         self.last_updated = datetime.datetime.now()
 
     def update_processing_status(
-        self, status: ProcessingStatus, error: str | None = None
+        self,
+        status: ProcessingStatus,
+        error: str | None = None,
     ):
         """Update processing status with timestamp and error if applicable"""
         self.processing_status = status
@@ -154,7 +160,9 @@ class PublicationTracking(Base):
         self.last_updated = datetime.datetime.now()
 
     def update_embedding_status(
-        self, status: EmbeddingStatus, error: str | None = None
+        self,
+        status: EmbeddingStatus,
+        error: str | None = None,
     ):
         """Update embedding status with timestamp and error if applicable"""
         self.embedding_status = status
@@ -165,7 +173,9 @@ class PublicationTracking(Base):
         self.last_updated = datetime.datetime.now()
 
     def update_ingestion_status(
-        self, status: IngestionStatus, error: str | None = None
+        self,
+        status: IngestionStatus,
+        error: str | None = None,
     ):
         """Update ingestion status with timestamp and error if applicable"""
         self.ingestion_status = status
