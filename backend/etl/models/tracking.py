@@ -52,7 +52,7 @@ class IngestionStatus(str, Enum):
     FAILED = "Failed"
 
 
-class PublicationTracking(SQLModel, table=True):
+class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
     """Model for tracking publications through the ETL pipeline"""
 
     __tablename__ = "publication_tracking"

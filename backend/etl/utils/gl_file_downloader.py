@@ -666,7 +666,7 @@ class FileDownloader:
         Returns:
             List of download results by publication
         """
-        results = []
+        results: list[dict] = []  # List of download results
 
         # Limit the number of publications if specified
         pub_list = list(publications)
@@ -696,9 +696,6 @@ class FileDownloader:
         # Log download plan
         logger.info(f"Found {len(all_downloads)} files to download")
 
-        # Download files with progress tracking
-        results = []
-
         # Create tasks for all downloads
         tasks = []
         for pub, url, dest_path in all_downloads:
@@ -721,60 +718,76 @@ class FileDownloader:
             desc="Downloading files",
             disable=not progress_bar,
         ) as pbar:
-            for pub, url, download_task in tasks:
-                try:
-                    # Convert url to string for logging and results
-                    url_str = str(url)
+            try:
+                for pub, url, download_task in tasks:
+                    try:
+                        # Convert url to string for logging and results
+                        url_str = str(url)
 
-                    # Await the download task
-                    result = await download_task
+                        # Await the download task
+                        result = await download_task
 
-                    # Record the result with publication info
-                    pub_result = {
-                        "publication_id": pub.paper_id,
-                        "publication_title": pub.title,
-                        "url": url_str,
-                        "success": result.success,
-                        "file_path": result.file_path,
-                        "file_size": result.file_size,
-                        "cached": result.cached,
-                        "error": result.error,
-                    }
-                    results.append(pub_result)
+                        # Record the result with publication info
+                        pub_result = {
+                            "publication_id": pub.paper_id,
+                            "publication_title": pub.title,
+                            "url": url_str,
+                            "success": result.success,
+                            "file_path": result.file_path,
+                            "file_size": result.file_size,
+                            "cached": result.cached,
+                            "error": result.error,
+                        }
+                        results.append(pub_result)
 
-                    # Update progress
-                    pbar.update(1)
+                        # Update download status in tracker
+                        if result.success:
+                            self.publication_tracker.update_download_status(
+                                pub.paper_id, DownloadStatus.DOWNLOADED
+                            )
+                        else:
+                            self.publication_tracker.update_download_status(
+                                pub.paper_id, DownloadStatus.FAILED, error=result.error
+                            )
 
-                    # Success/failure message
-                    if result.success:
-                        status = "cached" if result.cached else "downloaded"
-                        pbar.set_postfix_str(f"Last: {status}")
-                    else:
-                        pbar.set_postfix_str(f"Last: failed - {result.error}")
+                        # Update progress
+                        pbar.update(1)
 
-                except Exception as e:
-                    # Convert url to string for logging and results
-                    url_str = str(url)
+                        # Success/failure message
+                        if result.success:
+                            status = "cached" if result.cached else "downloaded"
+                            pbar.set_postfix_str(f"Last: {status}")
+                        else:
+                            pbar.set_postfix_str(f"Last: failed - {result.error}")
 
-                    # Record unexpected errors
-                    logger.error(f"Unexpected error downloading {url_str}: {e}")
-                    pub_result = {
-                        "publication_id": pub.paper_id,
-                        "publication_title": pub.title,
-                        "url": url_str,
-                        "success": False,
-                        "error": f"Unexpected error: {str(e)}",
-                    }
-                    results.append(pub_result)
-                    pbar.update(1)
+                    except Exception as e:
+                        # Convert url to string for logging and results
+                        url_str = str(url)
 
-                # Rate limiting delay
-                await asyncio.sleep(self.download_delay)
+                        # Record unexpected errors
+                        logger.error(f"Unexpected error downloading {url_str}: {e}")
+                        pub_result = {
+                            "publication_id": pub.paper_id,
+                            "publication_title": pub.title,
+                            "url": url_str,
+                            "success": False,
+                            "error": f"Unexpected error: {str(e)}",
+                        }
+                        results.append(pub_result)
 
-            return results
+                        # Update download status to failed
+                        self.publication_tracker.update_download_status(
+                            pub.paper_id,
+                            DownloadStatus.FAILED,
+                            error=f"Unexpected error: {str(e)}",
+                        )
+                        pbar.update(1)
 
-        finally:
-            if pbar:
+                    # Rate limiting delay
+                    await asyncio.sleep(self.download_delay)
+
+                return results
+            finally:
                 pbar.close()
 
     def _log_download_summary(self) -> None:

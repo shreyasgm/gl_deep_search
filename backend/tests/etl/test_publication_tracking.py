@@ -7,7 +7,7 @@ responsible for tracking publications through the ETL pipeline stages.
 
 import logging
 import typing
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -57,21 +57,28 @@ def in_memory_db() -> Any:
 @pytest.fixture
 def mock_publication_tracker(in_memory_db: Any) -> PublicationTracker:
     """
-    Create a PublicationTracker instance for testing.
+    Create a PublicationTracker instance for testing with properly configured
+    async mocks.
 
     Args:
         in_memory_db: In-memory database engine
 
     Returns:
-        PublicationTracker instance for testing
+        PublicationTracker instance with mocked scrapers for testing
     """
     with patch("backend.etl.utils.publication_tracker.engine", in_memory_db):
         with patch("backend.etl.utils.publication_tracker.ensure_db_initialized"):
             tracker = PublicationTracker(ensure_db=False)
 
-            # Mock scrapers
+            # Create mock scrapers - the key is to patch the methods directly
+            # rather than trying to assign AsyncMock objects later
             tracker.growthlab_scraper = MagicMock()
             tracker.openalex_client = MagicMock()
+
+            # Pre-configure the async methods as AsyncMock objects
+            # This prevents the "Callable has no attribute" errors
+            tracker.growthlab_scraper.extract_and_enrich_publications = AsyncMock()
+            tracker.openalex_client.fetch_publications = AsyncMock()
 
             return tracker
 
@@ -82,7 +89,7 @@ def sample_growthlab_publication() -> GrowthLabPublication:
     Create a sample GrowthLab publication for testing.
 
     Returns:
-        GrowthLabPublication instance
+        GrowthLabPublication instance with realistic test data
     """
     pub = GrowthLabPublication(
         title="Test GrowthLab Publication",
@@ -112,7 +119,7 @@ def sample_openalex_publication() -> OpenAlexPublication:
     Create a sample OpenAlex publication for testing.
 
     Returns:
-        OpenAlexPublication instance
+        OpenAlexPublication instance with realistic test data
     """
     pub = OpenAlexPublication(
         paper_id="W123456789",
@@ -201,27 +208,32 @@ class TestPublicationTracker:
             sample_growthlab_publication: Sample GrowthLab publication
             sample_openalex_publication: Sample OpenAlex publication
         """
-        # Configure mocks
-        mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications = (
-            AsyncMock(return_value=[sample_growthlab_publication])
+        # Cast to AsyncMock to help MyPy understand these are AsyncMock objects
+        growthlab_mock = cast(
+            AsyncMock,
+            mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications,
         )
-        mock_publication_tracker.openalex_client.fetch_publications = AsyncMock(
-            return_value=[sample_openalex_publication]
+        openalex_mock = cast(
+            AsyncMock, mock_publication_tracker.openalex_client.fetch_publications
         )
 
-        # Call the method
+        # Configure mock return values - MyPy-safe approach
+        growthlab_mock.return_value = [sample_growthlab_publication]
+        openalex_mock.return_value = [sample_openalex_publication]
+
+        # Call the method under test
         publications = await mock_publication_tracker.discover_publications()
 
-        # Verify results
+        # Verify results structure and content
         assert len(publications) == 2
         assert publications[0][0] == sample_growthlab_publication
         assert publications[0][1] == "growthlab"
         assert publications[1][0] == sample_openalex_publication
         assert publications[1][1] == "openalex"
 
-        # Verify mock calls
-        mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications.assert_called_once()
-        mock_publication_tracker.openalex_client.fetch_publications.assert_called_once()
+        # Verify mock methods were called exactly once
+        growthlab_mock.assert_called_once()
+        openalex_mock.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_discover_publications_handles_errors(
@@ -234,10 +246,14 @@ class TestPublicationTracker:
             mock_publication_tracker: Mocked PublicationTracker instance
             caplog: Fixture for capturing log messages
         """
-        # Make the scrapers raise exceptions
-        mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications.side_effect = Exception(
-            "Test error"
+        # Cast to AsyncMock to help MyPy understand this is an AsyncMock object
+        growthlab_mock = cast(
+            AsyncMock,
+            mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications,
         )
+
+        # Configure mock to raise exception - MyPy-safe approach
+        growthlab_mock.side_effect = Exception("Test error")
 
         # Verify the method raises the exception
         with pytest.raises(Exception, match="Test error"):
@@ -245,6 +261,60 @@ class TestPublicationTracker:
 
         # Verify error logging
         assert "Error discovering publications: Test error" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_discover_publications_empty_results(
+        self, mock_publication_tracker: PublicationTracker
+    ) -> None:
+        """
+        Test discover_publications with empty results from both sources.
+        """
+        # Cast to AsyncMock to help MyPy understand these are AsyncMock objects
+        growthlab_mock = cast(
+            AsyncMock,
+            mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications,
+        )
+        openalex_mock = cast(
+            AsyncMock, mock_publication_tracker.openalex_client.fetch_publications
+        )
+
+        # Configure mocks to return empty lists
+        growthlab_mock.return_value = []
+        openalex_mock.return_value = []
+
+        # Call the method
+        publications = await mock_publication_tracker.discover_publications()
+
+        # Verify empty results
+        assert len(publications) == 0
+        assert publications == []
+
+    @pytest.mark.asyncio
+    async def test_discover_publications_partial_failure(
+        self,
+        mock_publication_tracker: PublicationTracker,
+        sample_openalex_publication: OpenAlexPublication,
+        caplog: "LogCaptureFixture",
+    ) -> None:
+        """
+        Test discover_publications when one source fails but the other succeeds.
+        """
+        # Cast to AsyncMock to help MyPy understand these are AsyncMock objects
+        growthlab_mock = cast(
+            AsyncMock,
+            mock_publication_tracker.growthlab_scraper.extract_and_enrich_publications,
+        )
+        openalex_mock = cast(
+            AsyncMock, mock_publication_tracker.openalex_client.fetch_publications
+        )
+
+        # Configure one source to fail, another to succeed
+        growthlab_mock.side_effect = Exception("GrowthLab error")
+        openalex_mock.return_value = [sample_openalex_publication]
+
+        # The method should still raise the exception (based on current implementation)
+        with pytest.raises(Exception, match="GrowthLab error"):
+            await mock_publication_tracker.discover_publications()
 
     def test_generate_processing_plan_new_publication(
         self,
@@ -254,15 +324,10 @@ class TestPublicationTracker:
     ) -> None:
         """
         Test generating a processing plan for a new publication.
-
-        Args:
-            mock_publication_tracker: Mocked PublicationTracker instance
-            sample_growthlab_publication: Sample publication
-            in_memory_db: In-memory database
         """
         with Session(in_memory_db) as session:
             plan = mock_publication_tracker.generate_processing_plan(
-                sample_growthlab_publication
+                sample_growthlab_publication, session=session
             )
 
             assert plan.publication_id == sample_growthlab_publication.paper_id
@@ -303,12 +368,14 @@ class TestPublicationTracker:
             ]
             session.add(tracking)
             session.commit()
-            tracking = session.exec(
+            tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_growthlab_publication.paper_id
                 )
             ).first()
+            assert tracking_result is not None
+            tracking = tracking_result
 
             # Generate plan with new content hash
             plan = mock_publication_tracker.generate_processing_plan(
@@ -353,12 +420,14 @@ class TestPublicationTracker:
             tracking.file_urls = ["https://example.com/old.pdf"]
             session.add(tracking)
             session.commit()
-            tracking = session.exec(
+            tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_growthlab_publication.paper_id
                 )
             ).first()
+            assert tracking_result is not None
+            tracking = tracking_result
 
             # Generate plan with new files
             plan = mock_publication_tracker.generate_processing_plan(
@@ -409,12 +478,14 @@ class TestPublicationTracker:
             ]
             session.add(tracking)
             session.commit()
-            tracking = session.exec(
+            tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_growthlab_publication.paper_id
                 )
             ).first()
+            assert tracking_result is not None
+            tracking = tracking_result
 
             # Generate plan
             plan = mock_publication_tracker.generate_processing_plan(
@@ -449,12 +520,14 @@ class TestPublicationTracker:
             )
             session.commit()
             # Re-query the object to ensure it's persistent
-            tracking = session.exec(
+            tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_growthlab_publication.paper_id
                 )
             ).first()
+            assert tracking_result is not None
+            tracking = tracking_result
 
             assert tracking.publication_id == sample_growthlab_publication.paper_id
             assert tracking.title == sample_growthlab_publication.title
@@ -500,24 +573,28 @@ class TestPublicationTracker:
             session.add(tracking)
             session.commit()
             # Re-query the object
-            tracking = session.exec(
+            tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_growthlab_publication.paper_id
                 )
             ).first()
+            assert tracking_result is not None
+            tracking = tracking_result
 
             # Update publication
             updated = mock_publication_tracker.add_publication(
                 sample_growthlab_publication, session=session
             )
             session.commit()
-            updated = session.exec(
+            updated_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_growthlab_publication.paper_id
                 )
             ).first()
+            assert updated_result is not None
+            updated = updated_result
 
             assert updated.publication_id == sample_growthlab_publication.paper_id
             assert updated.title == sample_growthlab_publication.title
@@ -564,12 +641,14 @@ class TestPublicationTracker:
             ]
             session.add(tracking)
             session.commit()
-            tracking = session.exec(
+            tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_growthlab_publication.paper_id
                 )
             ).first()
+            assert tracking_result is not None
+            tracking = tracking_result
 
             # Update status
             success = mock_publication_tracker.update_download_status(
@@ -581,11 +660,13 @@ class TestPublicationTracker:
 
             # Verify update
             with Session(in_memory_db) as verify_session:
-                stmt = select(PublicationTracking).where(
+                stmt: Any = select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_growthlab_publication.paper_id
                 )
-                updated = verify_session.exec(stmt).first()
+                updated_result = verify_session.exec(stmt).first()
+                assert updated_result is not None
+                updated = updated_result
                 assert updated.download_status == DownloadStatus.DOWNLOADED
                 assert updated.download_timestamp is not None
 
@@ -607,12 +688,14 @@ class TestPublicationTracker:
             # Add publication
             session.add(sample_tracking_publication)
             session.commit()
-            sample_tracking_publication = session.exec(
+            sample_tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_tracking_publication.publication_id
                 )
             ).first()
+            assert sample_tracking_result is not None
+            sample_tracking_publication = sample_tracking_result
 
             # Update status
             success = mock_publication_tracker.update_processing_status(
@@ -624,11 +707,13 @@ class TestPublicationTracker:
 
             # Verify update
             with Session(in_memory_db) as verify_session:
-                stmt = select(PublicationTracking).where(
+                stmt: Any = select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_tracking_publication.publication_id
                 )
-                updated = verify_session.exec(stmt).first()
+                updated_result = verify_session.exec(stmt).first()
+                assert updated_result is not None
+                updated = updated_result
                 assert updated.processing_status == ProcessingStatus.PROCESSED
                 assert updated.processing_timestamp is not None
 
@@ -650,12 +735,14 @@ class TestPublicationTracker:
             # Add publication
             session.add(sample_tracking_publication)
             session.commit()
-            sample_tracking_publication = session.exec(
+            sample_tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_tracking_publication.publication_id
                 )
             ).first()
+            assert sample_tracking_result is not None
+            sample_tracking_publication = sample_tracking_result
 
             # Update status
             success = mock_publication_tracker.update_embedding_status(
@@ -667,11 +754,13 @@ class TestPublicationTracker:
 
             # Verify update
             with Session(in_memory_db) as verify_session:
-                stmt = select(PublicationTracking).where(
+                stmt: Any = select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_tracking_publication.publication_id
                 )
-                updated = verify_session.exec(stmt).first()
+                updated_result = verify_session.exec(stmt).first()
+                assert updated_result is not None
+                updated = updated_result
                 assert updated.embedding_status == EmbeddingStatus.EMBEDDED
                 assert updated.embedding_timestamp is not None
 
@@ -693,12 +782,14 @@ class TestPublicationTracker:
             # Add publication
             session.add(sample_tracking_publication)
             session.commit()
-            sample_tracking_publication = session.exec(
+            sample_tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_tracking_publication.publication_id
                 )
             ).first()
+            assert sample_tracking_result is not None
+            sample_tracking_publication = sample_tracking_result
 
             # Update status
             success = mock_publication_tracker.update_ingestion_status(
@@ -710,11 +801,13 @@ class TestPublicationTracker:
 
             # Verify update
             with Session(in_memory_db) as verify_session:
-                stmt = select(PublicationTracking).where(
+                stmt: Any = select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_tracking_publication.publication_id
                 )
-                updated = verify_session.exec(stmt).first()
+                updated_result = verify_session.exec(stmt).first()
+                assert updated_result is not None
+                updated = updated_result
                 assert updated.ingestion_status == IngestionStatus.INGESTED
                 assert updated.ingestion_timestamp is not None
 
@@ -753,16 +846,20 @@ class TestPublicationTracker:
             session.add(pub1)
             session.add(pub2)
             session.commit()
-            pub1 = session.exec(
+            pub1_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id == "pub1"
                 )
             ).first()
-            pub2 = session.exec(
+            pub2_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id == "pub2"
                 )
             ).first()
+            assert pub1_result is not None
+            assert pub2_result is not None
+            pub1 = pub1_result
+            pub2 = pub2_result
 
             # Get publications for download
             pubs = mock_publication_tracker.get_publications_for_download(
@@ -808,16 +905,20 @@ class TestPublicationTracker:
             session.add(pub1)
             session.add(pub2)
             session.commit()
-            pub1 = session.exec(
+            pub1_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id == "pub1"
                 )
             ).first()
-            pub2 = session.exec(
+            pub2_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id == "pub2"
                 )
             ).first()
+            assert pub1_result is not None
+            assert pub2_result is not None
+            pub1 = pub1_result
+            pub2 = pub2_result
 
             # Get publications for processing
             pubs = mock_publication_tracker.get_publications_for_processing(
@@ -865,16 +966,20 @@ class TestPublicationTracker:
             session.add(pub1)
             session.add(pub2)
             session.commit()
-            pub1 = session.exec(
+            pub1_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id == "pub1"
                 )
             ).first()
-            pub2 = session.exec(
+            pub2_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id == "pub2"
                 )
             ).first()
+            assert pub1_result is not None
+            assert pub2_result is not None
+            pub1 = pub1_result
+            pub2 = pub2_result
 
             # Get publications for embedding
             pubs = mock_publication_tracker.get_publications_for_embedding(
@@ -924,16 +1029,20 @@ class TestPublicationTracker:
             session.add(pub1)
             session.add(pub2)
             session.commit()
-            pub1 = session.exec(
+            pub1_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id == "pub1"
                 )
             ).first()
-            pub2 = session.exec(
+            pub2_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id == "pub2"
                 )
             ).first()
+            assert pub1_result is not None
+            assert pub2_result is not None
+            pub1 = pub1_result
+            pub2 = pub2_result
 
             # Get publications for ingestion
             pubs = mock_publication_tracker.get_publications_for_ingestion(
@@ -960,12 +1069,14 @@ class TestPublicationTracker:
             # Add publication
             session.add(sample_tracking_publication)
             session.commit()
-            sample_tracking_publication = session.exec(
+            sample_tracking_result = session.exec(
                 select(PublicationTracking).where(
                     PublicationTracking.publication_id
                     == sample_tracking_publication.publication_id
                 )
             ).first()
+            assert sample_tracking_result is not None
+            sample_tracking_publication = sample_tracking_result
 
             # Get status
             status = mock_publication_tracker.get_publication_status(
