@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 
 # Define database path
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 DB_PATH = PROJECT_ROOT / "data" / "processed" / "publication_tracking.db"
 
 def check_database():

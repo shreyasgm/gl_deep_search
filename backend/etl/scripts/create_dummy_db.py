@@ -15,7 +15,7 @@ import string
 from pathlib import Path
 
 # Define paths
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 SCHEMA_PATH = PROJECT_ROOT / "backend" / "storage" / "etl_metadata_schema.sql"
 DB_DIR = PROJECT_ROOT / "data" / "processed"
 DB_PATH = DB_DIR / "publication_tracking.db"
