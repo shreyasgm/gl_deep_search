@@ -69,17 +69,9 @@ def process_pdf(
             
             parser_func = PARSERS[text_parser]
             output_path = str(doc_output_dir / f"{pdf_name}_{text_parser}.md") if doc_output_dir else None
-            
+                        
             parser_start = time.time()
-            if text_parser in ["unstructured", "llamaparse", "mistral"]:
-                parsing_result = parser_func(str(pdf_path), output_path)
-            else:  # marker
-                parsing_result = parser_func(pdf_path)
-                
-                # Save marker output if output_dir is specified
-                if doc_output_dir:
-                    with open(doc_output_dir / f"{pdf_name}_marker.md", "w", encoding="utf-8") as f:
-                        f.write(parsing_result["text"])
+            parsing_result = parser_func(str(pdf_path), output_path)
             
             parser_time = time.time() - parser_start
             

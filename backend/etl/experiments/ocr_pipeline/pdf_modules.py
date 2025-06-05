@@ -4,8 +4,9 @@ import logging
 import pathlib
 from pathlib import Path
 from typing import Any, Union
-import fitz 
+import fitz
 from dotenv import load_dotenv
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +38,7 @@ def is_pdf_text_based(
 
 
 def parse_marker(
-    pdf_path: str, 
+    pdf_path: Union[str, Path],
     output_path: str = "marker_output.md",
     openai_model: str = "gpt-4o",
     openai_base_url: str = "https://api.openai.com/v1"
@@ -48,12 +49,12 @@ def parse_marker(
     from marker.output import text_from_rendered
     from marker.config.parser import ConfigParser
     import os
-    
+
     # Check if OPENAI_API_KEY is set
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise EnvironmentError("OPENAI_API_KEY not found in environment. Required for OpenAI LLM mode.")
-    
+
     # Configure Marker with OCR, line formatting, and OpenAI
     config = {
         "force_ocr": True,          # Force OCR on all pages
@@ -65,10 +66,10 @@ def parse_marker(
         "openai_model": openai_model,  # Specify the OpenAI model to use
         "openai_base_url": openai_base_url  # Specify the OpenAI API endpoint
     }
-    
+
     # Create config parser
     config_parser = ConfigParser(config)
-    
+
     # Create converter with our configuration
     converter = PdfConverter(
         config=config_parser.generate_config_dict(),
@@ -77,18 +78,17 @@ def parse_marker(
         renderer=config_parser.get_renderer(),
         llm_service=config_parser.get_llm_service()
     )
-    
+
     # Convert the document
     rendered = converter(pdf_path)
-    
+
     # Extract text and images
     text, metadata, images = text_from_rendered(rendered)
-    
-    # Save the output
+
+
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(text)
-    
-    # Return results
+            f.write(text)
+            
     return {
         "engine": "marker_with_ocr_openai",
         "text": text,
