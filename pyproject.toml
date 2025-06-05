@@ -71,27 +71,23 @@ service = [
     "fastapi",
     "uvicorn",
     "pydantic-settings",
-
     # Vector search
     "qdrant-client",
-
     # LLM frameworks
     "langgraph",
     "langchain",
     "langchain-community",
     "langchain-openai",
     "langchain-anthropic",
-
     # LLM providers
     "openai",
     "anthropic",
-
     # Observability
     "langsmith",
-
     # Embeddings
     "sentence-transformers",
     "cohere",
+    "aiosqlite>=0.21.0",
 ]
 
 # Frontend dependencies
