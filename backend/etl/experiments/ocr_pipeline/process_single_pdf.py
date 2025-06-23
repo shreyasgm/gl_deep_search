@@ -8,7 +8,7 @@ import os
 import time
 from pathlib import Path
 
-from pdf_modules import is_pdf_text_based, PARSERS, OCR_ENGINES
+from gl_deep_search.backend.etl.experiments.ocr_pipeline.pdf_module import PARSERS
 
 # Configure logging
 logging.basicConfig(
@@ -20,13 +20,19 @@ logger = logging.getLogger(__name__)
 
 def process_pdf(
     pdf_path: Path,
-    text_parser: str = "marker",
-    ocr_engine: str = "mistral",
+    parser: str = "marker",
     output_dir: Path = None,
     cache: bool = True
 ):
     """Process a single PDF file."""
     start_time = time.time()
+    
+    # Initialize result dictionary
+    result = {
+        "pdf_path": str(pdf_path),
+        "pdf_name": pdf_path.name,
+        "parent_folder": pdf_path.parent.name,
+    }
     
     # Extract the parent folder name and PDF name
     parent_folder = pdf_path.parent.name
@@ -48,66 +54,29 @@ def process_pdf(
         with open(cache_path, "r") as f:
             return json.load(f)
     
-    # Preflight check to determine if PDF is text-based
-    logger.info(f"Running preflight check on {pdf_path.name}")
-    preflight_result = is_pdf_text_based(pdf_path)
-    is_text_based = preflight_result.get("text_based", False)
-    
-    result = {
-        "path": str(pdf_path),
-        "is_text_based": is_text_based,
-        "processing_time": 0,
-        "preflight_error": preflight_result.get("error"),
-    }
-    
     try:
-        if is_text_based:
-            # Process text-based PDF with selected parser
-            logger.info(f"PDF {pdf_path.name} is text-based, using {text_parser} parser")
-            if text_parser not in PARSERS:
-                raise ValueError(f"Unknown text parser: {text_parser}")
-            
-            parser_func = PARSERS[text_parser]
-            output_path = str(doc_output_dir / f"{pdf_name}_{text_parser}.md") if doc_output_dir else None
-                        
-            parser_start = time.time()
-            parsing_result = parser_func(str(pdf_path), output_path)
-            
-            parser_time = time.time() - parser_start
-            
-            result.update({
-                "extraction_method": "text_parser",
-                "parser": text_parser,
-                "text_length": len(parsing_result.get("text", "")),
-                "extraction_success": True,
-                "parser_time": parser_time
-            })
-            logger.info(f"{text_parser} parsing complete for {pdf_path.name}: {parser_time:.2f}s, text length: {len(parsing_result.get('text', ''))} chars")
-        else:
-            # Process image-based PDF with OCR
-            logger.info(f"PDF {pdf_path.name} is image-based, using {ocr_engine} OCR")
-            if ocr_engine not in OCR_ENGINES:
-                raise ValueError(f"Unknown OCR engine: {ocr_engine}")
-                
-            ocr_func = OCR_ENGINES[ocr_engine]
-            ocr_start = time.time()
-            ocr_result = ocr_func(pdf_path)
-            ocr_time = time.time() - ocr_start
-            
-            # Save OCR output
-            if doc_output_dir:
-                with open(doc_output_dir / f"{pdf_name}_{ocr_engine}_ocr.txt", "w", encoding="utf-8") as f:
-                    f.write(ocr_result["text"])
-                    
-            result.update({
-                "extraction_method": "ocr",
-                "ocr_engine": ocr_engine,
-                "text_length": len(ocr_result.get("text", "")),
-                "pages_processed": ocr_result.get("pages", 0),
-                "extraction_success": True,
-                "ocr_time": ocr_time
-            })
-            logger.info(f"OCR complete for {pdf_path.name}: {ocr_time:.2f}s, text length: {len(ocr_result.get('text', ''))} chars, pages: {ocr_result.get('pages', 0)}")
+        # Process PDF with selected parser
+        logger.info(f"Processing PDF {pdf_path.name} with {parser} parser")
+        
+        if parser not in PARSERS:
+            raise ValueError(f"Unknown parser: {parser}")
+        
+        parser_func = PARSERS[parser]
+        output_path = str(doc_output_dir / f"{pdf_name}_{parser}.md") if doc_output_dir else None
+        
+        parser_start = time.time()
+        parsing_result = parser_func(str(pdf_path), output_path)
+        parser_time = time.time() - parser_start
+        
+        result.update({
+            "parser": parser,
+            "text_length": len(parsing_result.get("text", "")),
+            "extraction_success": True,
+            "parser_time": parser_time,
+            "pages_processed": parsing_result.get("pages", None)
+        })
+        
+        logger.info(f"{parser} parsing complete for {pdf_path.name}: {parser_time:.2f}s, text length: {len(parsing_result.get('text', ''))} chars")
                 
     except Exception as e:
         logger.error(f"ERROR processing {pdf_path.name}: {str(e)}", exc_info=True)
@@ -132,10 +101,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process a single PDF file")
     parser.add_argument("pdf_path", type=str, help="Path to the PDF file")
     parser.add_argument("--output_dir", type=str, default="extracted_texts", help="Directory to save output files")
-    parser.add_argument("--text_parser", type=str, default="marker", 
-                        choices=list(PARSERS.keys()), help="Parser for text-based PDFs")
-    parser.add_argument("--ocr_engine", type=str, default="mistral", 
-                        choices=list(OCR_ENGINES.keys()), help="OCR engine for image-based PDFs")
+    parser.add_argument("--parser", type=str, default="marker", 
+                        choices=list(PARSERS.keys()), help="Parser to use for PDF processing")
     parser.add_argument("--no_cache", action="store_true", help="Disable caching of results")
     
     args = parser.parse_args()
@@ -143,8 +110,7 @@ if __name__ == "__main__":
     # Process PDF
     result = process_pdf(
         Path(args.pdf_path),
-        text_parser=args.text_parser,
-        ocr_engine=args.ocr_engine,
+        parser=args.parser,
         output_dir=Path(args.output_dir),
         cache=not args.no_cache
     )
