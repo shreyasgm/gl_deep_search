@@ -120,12 +120,13 @@ class OpenAlexFileDownloader:
 
     def _load_config(self, config_path: Path | None) -> dict[str, Any]:
         """Load configuration from YAML file."""
-        if not config_path:
-            # Look for config in standard location
-            import yaml
+        import yaml
 
+        if config_path is None:
+            # Look for config in standard location
             config_path = Path(__file__).parent.parent / "config.yaml"
 
+        if config_path and config_path.exists():
             try:
                 with open(config_path) as f:
                     config = yaml.safe_load(f)

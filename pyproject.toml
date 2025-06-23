@@ -49,7 +49,7 @@ etl = [
     "scidownl>=1.0.2",
     # PDF processing and OCR
     "langdetect",
-    "unstructured",
+    "unstructured[all-docs]",
     "docling",
     "marker-pdf",
     # Vector databases and embeddings
@@ -64,7 +64,7 @@ etl = [
     # Cloud storage
     "google-cloud-storage",
     "tiktoken>=0.9.0",
-    "pdfminer>=20191125",
+    "pdfminer.six>=20211012",
 ]
 
 # Backend service dependencies

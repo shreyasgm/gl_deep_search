@@ -307,21 +307,21 @@ class TestDownloaderFilePath:
         pub = OpenAlexPublication(
             paper_id="", title="A paper title", openalex_id="https://openalex.org/"
         )
-        # Mock the generate_id method
-        mock_generate_id = mocker.patch.object(
-            pub, "generate_id", return_value="generated_id"
-        )
+
+        # The generate_id method will be called and will return a hash based on the title
+        # Let's use the actual result from generate_id instead of mocking
+        expected_generated_id = pub.generate_id()
 
         url = "https://example.com/document.pdf"
         url_hash = hashlib.md5(url.encode()).hexdigest()
-        expected_relative = f"raw/documents/openalex/generated_id/{url_hash}.pdf"
+        expected_relative = (
+            f"raw/documents/openalex/{expected_generated_id}/{url_hash}.pdf"
+        )
         expected_path = Path("/fake/storage") / expected_relative
         mock_storage.get_path.return_value = expected_path
 
         result_path = downloader._get_file_path(pub, url)
 
-        # Verify generate_id was called
-        mock_generate_id.assert_called_once()
         mock_storage.get_path.assert_called_once_with(expected_relative)
         assert result_path == expected_path
 
