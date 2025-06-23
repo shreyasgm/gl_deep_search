@@ -8,7 +8,7 @@ import os
 import time
 from pathlib import Path
 
-from gl_deep_search.backend.etl.experiments.ocr_pipeline.pdf_module import PARSERS
+from pdf_module import PARSERS
 
 # Configure logging
 logging.basicConfig(

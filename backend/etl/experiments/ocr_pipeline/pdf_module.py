@@ -1,23 +1,12 @@
-# parse.py
+# pdf_module.py
 
 import logging
-import pathlib
 from pathlib import Path
-from typing import Any, Union
-import fitz
+from typing import Any
 from dotenv import load_dotenv
 import os
 
 from module_marker import parse_marker_preset
-
-
-#load env
-load_dotenv()
-
-# Check if OPENAI_API_KEY is set
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise EnvironmentError("OPENAI_API_KEY not found in environment. Required for OpenAI LLM mode.")
 
 #configure logging
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +16,7 @@ logger = logging.getLogger(__name__)
 # PDF MODULES
 # ----------------------------
 
-def marker_parser_adapter(pdf_path, output_path=None, marker_preset="ocr_and_llm", marker_model="gpt-4.1-mini"):
+def marker_parser_adapter(pdf_path, output_path=None, marker_preset="baseline", marker_model="gpt-4o-mini"):
     """
     Adapter for Marker with full presets/models support.
     """

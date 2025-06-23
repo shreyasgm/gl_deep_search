@@ -4,8 +4,7 @@
 # Default values
 PDF_DIR="downloaded_papers"
 OUTPUT_DIR="extracted_texts"
-TEXT_PARSER="marker"
-OCR_ENGINE="mistral"
+PARSER="marker"
 USE_CACHE=true
 MAX_JOBS=10  # Maximum concurrent jobs
 MEM_PER_JOB="30G"  # Memory per job
@@ -26,13 +25,8 @@ while [[ $# -gt 0 ]]; do
         shift
         shift
         ;;
-        --text_parser)
-        TEXT_PARSER="$2"
-        shift
-        shift
-        ;;
-        --ocr_engine)
-        OCR_ENGINE="$2"
+        --parser)
+        PARSER="$2"
         shift
         shift
         ;;
@@ -78,8 +72,7 @@ TOTAL_PDFS=$(wc -l < "$PDF_LIST")
 
 echo "Found $TOTAL_PDFS PDF files to process"
 echo "Submitting jobs to process PDFs with:"
-echo "- Text parser: $TEXT_PARSER"
-echo "- OCR engine: $OCR_ENGINE"
+echo "- Parser: $PARSER"
 echo "- Output directory: $OUTPUT_DIR"
 echo "- Cache enabled: $USE_CACHE"
 echo "- Maximum concurrent jobs: $MAX_JOBS"
@@ -98,19 +91,16 @@ cat > "$JOB_SCRIPT" << EOL
 #SBATCH -o ${OUTPUT_DIR}/logs/pdf_%j.out  # Standard output
 #SBATCH -e ${OUTPUT_DIR}/logs/pdf_%j.err  # Standard error
 
-# Load necessary modules
-source /n/hausmann_lab/lab/kdaryanani/deeplearn/gl_deep_search/.venv/bin/activate
+# Change to the correct directory
+cd /n/hausmann_lab/lab/kdaryanani/deeplearn/gl_deep_search/backend/etl/experiments/ocr_pipeline
 
-# Run the processing script for a single PDF
+# Run the processing script for a single PDF using uv
 CACHE_FLAG=""
 if [ "$USE_CACHE" = false ]; then
     CACHE_FLAG="--no_cache"
 fi
 
-python process_single_pdf.py \$1 --output_dir "$OUTPUT_DIR" --text_parser "$TEXT_PARSER" --ocr_engine "$OCR_ENGINE" \$CACHE_FLAG
-
-# Deactivate virtual environment
-deactivate
+uv run python process_single_pdf.py "\$1" --output_dir "$OUTPUT_DIR" --parser "$PARSER" \$CACHE_FLAG
 EOL
 
 chmod +x "$JOB_SCRIPT"
