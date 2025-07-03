@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Define database path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DB_PATH = PROJECT_ROOT / "data" / "processed" / "publication_tracking.db"
+DB_PATH = PROJECT_ROOT / "data" / "etl_tracking.db"
 
 
 async def get_db_connection():
