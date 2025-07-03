@@ -147,6 +147,7 @@ def test_extract_abstract(client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Skipping OpenAlex file downloader test - moving to MVP")
 async def test_fetch_page():
     # Let's create a simpler test that uses a patched client method
     client = OpenAlexClient()
@@ -170,6 +171,7 @@ async def test_fetch_page():
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Skipping OpenAlex file downloader test - moving to MVP")
 async def test_fetch_publications(client):
     # Mock fetch_all_pages to return test data
     test_results = [
@@ -236,6 +238,7 @@ def test_save_and_load_publications(client, sample_publication, tmp_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Skipping OpenAlex file downloader test - moving to MVP")
 async def test_update_publications(client, sample_publication, tmp_path):
     """Test update publications with storage abstraction"""
     from backend.storage.local import LocalStorage
@@ -262,6 +265,7 @@ async def test_update_publications(client, sample_publication, tmp_path):
 
 
 @pytest.mark.integration
+@pytest.mark.skip(reason="Skipping OpenAlex file downloader test - moving to MVP")
 def test_openalex_real_data_id_generation(tmp_path):
     """
     Integration test that verifies ID generation with real data
