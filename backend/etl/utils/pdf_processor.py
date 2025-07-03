@@ -163,8 +163,11 @@ class PDFProcessor:
                 # Add metadata if available (based on unstructured element types)
                 if hasattr(element, "metadata"):
                     # Add page number if available
-                    if "page_number" in element.metadata:
-                        page_num = element.metadata["page_number"]
+                    if (
+                        hasattr(element.metadata, "page_number")
+                        and element.metadata.page_number is not None
+                    ):
+                        page_num = element.metadata.page_number
                         if not text_content or not text_content[-1].startswith(
                             f"--- Page {page_num} ---"
                         ):

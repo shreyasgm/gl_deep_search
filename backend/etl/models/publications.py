@@ -9,6 +9,17 @@ import hashlib
 from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from sqlmodel import MetaData, SQLModel
+
+# Create metadata instance
+metadata = MetaData()
+
+
+# Create Base class
+class Base(SQLModel):
+    """Base class for all models"""
+
+    metadata = metadata
 
 
 class GrowthLabPublication(BaseModel):
