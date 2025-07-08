@@ -67,14 +67,14 @@ def test_get_publications_status_with_filters(test_client):
     """
     # Test with download_status filter
     response = test_client.get(
-        "/api/v1/publications/status", params={"download_status": "Downloaded"}
+        "/api/v1/publications/status", params={"download_status": "DOWNLOADED"}
     )
 
     assert response.status_code == HTTPStatus.OK
     data = response.json()
 
     # Check that all returned items have the requested status
-    assert all(item["download_status"] == "Downloaded" for item in data["items"])
+    assert all(item["download_status"] == "DOWNLOADED" for item in data["items"])
 
 
 def test_get_publications_status_pagination(test_client):
