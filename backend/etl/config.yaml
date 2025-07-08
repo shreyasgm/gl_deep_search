@@ -20,6 +20,7 @@ sources:
   openalex:
     author_id: "A5034550995" # Ricardo Hausmann's author ID
     email: "parlay.donegal.0j@icloud.com" # for polite OpenAlex API use
+    unpaywall_email: "parlay.donegal.0j@icloud.com" # for Unpaywall API access
     max_retries_per_page: 3
     max_overall_retries: 10
     redownload_existing: false

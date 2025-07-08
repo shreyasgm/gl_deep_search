@@ -161,7 +161,7 @@ class PDFProcessor:
                 element_text = str(element)
 
                 # Add metadata if available (based on unstructured element types)
-                if hasattr(element, "metadata"):
+                if hasattr(element, "metadata") and element.metadata:
                     # Add page number if available
                     if (
                         hasattr(element.metadata, "page_number")
