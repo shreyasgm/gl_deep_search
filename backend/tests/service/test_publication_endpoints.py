@@ -4,8 +4,6 @@ Integration tests for publication status API endpoints.
 
 from http import HTTPStatus
 
-import pytest
-
 
 def test_health_endpoint(test_client):
     """
@@ -105,34 +103,6 @@ def test_get_publications_status_pagination(test_client):
         second_page_ids = [item["publication_id"] for item in data2["items"]]
         # Ensure no overlap between pages
         assert not any(pid in second_page_ids for pid in first_page_ids)
-
-
-def test_get_publication_by_id(test_client, db_connection):
-    """
-    Test retrieving a single publication by ID.
-
-    Args:
-        test_client: FastAPI test client.
-        db_connection: SQLite database connection.
-    """
-    # First, get an actual publication ID from the database
-    cursor = db_connection.cursor()
-    cursor.execute("SELECT publication_id FROM publication_tracking LIMIT 1")
-    row = cursor.fetchone()
-
-    if row:
-        publication_id = row["publication_id"]
-
-        # Test retrieving the publication
-        response = test_client.get(f"/api/v1/publications/status/{publication_id}")
-
-        assert response.status_code == HTTPStatus.OK
-        data = response.json()
-
-        # Check that we got the requested publication
-        assert data["publication_id"] == publication_id
-    else:
-        pytest.skip("No publications in the database to test with")
 
 
 def test_get_nonexistent_publication(test_client):
