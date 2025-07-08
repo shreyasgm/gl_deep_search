@@ -8,6 +8,8 @@ data/processed/
 *.json
 *.xlsx
 *.pdf
+**/CLAUDE.local.md
+.mcp.json*
 
 # Environment
 .env
@@ -222,5 +224,3 @@ poetry.toml
 
 # LSP config files
 pyrightconfig.json
-
-**/CLAUDE.local.md
