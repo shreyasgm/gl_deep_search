@@ -44,7 +44,7 @@ jobs:
       # Using --all-extras --dev ensures development tools and extras are installed.
       # Adjust flags if your setup differs (e.g., remove --all-extras if not needed).
       - name: Install dependencies
-        run: uv sync --locked --extra etl --extra dev
+        run: uv sync --locked --extra all
 
       # Step 4: Run checks using 'uv run' to execute within the managed environment.
       - name: Run ruff linter check
