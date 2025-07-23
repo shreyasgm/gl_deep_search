@@ -21,6 +21,7 @@ from loguru import logger
 from backend.etl.scrapers.growthlab import GrowthLabScraper
 from backend.etl.utils.gl_file_downloader import FileDownloader
 from backend.etl.utils.pdf_processor import PDFProcessor
+from backend.etl.utils.text_chunker import TextChunker
 from backend.storage.factory import get_storage
 
 
@@ -144,6 +145,7 @@ class ETLOrchestrator:
             ("Growth Lab File Downloader", self._run_file_downloader),
             ("PDF Processor", self._run_pdf_processor),
             ("Lecture Transcripts Processor", self._run_lecture_transcripts),
+            ("Text Chunker", self._run_text_chunker),
         ]
 
         for component_name, component_func in components:
@@ -341,6 +343,76 @@ class ETLOrchestrator:
         logger.info("Lecture transcript processing skipped - not yet implemented")
         result.status = ComponentStatus.SKIPPED
 
+    async def _run_text_chunker(self, result: ComponentResult) -> None:
+        """Execute the text chunker component."""
+        # Check if chunking is enabled in config
+        chunking_config = self.etl_config.get("file_processing", {}).get("chunking", {})
+        if not chunking_config.get("enabled", True):
+            logger.info("Text chunking is disabled in configuration")
+            result.status = ComponentStatus.SKIPPED
+            return
+
+        # Check if we have processed text files to chunk
+        processed_docs_path = self.storage.get_path("processed/documents")
+        if not self._path_exists(processed_docs_path):
+            logger.warning("No processed documents found, skipping text chunking")
+            result.status = ComponentStatus.SKIPPED
+            return
+
+        # Find processed text files
+        text_files = list(processed_docs_path.rglob("*.txt"))
+        if not text_files:
+            logger.warning("No processed text files found, skipping text chunking")
+            result.status = ComponentStatus.SKIPPED
+            return
+
+        # Initialize text chunker
+        chunker = TextChunker(config_path=self.config.config_path)
+
+        # Process all documents
+        try:
+            chunking_results = chunker.process_all_documents(storage=self.storage)
+
+            # Calculate metrics
+            successful_chunks = sum(
+                r.total_chunks for r in chunking_results if r.status.value == "success"
+            )
+            failed_documents = sum(
+                1 for r in chunking_results if r.status.value == "failed"
+            )
+            total_processing_time = sum(r.processing_time for r in chunking_results)
+
+            result.metrics = {
+                "documents_processed": len(chunking_results),
+                "successful_documents": len(chunking_results) - failed_documents,
+                "failed_documents": failed_documents,
+                "total_chunks_created": successful_chunks,
+                "total_processing_time": total_processing_time,
+                "average_chunks_per_document": successful_chunks
+                / max(1, len(chunking_results) - failed_documents),
+            }
+
+            # Set output files - the chunks.json files created
+            chunks_dir = self.storage.get_path("processed/chunks")
+            if self._path_exists(chunks_dir):
+                result.output_files = list(chunks_dir.rglob("chunks.json"))
+
+            logger.info(
+                f"Text chunking completed: {successful_chunks} chunks created from "
+                f"{len(chunking_results) - failed_documents} documents"
+            )
+
+            # Mark as failed if no documents were successfully processed
+            if successful_chunks == 0:
+                result.status = ComponentStatus.FAILED
+                result.error = "No documents were successfully chunked"
+
+        except Exception as e:
+            result.status = ComponentStatus.FAILED
+            result.error = str(e)
+            logger.error(f"Text chunking failed: {e}")
+            raise
+
     async def _simulate_pipeline(self) -> list[ComponentResult]:
         """Simulate pipeline execution for dry run mode."""
         components = [
@@ -348,6 +420,7 @@ class ETLOrchestrator:
             "Growth Lab File Downloader",
             "PDF Processor",
             "Lecture Transcripts Processor",
+            "Text Chunker",
         ]
 
         results = []

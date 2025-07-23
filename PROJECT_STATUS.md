@@ -65,7 +65,7 @@ uv run python backend/etl/scripts/run_pdf_processor.py --force-reprocess
 
 **Pipeline Sequence**:
 1. Growth Lab Scraper
-2. Growth Lab File Downloader  
+2. Growth Lab File Downloader
 3. **PDF Processor** (integrated and ready)
 4. Lecture Transcripts Processor
 
@@ -100,7 +100,7 @@ file_processing:
     max_concurrent: 4
     chunk_size: 1000        # ← Ready for chunking
     chunk_overlap: 200      # ← Ready for chunking
-    
+
   embedding:
     model: "openai"         # ← Ready for embeddings
     dimensions: 1536
@@ -150,7 +150,7 @@ langchain-openai = "*"     # OpenAI integration
 # Vector Database
 qdrant-client = "*"        # Vector storage (ready but unused)
 
-# LLM Integration  
+# LLM Integration
 openai = "*"              # API access
 anthropic = "*"           # API access
 ```
@@ -354,7 +354,7 @@ The project has **solid foundational components** and is **ready for core semant
 
 **Development Path**: The core semantic search functionality can be developed and tested locally without infrastructure concerns. Docker, SLURM, and cloud deployment are production concerns that can be addressed after the semantic search pipeline is working.
 
-**Revised Timeline**: 
+**Revised Timeline**:
 - **Phase 1 (Semantic Search Development)**: 2-3 weeks - **READY TO START**
 - **Phase 2 (Production Infrastructure)**: 2-3 weeks - **AFTER CORE FEATURES**
 - **Total**: 4-6 weeks to full production capability

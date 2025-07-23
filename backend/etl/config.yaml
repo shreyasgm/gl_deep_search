@@ -54,6 +54,20 @@ file_processing:
     dimensions: 1536
     batch_size: 32
 
+  chunking:
+    enabled: true
+    strategy: "hybrid"             # Options: fixed, sentence, structure, hybrid
+    chunk_size: 1000               # target characters per chunk
+    chunk_overlap: 200             # characters of overlap between chunks
+    min_chunk_size: 100            # minimum viable chunk size
+    max_chunk_size: 2000           # maximum chunk size before forced split
+    preserve_structure: true       # respect document hierarchy (headers, sections)
+    respect_sentences: true        # prefer sentence boundaries for splits
+    structure_markers:             # patterns for detecting document structure
+      - "^#{1,6}\\s+"              # markdown headers
+      - "^\\d+\\.\\s+"             # numbered lists
+      - "^[A-Z][A-Z\\s]+:"         # section labels like "INTRODUCTION:"
+
 # Storage
 storage:
   vector_db:
