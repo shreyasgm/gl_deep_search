@@ -65,11 +65,10 @@ class TestPDFProcessor:
         # Create processor instance
         processor = PDFProcessor(
             storage=test_storage,
-            concurrency_limit=1,
         )
 
         # Process the PDF
-        result_path = await processor.process_pdf(dest_path)
+        result_path = processor.process_pdf(dest_path)
 
         # Check that processing was successful
         assert result_path is not None, "PDF processing failed"
@@ -100,12 +99,11 @@ class TestPDFProcessor:
         # Create processor instance
         processor = PDFProcessor(
             storage=test_storage,
-            concurrency_limit=2,  # Allow concurrent processing
             config_path=None,
         )
 
         # Process the PDFs
-        results = await processor.process_pdfs(
+        results = processor.process_pdfs(
             dest_paths,
             force_reprocess=False,
             show_progress=True,
@@ -152,14 +150,13 @@ class TestPDFProcessor:
         # Create processor instance with high concurrency
         processor = PDFProcessor(
             storage=test_storage,
-            concurrency_limit=4,  # Allow high concurrency
         )
 
         # Add a timestamp to track start time
         start_time = asyncio.get_event_loop().time()
 
         # Process the PDFs
-        results = await processor.process_pdfs(
+        results = processor.process_pdfs(
             dest_paths,
             force_reprocess=False,
             show_progress=True,

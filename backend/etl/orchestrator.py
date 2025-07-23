@@ -174,8 +174,14 @@ class ETLOrchestrator:
 
         try:
             await func(result)
-            result.status = ComponentStatus.COMPLETED
-            logger.info(f"Component {name} completed successfully")
+            # Only set to COMPLETED if component hasn't already set a different status
+            if result.status == ComponentStatus.RUNNING:
+                result.status = ComponentStatus.COMPLETED
+                logger.info(f"Component {name} completed successfully")
+            else:
+                logger.info(
+                    f"Component {name} finished with status: {result.status.value}"
+                )
 
         except Exception as e:
             result.status = ComponentStatus.FAILED
