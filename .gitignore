@@ -7,7 +7,6 @@ data/processed/
 *.csv
 *.json
 *.xlsx
-*.pdf
 **/CLAUDE.local.md
 .mcp.json*
 
