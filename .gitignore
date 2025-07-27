@@ -231,3 +231,5 @@ extracted_texts_temp/
 extracted_texts_first/
 extracted_texts_second/
 extracted_texts/
+tests/
+**/tests/
