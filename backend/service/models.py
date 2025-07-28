@@ -18,10 +18,10 @@ class DownloadStatus(str, Enum):
     - FAILED: Download attempt failed after all retries
     """
 
-    PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
-    DOWNLOADED = "Downloaded"
-    FAILED = "Failed"
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    DOWNLOADED = "DOWNLOADED"
+    FAILED = "FAILED"
 
 
 class ProcessingStatus(str, Enum):
@@ -35,12 +35,12 @@ class ProcessingStatus(str, Enum):
     - FAILED: Processing attempt failed after all retries
     """
 
-    PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
-    PROCESSED = "Processed"
-    OCR_FAILED = "OCR_Failed"
-    CHUNKING_FAILED = "Chunking_Failed"
-    FAILED = "Failed"
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    PROCESSED = "PROCESSED"
+    OCR_FAILED = "OCR_FAILED"
+    CHUNKING_FAILED = "CHUNKING_FAILED"
+    FAILED = "FAILED"
 
 
 class EmbeddingStatus(str, Enum):
@@ -51,10 +51,10 @@ class EmbeddingStatus(str, Enum):
     - FAILED: Embedding attempt failed after all retries
     """
 
-    PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
-    EMBEDDED = "Embedded"
-    FAILED = "Failed"
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    EMBEDDED = "EMBEDDED"
+    FAILED = "FAILED"
 
 
 class IngestionStatus(str, Enum):
@@ -66,10 +66,10 @@ class IngestionStatus(str, Enum):
     - FAILED: Ingestion attempt failed after all retries
     """
 
-    PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
-    INGESTED = "Ingested"
-    FAILED = "Failed"
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    INGESTED = "INGESTED"
+    FAILED = "FAILED"
 
 
 class SortOrder(str, Enum):

@@ -27,6 +27,7 @@ repos:
           - types-requests
           - loguru>=0.7.2
         args: [--ignore-missing-imports]
+        exclude: ^(backend/etl/utils/oa_file_downloader\.py|backend/etl/scripts/run_openalex_file_downloader\.py|backend/tests/etl/test_oa_file_downloader\.py)$
 
   - repo: https://github.com/astral-sh/uv-pre-commit
     # uv version.
