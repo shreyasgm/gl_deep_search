@@ -65,6 +65,7 @@ etl = [
     "google-cloud-storage",
     "tiktoken>=0.9.0",
     "pdfminer.six>=20211012",
+    "sqlmodel>=0.0.24",
 ]
 
 # Backend service dependencies
@@ -73,27 +74,23 @@ service = [
     "fastapi",
     "uvicorn",
     "pydantic-settings",
-
     # Vector search
     "qdrant-client",
-
     # LLM frameworks
     "langgraph",
     "langchain",
     "langchain-community",
     "langchain-openai",
     "langchain-anthropic",
-
     # LLM providers
     "openai",
     "anthropic",
-
     # Observability
     "langsmith",
-
     # Embeddings
     "sentence-transformers",
     "cohere",
+    "aiosqlite>=0.21.0",
 ]
 
 # Frontend dependencies
