@@ -253,9 +253,9 @@ def main():
     load_dotenv()
 
     # Configuration - load from environment variables
-    openai_api_key = os.getenv("openai_api_key")
-    qdrant_url = os.getenv("qdrant_url")
-    qdrant_api_key = os.getenv("qdrant_api_key")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    qdrant_url = os.getenv("QDRANT_URL")
+    qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
     # Path to your transcript file
     transcript_path = Path(
