@@ -236,7 +236,7 @@ class Database:
                 "type": str(column["type"]),
                 "nullable": column["nullable"],
                 "default": column["default"],
-                "primary_key": column["primary_key"],
+                "primary_key": column.get("primary_key", False),
             }
             for column in inspector.get_columns(table_name)
         ]

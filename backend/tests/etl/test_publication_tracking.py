@@ -1,5 +1,6 @@
 """
-Integration tests for publication tracking system using real publications. Unit tests are below starting from line 600
+Integration tests for publication tracking system using real publications.
+Unit tests are below starting from line 600
 
 This module tests the complete publication manifest and tracking system
 using actual publications from real sources to validate end-to-end functionality.
@@ -12,11 +13,15 @@ These tests require network access and may be slower than unit tests.
 import logging
 import os
 import tempfile
+import typing
+from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic import HttpUrl, ValidationError
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from backend.etl.models.publications import GrowthLabPublication
+from backend.etl.models.publications import GrowthLabPublication, OpenAlexPublication
 from backend.etl.models.tracking import (
     DownloadStatus,
     EmbeddingStatus,
@@ -24,7 +29,7 @@ from backend.etl.models.tracking import (
     ProcessingStatus,
     PublicationTracking,
 )
-from backend.etl.utils.publication_tracker import PublicationTracker
+from backend.etl.utils.publication_tracker import ProcessingPlan, PublicationTracker
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -670,35 +675,12 @@ class TestPublicationTrackingRobustness:
             raise
 
 
-
 """
 Unit Tests for the publication tracking functionality.
 
 This module tests the PublicationTracker class and related components that are
 responsible for tracking publications through the ETL pipeline stages.
 """
-
-import logging
-import typing
-from typing import Any, cast
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
-from pydantic import HttpUrl, ValidationError
-from sqlmodel import Session, SQLModel, create_engine, select
-
-from backend.etl.models.publications import (
-    GrowthLabPublication,
-    OpenAlexPublication,
-)
-from backend.etl.models.tracking import (
-    DownloadStatus,
-    EmbeddingStatus,
-    IngestionStatus,
-    ProcessingStatus,
-    PublicationTracking,
-)
-from backend.etl.utils.publication_tracker import ProcessingPlan, PublicationTracker
 
 if typing.TYPE_CHECKING:
     from _pytest.logging import LogCaptureFixture
@@ -1893,6 +1875,3 @@ class TestProcessingPlan:
         assert plan.needs_ingestion is True
         assert plan.files_to_reprocess == ["file1.pdf", "file2.pdf"]
         assert plan.reason == "Test reason"
-
-
-
