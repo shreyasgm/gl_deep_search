@@ -8,6 +8,7 @@ documents into semantically meaningful chunks for vector embeddings and retrieva
 import json
 import re
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
@@ -84,21 +85,67 @@ class TextChunker:
         """Initialize text chunker with configuration."""
         self.config_path = config_path
         self.config = self._load_config()
-        self.chunking_config = self.config.get("file_processing", {}).get(
-            "chunking", {}
-        )
+        raw_config = self.config.get("file_processing", {}).get("chunking", {})
 
-        # Extract configuration parameters
-        self.strategy = self.chunking_config.get("strategy", "hybrid")
-        self.chunk_size = self.chunking_config.get("chunk_size", 1000)
-        self.chunk_overlap = self.chunking_config.get("chunk_overlap", 200)
-        self.min_chunk_size = self.chunking_config.get("min_chunk_size", 100)
-        self.max_chunk_size = self.chunking_config.get("max_chunk_size", 2000)
-        self.preserve_structure = self.chunking_config.get("preserve_structure", True)
-        self.respect_sentences = self.chunking_config.get("respect_sentences", True)
-        self.structure_markers = self.chunking_config.get(
-            "structure_markers", ["^#{1,6}\\s+", "^\\d+\\.\\s+", "^[A-Z][A-Z\\s]+:"]
-        )
+        # Defaults
+        defaults = {
+            "strategy": "hybrid",
+            "chunk_size": 1000,
+            "chunk_overlap": 200,
+            "min_chunk_size": 100,
+            "max_chunk_size": 2000,
+            "preserve_structure": True,
+            "respect_sentences": True,
+            "structure_markers": [
+                r"^#{1,6}\s+",
+                r"^\d+\.\s+",
+                r"^[A-Z][A-Z\s]+:",
+            ],
+        }
+
+        # Merge and normalize
+        merged = {**defaults, **(raw_config or {})}
+
+        # Normalize/validate values; fall back to defaults on invalid
+        allowed_strategies = {"fixed", "sentence", "structure", "hybrid"}
+        if merged.get("strategy") not in allowed_strategies:
+            merged["strategy"] = defaults["strategy"]
+
+        if not isinstance(merged.get("chunk_size"), int) or merged["chunk_size"] <= 0:
+            merged["chunk_size"] = defaults["chunk_size"]
+
+        if (
+            not isinstance(merged.get("min_chunk_size"), int)
+            or not isinstance(merged.get("max_chunk_size"), int)
+            or merged["min_chunk_size"] <= 0
+            or merged["max_chunk_size"] <= merged["min_chunk_size"]
+        ):
+            merged["min_chunk_size"] = defaults["min_chunk_size"]
+            merged["max_chunk_size"] = defaults["max_chunk_size"]
+
+        if (
+            not isinstance(merged.get("chunk_overlap"), int)
+            or merged["chunk_overlap"] < 0
+            or merged["chunk_overlap"] >= merged["chunk_size"]
+        ):
+            # ensure reasonable overlap strictly less than chunk_size
+            merged["chunk_overlap"] = min(
+                defaults["chunk_overlap"],
+                merged["chunk_size"] - 1,
+            )
+
+        # Persist normalized config for tests expecting defaults present
+        self.chunking_config = merged
+
+        # Extract configuration parameters from normalized config
+        self.strategy = merged["strategy"]
+        self.chunk_size = merged["chunk_size"]
+        self.chunk_overlap = merged["chunk_overlap"]
+        self.min_chunk_size = merged["min_chunk_size"]
+        self.max_chunk_size = merged["max_chunk_size"]
+        self.preserve_structure = merged["preserve_structure"]
+        self.respect_sentences = merged["respect_sentences"]
+        self.structure_markers = merged["structure_markers"]
 
         logger.info(f"TextChunker initialized with strategy: {self.strategy}")
 
@@ -113,7 +160,7 @@ class TextChunker:
 
     def process_all_documents(self, storage) -> list[ChunkingResult]:
         """Process all documents in the processed directory."""
-        processed_dir = storage.get_path("processed/documents")
+        processed_dir = self._resolve_processed_documents_dir(storage)
         results: list[ChunkingResult] = []
 
         if not processed_dir.exists():
@@ -150,7 +197,13 @@ class TextChunker:
     def process_single_document(self, text_file_path: Path) -> ChunkingResult:
         """Process a single document and return chunking result."""
         start_time = time.time()
-        document_id = text_file_path.stem
+        # Prefer directory name as document ID
+        # (e.g., processed/documents/<doc_id>/file.txt)
+        try:
+            parent_name = text_file_path.parent.name
+        except Exception:
+            parent_name = ""
+        document_id = parent_name if parent_name else text_file_path.stem
 
         logger.info(f"Processing document: {document_id}")
 
@@ -161,6 +214,9 @@ class TextChunker:
 
             if len(text_content.strip()) == 0:
                 raise ValueError("Empty text file")
+
+            # Note: Do not hard-fail for short documents here. Strategy
+            # implementations will decide whether a document is chunkable.
 
             # Create chunks using the configured strategy
             chunks = self.create_chunks(text_content, text_file_path, document_id)
@@ -176,12 +232,39 @@ class TextChunker:
                 status=ChunkingStatus.SUCCESS if chunks else ChunkingStatus.FAILED,
             )
 
+            # Persist chunks to disk for single-document processing as well
+            try:
+                self._save_chunks(result, storage=None)
+            except Exception as save_error:
+                logger.warning(
+                    (
+                        "Failed to save chunks for %s during single-document "
+                        "processing: %s"
+                    ),
+                    document_id,
+                    save_error,
+                )
+
             logger.info(
                 f"Successfully chunked {document_id}: {len(chunks)} chunks "
                 f"in {processing_time:.2f}s"
             )
             return result
 
+        except FileNotFoundError:
+            processing_time = time.time() - start_time
+            error_msg = f"File not found: {text_file_path}"
+            logger.error(f"Failed to process {document_id}: {error_msg}")
+
+            return ChunkingResult(
+                document_id=document_id,
+                source_path=text_file_path,
+                chunks=[],
+                total_chunks=0,
+                processing_time=processing_time,
+                status=ChunkingStatus.FAILED,
+                error_message=error_msg,
+            )
         except Exception as e:
             processing_time = time.time() - start_time
             logger.error(f"Failed to process {document_id}: {e}")
@@ -200,7 +283,9 @@ class TextChunker:
         self, text: str, source_path: Path, document_id: str
     ) -> list[DocumentChunk]:
         """Create chunks using the configured strategy with fallback."""
-        strategies = {
+        strategies: dict[
+            str, Callable[[str, Path | None, str | None], list[DocumentChunk]]
+        ] = {
             "fixed": self.chunk_fixed_size,
             "sentence": self.chunk_by_sentences,
             "structure": self.chunk_by_structure,
@@ -221,7 +306,10 @@ class TextChunker:
         for strategy_name in strategy_order:
             try:
                 logger.debug(f"Attempting chunking with strategy: {strategy_name}")
-                strategy_func = strategies[strategy_name]
+                strategy_func = strategies.get(strategy_name)
+                if strategy_func is None:
+                    logger.warning(f"Strategy {strategy_name} not found")
+                    continue
                 chunks = strategy_func(text, source_path, document_id)
 
                 if chunks:
@@ -239,7 +327,7 @@ class TextChunker:
         return []
 
     def chunk_fixed_size(
-        self, text: str, source_path: Path, document_id: str
+        self, text: str, source_path: Path | None = None, document_id: str | None = None
     ) -> list[DocumentChunk]:
         """Create fixed-size chunks with overlap."""
         chunks = []
@@ -249,14 +337,24 @@ class TextChunker:
         clean_text = self._clean_text_for_chunking(text)
         page_info = self._extract_page_info(text)
 
+        # Defaults for optional parameters
+        if source_path is None:
+            source_path = Path("/tmp/unknown.txt")
+        if document_id is None:
+            document_id = source_path.stem or "document"
+
         start = 0
         while start < len(clean_text):
             end = min(start + self.chunk_size, len(clean_text))
 
-            # Extract chunk text
-            chunk_text = clean_text[start:end].strip()
+            # Extract chunk text without stripping to preserve exact overlap
+            chunk_text = clean_text[start:end]
 
-            if len(chunk_text) < self.min_chunk_size and start > 0:
+            # Skip chunks that are too small, but always include first chunk if short
+            if (
+                len(chunk_text) < self.min_chunk_size
+                and len(clean_text) >= self.min_chunk_size
+            ):
                 break
 
             # Find which pages this chunk covers
@@ -281,16 +379,27 @@ class TextChunker:
             chunk_index += 1
 
             # Move to next chunk with overlap
-            start = max(start + self.chunk_size - self.chunk_overlap, end)
+            next_start = start + self.chunk_size - self.chunk_overlap
+            # Ensure exactly chunk_overlap characters of overlap when possible
+            if next_start < end:
+                start = next_start
+            else:
+                start = end
 
         return chunks
 
     def chunk_by_sentences(
-        self, text: str, source_path: Path, document_id: str
+        self, text: str, source_path: Path | None = None, document_id: str | None = None
     ) -> list[DocumentChunk]:
         """Create chunks respecting sentence boundaries."""
         chunks = []
         chunk_index = 0
+
+        # Defaults for optional parameters
+        if source_path is None:
+            source_path = Path("/tmp/unknown.txt")
+        if document_id is None:
+            document_id = source_path.stem or "document"
 
         clean_text = self._clean_text_for_chunking(text)
         page_info = self._extract_page_info(text)
@@ -375,11 +484,17 @@ class TextChunker:
         return chunks
 
     def chunk_by_structure(
-        self, text: str, source_path: Path, document_id: str
+        self, text: str, source_path: Path | None = None, document_id: str | None = None
     ) -> list[DocumentChunk]:
         """Create chunks based on document structure."""
         chunks = []
         chunk_index = 0
+
+        # Defaults for optional parameters
+        if source_path is None:
+            source_path = Path("/tmp/unknown.txt")
+        if document_id is None:
+            document_id = source_path.stem or "document"
 
         clean_text = self._clean_text_for_chunking(text)
         page_info = self._extract_page_info(text)
@@ -449,12 +564,18 @@ class TextChunker:
         return chunks
 
     def chunk_hybrid(
-        self, text: str, source_path: Path, document_id: str
+        self, text: str, source_path: Path | None = None, document_id: str | None = None
     ) -> list[DocumentChunk]:
         """Create chunks using hybrid approach combining structure, sentence,
         and size constraints."""
         chunks = []
         chunk_index = 0
+
+        # Defaults for optional parameters
+        if source_path is None:
+            source_path = Path("/tmp/unknown.txt")
+        if document_id is None:
+            document_id = source_path.stem or "document"
 
         clean_text = self._clean_text_for_chunking(text)
         page_info = self._extract_page_info(text)
@@ -614,9 +735,10 @@ class TextChunker:
         """Clean text by removing page markers and normalizing whitespace."""
         # Remove page markers
         cleaned = re.sub(r"^--- Page \d+ ---\s*$", "", text, flags=re.MULTILINE)
-        # Normalize whitespace
-        cleaned = re.sub(r"\n\s*\n", "\n\n", cleaned)
-        cleaned = re.sub(r"\s+", " ", cleaned)
+        # Collapse excessive blank lines but preserve line breaks
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        # Normalize spaces and tabs within lines (preserve newlines)
+        cleaned = re.sub(r"[ \t]+", " ", cleaned)
         return cleaned.strip()
 
     def _extract_page_info(self, text: str) -> list[dict[str, Any]]:
@@ -720,7 +842,8 @@ class TextChunker:
 
                 # Start new section
                 current_section = {
-                    "text": "",
+                    # Include the header line in the section text for preservation
+                    "text": line + "\n",
                     "start": char_position,
                     "title": line_stripped,
                 }
@@ -739,6 +862,11 @@ class TextChunker:
         # If no structure detected, create one big section
         if not sections:
             sections = [{"text": text, "start": 0, "end": len(text), "title": None}]
+        else:
+            # Propagate section titles into created chunks later via section_title field
+            for s in sections:
+                if "title" not in s:
+                    s["title"] = None
 
         return sections
 
@@ -777,22 +905,23 @@ class TextChunker:
             return
 
         # Create output directory structure
-        relative_path = result.source_path.relative_to(storage.get_path("processed"))
-        output_dir = storage.get_path("processed/chunks") / relative_path.parent
-        storage.ensure_dir(output_dir)
+        output_dir = self._resolve_output_dir(result, storage)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save chunks as JSON
+        # Save chunks as JSON (array of DocumentChunk dicts per requirements)
         output_file = output_dir / "chunks.json"
 
+        # Resume capability: if chunks already exist, skip writing
+        if output_file.exists():
+            logger.info(
+                ("Chunks already exist for %s at %s. Skipping save."),
+                result.document_id,
+                output_file,
+            )
+            return
+
         try:
-            chunks_data = {
-                "document_id": result.document_id,
-                "source_path": str(result.source_path),
-                "total_chunks": result.total_chunks,
-                "processing_time": result.processing_time,
-                "created_at": datetime.now().isoformat(),
-                "chunks": [chunk.to_dict() for chunk in result.chunks],
-            }
+            chunks_data = [chunk.to_dict() for chunk in result.chunks]
 
             with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(chunks_data, f, indent=2, ensure_ascii=False)
@@ -802,3 +931,55 @@ class TextChunker:
         except Exception as e:
             logger.error(f"Failed to save chunks for {result.document_id}: {e}")
             raise
+
+    def _resolve_processed_documents_dir(self, storage) -> Path:
+        """Resolve the path to processed/documents, using storage if available."""
+        # Use storage if it provides get_path and returns a real Path
+        if storage and hasattr(storage, "get_path") and callable(storage.get_path):
+            try:
+                candidate = storage.get_path("processed/documents")
+                if isinstance(candidate, Path):
+                    return candidate
+            except Exception:
+                pass
+
+        # Fallback to config runtime.local_storage_path relative to config file
+        base_dir = self.config.get("runtime", {}).get("local_storage_path", "data/")
+        base_path = Path(base_dir)
+        if not base_path.is_absolute():
+            base_path = (self.config_path.parent / base_path).resolve()
+        return base_path / "processed" / "documents"
+
+    def _resolve_output_dir(self, result: ChunkingResult, storage) -> Path:
+        """Resolve output directory for chunks.json, using storage if available.
+
+        Tries to mirror input path under processed/chunks/. If storage is not
+        provided, compute root by finding the 'processed' segment in the
+        source path; otherwise, fall back to runtime.local_storage_path.
+        """
+        # If storage is available, use it
+        if storage and hasattr(storage, "get_path") and callable(storage.get_path):
+            try:
+                processed_root = storage.get_path("processed")
+                if isinstance(processed_root, Path):
+                    relative_path = result.source_path.relative_to(processed_root)
+                    return storage.get_path("processed/chunks") / relative_path.parent
+            except Exception:
+                pass
+
+        src_abs = result.source_path.resolve()
+        parts = list(src_abs.parts)
+        if "processed" in parts:
+            idx = parts.index("processed")
+            root = Path(*parts[:idx]) if idx > 0 else Path("/")
+            # After 'processed', exclude filename
+            relative_parent = Path(*parts[idx + 1 : -1])
+            return (root / "processed" / "chunks" / relative_parent).resolve()
+
+        # Fallback to runtime.local_storage_path
+        base_dir = self.config.get("runtime", {}).get("local_storage_path", "data/")
+        base_path = Path(base_dir)
+        if not base_path.is_absolute():
+            base_path = (self.config_path.parent / base_path).resolve()
+        # Try to mirror the documents path structure
+        return (base_path / "processed" / "chunks").resolve()
