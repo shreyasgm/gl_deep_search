@@ -66,22 +66,18 @@ class PublicationTracker:
     - Querying publications ready for each processing stage
     """
 
-    def __init__(self, ensure_db: bool = True):
+    def __init__(self, ensure_db: bool = False):
         """
         Initialize the publication tracker with database and scraper setup.
 
         Args:
             ensure_db: If True, ensures database tables are created and initialized.
-                      Set to False in tests or when database is already set up.
+                      Set to False by default - only enable when tracking is needed.
         """
         # Initialize database schema if requested
         if ensure_db:
             ensure_db_initialized()  # Ensure database connection is ready
             SQLModel.metadata.create_all(engine)  # Create all tables defined in models
-
-        # Initialize scraper instances for publication discovery
-        self.growthlab_scraper = GrowthLabScraper()  # Harvard Growth Lab scraper
-        self.openalex_client = OpenAlexClient()  # OpenAlex API client
 
     @contextmanager
     def _get_session(self, session: Session | None = None):
@@ -110,6 +106,8 @@ class PublicationTracker:
 
     async def discover_publications(
         self,
+        growthlab_scraper: GrowthLabScraper | None = None,
+        openalex_client: OpenAlexClient | None = None,
     ) -> list[tuple[GrowthLabPublication | OpenAlexPublication, str]]:
         """
         Discover new publications from all configured sources.
@@ -117,6 +115,10 @@ class PublicationTracker:
         This method orchestrates the discovery process by calling both
         the Growth Lab scraper and OpenAlex client to find publications.
         It's the main entry point for Issue #8 (Check for new publications).
+
+        Args:
+            growthlab_scraper: Optional GrowthLabScraper instance (creates new if not provided)
+            openalex_client: Optional OpenAlexClient instance (creates new if not provided)
 
         Returns:
             List of tuples where each tuple contains:
@@ -128,17 +130,19 @@ class PublicationTracker:
         """
         publications = []
 
+        # Use provided scrapers or create new instances
+        gl_scraper = growthlab_scraper or GrowthLabScraper()
+        oa_client = openalex_client or OpenAlexClient()
+
         try:
             # Discover publications from Harvard Growth Lab website
             # This scraper extracts publications from web pages and enriches metadata
-            growthlab_pubs = (
-                await self.growthlab_scraper.extract_and_enrich_publications()
-            )
+            growthlab_pubs = await gl_scraper.extract_and_enrich_publications()
             publications.extend([(pub, "growthlab") for pub in growthlab_pubs])
 
             # Discover publications from OpenAlex API
             # This client fetches publications via API based on configured criteria
-            openalex_pubs = await self.openalex_client.fetch_publications()
+            openalex_pubs = await oa_client.fetch_publications()
             publications.extend([(pub, "openalex") for pub in openalex_pubs])
 
         except Exception as e:

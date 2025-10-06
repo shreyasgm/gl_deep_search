@@ -23,9 +23,7 @@ import aiohttp
 import tqdm.asyncio
 
 from backend.etl.models.publications import GrowthLabPublication
-from backend.etl.models.tracking import DownloadStatus
 from backend.etl.scrapers.growthlab import GrowthLabScraper
-from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
@@ -62,7 +60,6 @@ class FileDownloader:
     - Resume of partial downloads
     - Intelligent caching (won't re-download existing files unless overwrite=True)
     - Progress tracking
-    - Publication tracking in database
     """
 
     def __init__(
@@ -70,7 +67,6 @@ class FileDownloader:
         storage: StorageBase | None = None,
         concurrency_limit: int = 3,
         config_path: Path | None = None,
-        publication_tracker: PublicationTracker | None = None,
     ):
         """
         Initialize the file downloader.
@@ -79,13 +75,9 @@ class FileDownloader:
             storage: Storage backend to use (defaults to factory-configured storage)
             concurrency_limit: Maximum number of concurrent downloads
             config_path: Path to configuration file
-            publication_tracker: tracking download status
         """
         # Storage configuration
         self.storage = storage or get_storage()
-
-        # Publication tracking
-        self.publication_tracker = publication_tracker or PublicationTracker()
 
         # Load configuration or use defaults
         self.config = self._load_config(config_path)
@@ -673,10 +665,6 @@ class FileDownloader:
         if limit is not None and limit > 0:
             pub_list = pub_list[:limit]
 
-        # Track publications in database before downloading
-        for pub in pub_list:
-            self.publication_tracker.add_publication(pub)
-
         # Find all file URLs to download
         all_downloads = []
         for pub in publications:
@@ -740,16 +728,6 @@ class FileDownloader:
                         }
                         results.append(pub_result)
 
-                        # Update download status in tracker
-                        if result.success:
-                            self.publication_tracker.update_download_status(
-                                pub.paper_id, DownloadStatus.DOWNLOADED
-                            )
-                        else:
-                            self.publication_tracker.update_download_status(
-                                pub.paper_id, DownloadStatus.FAILED, error=result.error
-                            )
-
                         # Update progress
                         pbar.update(1)
 
@@ -775,12 +753,6 @@ class FileDownloader:
                         }
                         results.append(pub_result)
 
-                        # Update download status to failed
-                        self.publication_tracker.update_download_status(
-                            pub.paper_id,
-                            DownloadStatus.FAILED,
-                            error=f"Unexpected error: {str(e)}",
-                        )
                         pbar.update(1)
 
                     # Rate limiting delay
@@ -845,15 +817,11 @@ async def download_growthlab_files(
     Returns:
         List of download results by publication
     """
-    # Initialize publication tracker
-    publication_tracker = PublicationTracker()
-
     # Initialize downloader
     downloader = FileDownloader(
         storage=storage,
         concurrency_limit=concurrency,
         config_path=config_path,
-        publication_tracker=publication_tracker,
     )
 
     # Get storage
