@@ -54,9 +54,10 @@ etl = [
     "asyncio",
     "aiohttp>=3.8.0,!=3.11.14", # Avoid yanked version 3.11.14
     "aiofiles",
+    "scidownl>=1.0.2",
     # PDF processing and OCR
     "langdetect",
-    "unstructured",
+    "unstructured[all-docs]",
     "docling",
     "marker-pdf",
     # Vector databases and embeddings
@@ -71,6 +72,7 @@ etl = [
     # Cloud storage
     "google-cloud-storage",
     "tiktoken>=0.9.0",
+    "pdfminer.six>=20211012",
 ]
 
 # Backend service dependencies
@@ -208,6 +210,13 @@ show_error_codes = true
 # Convert only specific errors to warnings, particularly union-attr and similar ones from BeautifulSoup
 # See https://mypy.readthedocs.io/en/stable/error_codes.html
 disable_error_code = ["union-attr", "arg-type", "index", "misc", "call-overload", "return-value"]
+
+# Exclude openalex file downloader files from mypy checking
+exclude = [
+    "backend/etl/utils/oa_file_downloader.py",
+    "backend/etl/scripts/run_openalex_file_downloader.py",
+    "backend/tests/etl/test_oa_file_downloader.py"
+]
 
 [tool.pytest.ini_options]
 # Register custom marks
