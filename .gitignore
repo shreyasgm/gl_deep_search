@@ -8,6 +8,7 @@ data/processed/
 *.json
 *.xlsx
 *.pdf
+*.ipynb
 
 # Environment
 .env
@@ -226,4 +227,6 @@ pyrightconfig.json
 **/CLAUDE.local.md
 
 #project dump
-archive/
+/backend/etl/experiments/ocr_pipeline/archive
+
+
