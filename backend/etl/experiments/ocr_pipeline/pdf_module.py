@@ -1,14 +1,14 @@
 # pdf_module.py
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
-from dotenv import load_dotenv
-import os
 
+from dotenv import load_dotenv
 from module_marker import parse_marker_preset
 
-#configure logging
+# configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 # PDF MODULES
 # ----------------------------
 
-def marker_parser_adapter(pdf_path, output_path=None, marker_preset="baseline", marker_model="gpt-4o-mini"):
+
+def marker_parser_adapter(
+    pdf_path, output_path=None, marker_preset="baseline", marker_model="gpt-4o-mini"
+):
     """
     Adapter for Marker with full presets/models support.
     """
@@ -24,12 +27,15 @@ def marker_parser_adapter(pdf_path, output_path=None, marker_preset="baseline", 
         pdf_path=pdf_path,
         preset=marker_preset,
         model=marker_model,
-        output_path=output_path
+        output_path=output_path,
     )
 
 
-def parse_unstructured(pdf_path: str, output_path: str = "unstructured_output.txt") -> dict:
+def parse_unstructured(
+    pdf_path: str, output_path: str = "unstructured_output.txt"
+) -> dict:
     from unstructured.partition.pdf import partition_pdf
+
     elements = partition_pdf(filename=pdf_path)
     text = "\n\n".join(str(el) for el in elements)
     with open(output_path, "w", encoding="utf-8") as f:
@@ -37,10 +43,9 @@ def parse_unstructured(pdf_path: str, output_path: str = "unstructured_output.tx
     return {"engine": "unstructured", "text": text}
 
 
-
-
 def parse_llamaparse(pdf_path: str, output_path: str = "llamaparse_output.md") -> dict:
     from llama_parse import LlamaParse
+
     parser = LlamaParse(result_type="markdown")  # or "text"
     with open(pdf_path, "rb") as f:
         documents = parser.load_data(f, extra_info={"file_name": pdf_path})
@@ -50,18 +55,15 @@ def parse_llamaparse(pdf_path: str, output_path: str = "llamaparse_output.md") -
     return {"engine": "llamaparse", "text": text}
 
 
-
-
 def parse_mistral(pdf_path: str, output_path: str = "mistral_output.md") -> dict:
     import base64
-    import os
+
     from mistralai import Mistral
-    from dotenv import load_dotenv
 
     load_dotenv()
     api_key = os.getenv("MISTRAL_API_KEY")
     if not api_key:
-        raise EnvironmentError("MISTRAL_API_KEY not found in environment")
+        raise OSError("MISTRAL_API_KEY not found in environment")
     with open(pdf_path, "rb") as f:
         encoded_pdf = base64.b64encode(f.read()).decode("utf-8")
     client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
@@ -69,16 +71,13 @@ def parse_mistral(pdf_path: str, output_path: str = "mistral_output.md") -> dict
         model="mistral-ocr-latest",
         document={
             "type": "document_url",
-            "document_url": f"data:application/pdf;base64,{encoded_pdf}"
-        }
+            "document_url": f"data:application/pdf;base64,{encoded_pdf}",
+        },
     )
     text = ocr_response.markdown
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(text)
     return {"engine": "mistral", "text": text}
-
-
-
 
 
 def ocr_tesseract(pdf_path: Path) -> dict[str, Any]:
@@ -89,7 +88,11 @@ def ocr_tesseract(pdf_path: Path) -> dict[str, Any]:
         images = convert_from_path(str(pdf_path))
         all_text = [pytesseract.image_to_string(image) for image in images]
 
-        return {"engine": "tesseract", "text": "\n\n".join(all_text), "pages": len(images)}
+        return {
+            "engine": "tesseract",
+            "text": "\n\n".join(all_text),
+            "pages": len(images),
+        }
 
     except ImportError:
         logger.error("Missing packages: pytesseract, pdf2image")
@@ -110,7 +113,11 @@ def ocr_easyocr(pdf_path: Path) -> dict[str, Any]:
             page_text = "\n".join([text for _, text, _ in results])
             all_text.append(page_text)
 
-        return {"engine": "easyocr", "text": "\n\n".join(all_text), "pages": len(images)}
+        return {
+            "engine": "easyocr",
+            "text": "\n\n".join(all_text),
+            "pages": len(images),
+        }
 
     except ImportError:
         logger.error("Missing packages: easyocr, pdf2image")
@@ -122,6 +129,7 @@ def ocr_mistral(pdf_path: Path) -> dict[str, Any]:
         import base64
         import os
         from io import BytesIO
+
         import requests
         from pdf2image import convert_from_path
 
@@ -148,7 +156,11 @@ def ocr_mistral(pdf_path: Path) -> dict[str, Any]:
             else:
                 raise RuntimeError(f"Failed Mistral request: {response.text}")
 
-        return {"engine": "mistral", "text": "\n\n".join(all_text), "pages": len(images)}
+        return {
+            "engine": "mistral",
+            "text": "\n\n".join(all_text),
+            "pages": len(images),
+        }
 
     except ImportError:
         logger.error("Missing packages: requests, pdf2image")
@@ -158,6 +170,7 @@ def ocr_mistral(pdf_path: Path) -> dict[str, Any]:
 def ocr_docling(pdf_path: Path) -> dict[str, Any]:
     try:
         from docling import Document
+
         doc = Document(str(pdf_path))
         text = doc.extract_text()
         return {"engine": "docling", "text": text, "pages": len(doc.pages)}

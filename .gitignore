@@ -224,12 +224,6 @@ poetry.toml
 pyrightconfig.json
 
 **/CLAUDE.local.md
-*.ipynb
-/n/hausmann_lab/lab/kdaryanani/deeplearn/gl_deep_search/backend/etl/experiments/ocr_pipeline/extracted_texts/
-extracted_texts/
-extracted_texts_temp/
-extracted_texts_first/
-extracted_texts_second/
-extracted_texts/
-tests/
-**/tests/
+
+#project dump
+archive/

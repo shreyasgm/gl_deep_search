@@ -1,12 +1,11 @@
 # module_tesseract.py
 
 import logging
-import os
 import time
-from typing import Union, List
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Configure logging
@@ -59,12 +58,14 @@ tesseract_presets = {
     },
 }
 
+
 def preprocess_image(image, method: str):
     """Apply image preprocessing based on method."""
     if method == "none":
         return image
     elif method == "enhance":
-        from PIL import Image, ImageEnhance, ImageFilter
+        from PIL import ImageEnhance
+
         # Enhance contrast and sharpness
         enhancer = ImageEnhance.Contrast(image)
         image = enhancer.enhance(1.5)
@@ -72,33 +73,35 @@ def preprocess_image(image, method: str):
         image = enhancer.enhance(1.2)
         return image
     elif method == "deskew":
-        from PIL import Image
         # Simple deskewing (you might want to use more sophisticated methods)
         return image.rotate(0, expand=True)
     else:
         return image
 
+
 def parse_tesseract_preset(
-    pdf_path: Union[str, Path],
+    pdf_path: str | Path,
     preset: str = "baseline",
-    output_path: Union[str, Path, None] = None,
+    output_path: str | Path | None = None,
     extra_opts: dict = None,
 ) -> dict:
     """
     Parse PDF with Tesseract OCR and preset configuration.
-    
+
     Args:
         pdf_path (str/Path): Path to input PDF.
         preset (str): Preset name (see above).
         output_path (str/Path, optional): Output file path; auto-names if None.
         extra_opts (dict, optional): Extra kwargs to pass to Tesseract.
-    
+
     Returns:
         dict: Details about extraction, errors, metadata, timing, etc.
     """
     if preset not in tesseract_presets:
-        raise ValueError(f"Unknown preset '{preset}'. Available: {list(tesseract_presets.keys())}")
-    
+        raise ValueError(
+            f"Unknown preset '{preset}'. Available: {list(tesseract_presets.keys())}"
+        )
+
     config = tesseract_presets[preset].copy()
     if extra_opts:
         config.update(extra_opts)
@@ -111,34 +114,33 @@ def parse_tesseract_preset(
     try:
         import pytesseract
         from pdf2image import convert_from_path
-        
+
         # Convert PDF to images
-        images = convert_from_path(
-            str(pdf_path), 
-            dpi=config["dpi"]
-        )
-        
+        images = convert_from_path(str(pdf_path), dpi=config["dpi"])
+
         all_text = []
         page_metadata = []
-        
+
         for i, image in enumerate(images):
             # Apply preprocessing
             processed_image = preprocess_image(image, config["preprocessing"])
-            
+
             # Perform OCR
             page_text = pytesseract.image_to_string(
                 processed_image,
                 lang="+".join(config["languages"]),
-                config=config["config"]
+                config=config["config"],
             )
-            
+
             all_text.append(page_text)
-            page_metadata.append({
-                "page": i + 1,
-                "dpi": config["dpi"],
-                "preprocessing": config["preprocessing"],
-                "languages": config["languages"]
-            })
+            page_metadata.append(
+                {
+                    "page": i + 1,
+                    "dpi": config["dpi"],
+                    "preprocessing": config["preprocessing"],
+                    "languages": config["languages"],
+                }
+            )
 
         # Combine all text
         text = "\n\n".join(all_text)
@@ -159,7 +161,7 @@ def parse_tesseract_preset(
             "languages": config["languages"],
             "dpi": config["dpi"],
             "preprocessing": config["preprocessing"],
-            "page_metadata": page_metadata
+            "page_metadata": page_metadata,
         }
     except Exception as e:
         processing_time = time.time() - start_time
@@ -175,5 +177,5 @@ def parse_tesseract_preset(
             "languages": config.get("languages", []),
             "dpi": config.get("dpi"),
             "preprocessing": config.get("preprocessing"),
-            "page_metadata": []
-        } 
+            "page_metadata": [],
+        }

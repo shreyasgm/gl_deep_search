@@ -1,13 +1,16 @@
 # module_unstructured.py
 
 import logging
-import os
 import time
-from typing import Union
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv()
+
+import unstructured_pytesseract
+
+unstructured_pytesseract.tesseract_cmd = r"/n/home04/kdaryanani/local/bin/tesseract"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +36,7 @@ unstructured_presets = {
     "informed_layout_tables_and_images": {
         "strategy": "hi_res",
         "infer_table_structure": True,
-        "extract_images_in_pdf": True
+        "extract_images_in_pdf": True,
     },
     "ocr_base": {
         "strategy": "ocr_only",
@@ -56,10 +59,11 @@ for el in elements:
     if el.category == "Table":
         html = el.metadata.text_as_html
 
+
 def parse_unstructured_preset(
-    pdf_path: Union[str, Path],
+    pdf_path: str | Path,
     preset: str = "baseline",
-    output_path: Union[str, Path, None] = None,
+    output_path: str | Path | None = None,
     languages: list = ["eng"],
     postprocess_mode: str = "basic",
     extra_opts: dict = None,
@@ -77,8 +81,10 @@ def parse_unstructured_preset(
         dict: Details about extraction, errors, metadata, timing, etc.
     """
     if preset not in unstructured_presets:
-        raise ValueError(f"Unknown preset '{preset}'. Available: {list(unstructured_presets.keys())}")
-    
+        raise ValueError(
+            f"Unknown preset '{preset}'. Available: {list(unstructured_presets.keys())}"
+        )
+
     config = unstructured_presets[preset].copy()
     config["filename"] = str(pdf_path)
     config["include_page_breaks"] = True
@@ -89,14 +95,20 @@ def parse_unstructured_preset(
     # Handle output extension by preset
     if output_path is None:
         ext = ".txt"
-        if config["strategy"] == "hi_res" and (config.get("infer_table_structure") or config.get("extract_images_in_pdf")):
+        if config["strategy"] == "hi_res" and (
+            config.get("infer_table_structure") or config.get("extract_images_in_pdf")
+        ):
             ext = ".json"
         output_path = f"unstructured_{preset}{ext}"
 
     start_time = time.time()
     try:
+        from unstructured.cleaners.core import (
+            clean,
+            remove_punctuation,
+            replace_unicode_quotes,
+        )
         from unstructured.partition.pdf import partition_pdf
-        from unstructured.cleaners.core import clean, replace_unicode_quotes, remove_punctuation
 
         elements = partition_pdf(**config)
 
@@ -104,11 +116,17 @@ def parse_unstructured_preset(
         for el in elements:
             if hasattr(el, "text") and isinstance(el.text, str):
                 if postprocess_mode == "basic":
-                    el.text = clean(replace_unicode_quotes(el.text), bullets=True, extra_whitespace=True)
+                    el.text = clean(
+                        replace_unicode_quotes(el.text),
+                        bullets=True,
+                        extra_whitespace=True,
+                    )
                 elif postprocess_mode == "keep_structure":
                     el.text = replace_unicode_quotes(el.text)
                 elif postprocess_mode == "plain_words":
-                    el.text = clean(el.text, bullets=True, extra_whitespace=True, lowercase=True)
+                    el.text = clean(
+                        el.text, bullets=True, extra_whitespace=True, lowercase=True
+                    )
                     el.text = remove_punctuation(el.text)
 
         # Safe stringification
@@ -117,7 +135,10 @@ def parse_unstructured_preset(
         except Exception:
             # Fallback if elements are not directly stringify-able
             import json
-            text = json.dumps([el.to_dict() for el in elements], ensure_ascii=False, indent=2)
+
+            text = json.dumps(
+                [el.to_dict() for el in elements], ensure_ascii=False, indent=2
+            )
 
         # Write output
         with open(output_path, "w", encoding="utf-8") as f:
@@ -130,7 +151,7 @@ def parse_unstructured_preset(
             "output_path": str(output_path),
             "processing_time": processing_time,
             "success": True,
-            "error": None
+            "error": None,
         }
     except Exception as e:
         processing_time = time.time() - start_time
@@ -141,12 +162,15 @@ def parse_unstructured_preset(
             "output_path": str(output_path) if output_path else None,
             "processing_time": processing_time,
             "success": False,
-            "error": str(e)
+            "error": str(e),
         }
 
 
 # %%
-result = parse_unstructured_preset("/n/hausmann_lab/lab/kdaryanani/deeplearn/gl_deep_search/backend/etl/experiments/ocr_pipeline/downloaded_papers/gl_url_0ffdb26974b640b8/nostalgic_trade_albanian_americans.pdf", preset="informed_layout_tables_and_images")  # uses default 'baseline' preset
+result = parse_unstructured_preset(
+    "/n/hausmann_lab/lab/kdaryanani/deeplearn/gl_deep_search/backend/etl/experiments/ocr_pipeline/downloaded_papers/gl_url_0ffdb26974b640b8/nostalgic_trade_albanian_americans.pdf",
+    preset="informed_layout_tables_and_images",
+)  # uses default 'baseline' preset
 print("====== Results ======")
 print("Success:", result["success"])
 print("Output Path:", result["output_path"])
@@ -167,5 +191,3 @@ display(*[(type(element), element.text) for element in elements[10:13]])
 text = "\n\n".join(str(el) for el in elements)
 
 print(text)
-
-

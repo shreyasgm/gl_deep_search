@@ -1,12 +1,11 @@
 # module_docling.py
 
 import logging
-import os
 import time
-from typing import Union
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Configure logging
@@ -94,27 +93,30 @@ docling_presets = {
     },
 }
 
+
 def parse_docling_preset(
-    pdf_path: Union[str, Path],
+    pdf_path: str | Path,
     preset: str = "baseline",
-    output_path: Union[str, Path, None] = None,
+    output_path: str | Path | None = None,
     extra_opts: dict = None,
 ) -> dict:
     """
     Parse PDF with Docling and preset configuration.
-    
+
     Args:
         pdf_path (str/Path): Path to input PDF.
         preset (str): Preset name (see above).
         output_path (str/Path, optional): Output file path; auto-names if None.
         extra_opts (dict, optional): Extra kwargs to pass to Docling.
-    
+
     Returns:
         dict: Details about extraction, errors, metadata, timing, etc.
     """
     if preset not in docling_presets:
-        raise ValueError(f"Unknown preset '{preset}'. Available: {list(docling_presets.keys())}")
-    
+        raise ValueError(
+            f"Unknown preset '{preset}'. Available: {list(docling_presets.keys())}"
+        )
+
     config = docling_presets[preset].copy()
     if extra_opts:
         config.update(extra_opts)
@@ -126,16 +128,16 @@ def parse_docling_preset(
     start_time = time.time()
     try:
         from docling import Document
-        
+
         # Create document with configuration
         doc = Document(
             str(pdf_path),
             language=config["language"],
             ocr_enabled=config["ocr_enabled"],
             ocr_language=config["ocr_language"],
-            ocr_config=config["ocr_config"]
+            ocr_config=config["ocr_config"],
         )
-        
+
         # Extract text based on method
         if config["extraction_method"] == "text_only":
             text = doc.extract_text()
@@ -171,7 +173,7 @@ def parse_docling_preset(
             f.write(text)
 
         processing_time = time.time() - start_time
-        
+
         # Gather metadata
         metadata = {
             "num_pages": len(doc.pages),
@@ -184,7 +186,7 @@ def parse_docling_preset(
             "include_headers": config["include_headers"],
             "include_footers": config["include_footers"],
         }
-        
+
         return {
             "preset": preset,
             "text": text,
@@ -192,7 +194,7 @@ def parse_docling_preset(
             "processing_time": processing_time,
             "success": True,
             "error": None,
-            "metadata": metadata
+            "metadata": metadata,
         }
     except Exception as e:
         processing_time = time.time() - start_time
@@ -204,5 +206,5 @@ def parse_docling_preset(
             "processing_time": processing_time,
             "success": False,
             "error": str(e),
-            "metadata": {}
-        } 
+            "metadata": {},
+        }

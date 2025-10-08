@@ -1,12 +1,11 @@
 # module_easyocr.py
 
 import logging
-import os
 import time
-from typing import Union, List
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Configure logging
@@ -161,27 +160,30 @@ easyocr_presets = {
     },
 }
 
+
 def parse_easyocr_preset(
-    pdf_path: Union[str, Path],
+    pdf_path: str | Path,
     preset: str = "baseline",
-    output_path: Union[str, Path, None] = None,
+    output_path: str | Path | None = None,
     extra_opts: dict = None,
 ) -> dict:
     """
     Parse PDF with EasyOCR and preset configuration.
-    
+
     Args:
         pdf_path (str/Path): Path to input PDF.
         preset (str): Preset name (see above).
         output_path (str/Path, optional): Output file path; auto-names if None.
         extra_opts (dict, optional): Extra kwargs to pass to EasyOCR.
-    
+
     Returns:
         dict: Details about extraction, errors, metadata, timing, etc.
     """
     if preset not in easyocr_presets:
-        raise ValueError(f"Unknown preset '{preset}'. Available: {list(easyocr_presets.keys())}")
-    
+        raise ValueError(
+            f"Unknown preset '{preset}'. Available: {list(easyocr_presets.keys())}"
+        )
+
     config = easyocr_presets[preset].copy()
     if extra_opts:
         config.update(extra_opts)
@@ -194,23 +196,23 @@ def parse_easyocr_preset(
     try:
         import easyocr
         from pdf2image import convert_from_path
-        
+
         # Initialize EasyOCR reader
         reader = easyocr.Reader(
             config["languages"],
             model_storage_directory=config["model_storage_directory"],
             download_enabled=config["download_enabled"],
-            gpu=config["gpu"]
+            gpu=config["gpu"],
         )
-        
+
         # Convert PDF to images
         images = convert_from_path(str(pdf_path))
-        
+
         all_text = []
         page_metadata = []
         total_confidence = 0
         total_detections = 0
-        
+
         for i, image in enumerate(images):
             # Perform OCR with detailed results
             results = reader.readtext(
@@ -230,30 +232,34 @@ def parse_easyocr_preset(
                 ycenter_ths=config["ycenter_ths"],
                 x_ths=config["x_ths"],
                 y_ths=config["y_ths"],
-                detail=1  # Get detailed results with confidence scores
+                detail=1,  # Get detailed results with confidence scores
             )
-            
+
             # Extract text and calculate confidence
             page_text = []
             page_confidence = 0
             page_detections = len(results)
-            
+
             for bbox, text, confidence in results:
                 page_text.append(text)
                 page_confidence += confidence
-            
+
             page_text_combined = "\n".join(page_text)
             all_text.append(page_text_combined)
-            
+
             total_confidence += page_confidence
             total_detections += page_detections
-            
-            page_metadata.append({
-                "page": i + 1,
-                "detections": page_detections,
-                "avg_confidence": page_confidence / page_detections if page_detections > 0 else 0,
-                "languages": config["languages"]
-            })
+
+            page_metadata.append(
+                {
+                    "page": i + 1,
+                    "detections": page_detections,
+                    "avg_confidence": page_confidence / page_detections
+                    if page_detections > 0
+                    else 0,
+                    "languages": config["languages"],
+                }
+            )
 
         # Combine all text
         text = "\n\n".join(all_text)
@@ -263,8 +269,10 @@ def parse_easyocr_preset(
             f.write(text)
 
         processing_time = time.time() - start_time
-        avg_confidence = total_confidence / total_detections if total_detections > 0 else 0
-        
+        avg_confidence = (
+            total_confidence / total_detections if total_detections > 0 else 0
+        )
+
         return {
             "preset": preset,
             "text": text,
@@ -276,7 +284,7 @@ def parse_easyocr_preset(
             "languages": config["languages"],
             "total_detections": total_detections,
             "avg_confidence": avg_confidence,
-            "page_metadata": page_metadata
+            "page_metadata": page_metadata,
         }
     except Exception as e:
         processing_time = time.time() - start_time
@@ -292,5 +300,5 @@ def parse_easyocr_preset(
             "languages": config.get("languages", []),
             "total_detections": 0,
             "avg_confidence": 0,
-            "page_metadata": []
-        } 
+            "page_metadata": [],
+        }

@@ -79,7 +79,7 @@ The pipeline now includes a comprehensive preset-based parser system:
 #### **Marker** (`module_marker.py`)
 High-quality PDF parsing with optional LLM enhancement.
 
-**Presets:** baseline, fast, use_llm, ocr_and_llm, ocr_and_llm_math  
+**Presets:** baseline, fast, use_llm, ocr_and_llm, ocr_and_llm_math
 **Models:** gpt-4o-mini (default), gpt-4.1 variants, gemini-flash-lite, claude variants
 
 #### **Unstructured** (`module_unstructured.py`)
