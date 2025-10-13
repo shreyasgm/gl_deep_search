@@ -1,10 +1,8 @@
 # pdf_modules.py
 
 import logging
-import os
 from pathlib import Path
 
-import fitz
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,72 +11,58 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def is_pdf_text_based(
-    filepath: str | Path, min_text_threshold: int = 100
-) -> dict[str, str | bool | None]:
-    """Check if a PDF is primarily text-based or scanned."""
-    try:
-        doc = fitz.open(filepath)
-        total_text = sum(len(page.get_text().strip()) for page in doc)
-        doc.close()
-        return {
-            "path": str(filepath),
-            "text_based": total_text > min_text_threshold,
-            "error": None,
-        }
-    except Exception as e:
-        return {"path": str(filepath), "text_based": None, "error": str(e)}
+#combine the ocr module and the run_pdf script into one simple thing
+#command line - just take pdf path, output path, module name, preset
+#you can edit the batch processing to do the grid search seperately instead of the current submit-jobs
 
 
-def parse_marker(
+def parse_pdf(
     pdf_path: str | Path,
-    output_path: str = "marker_output.md",
-    openai_model: str = "gpt-4o",
-    openai_base_url: str = "https://api.openai.com/v1",
+    module: str = "marker",
+    preset: str = "baseline", 
+    model: str = "none",
+    output_path: str | Path = None,
+    **kwargs
 ) -> dict:
-    """Parse a PDF using Marker with forced OCR and OpenAI LLM assistance."""
-    from marker.config.parser import ConfigParser
-    from marker.converters.pdf import PdfConverter
-    from marker.models import create_model_dict
-    from marker.output import text_from_rendered
-
-    # Check if OPENAI_API_KEY is set
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise OSError(
-            "OPENAI_API_KEY not found in environment. Required for OpenAI LLM mode."
-        )
-
-    # Main config — EDIT HERE to change settings!
-    config = {
-        "force_ocr": True,  # Force OCR on all pages
-        "format_lines": True,  # Reformat lines for better quality
-        "use_llm": True,  # Use LLM to improve accuracy
-        "output_format": "markdown",  # Other options: "json", "html"
-        "llm_service": "marker.services.openai.OpenAIService",
-        "openai_api_key": api_key,
-        "openai_model": openai_model,
-        "openai_base_url": openai_base_url,
-    }
-
-    config_parser = ConfigParser(config)
-    converter = PdfConverter(
-        config=config_parser.generate_config_dict(),
-        artifact_dict=create_model_dict(),
-        processor_list=config_parser.get_processors(),
-        renderer=config_parser.get_renderer(),
-        llm_service=config_parser.get_llm_service(),
-    )
-    rendered = converter(str(pdf_path))
-    text, metadata, images = text_from_rendered(rendered)
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(text)
-    return {
-        "engine": "marker_with_ocr_openai",
-        "text": text,
-        "metadata": metadata,
-        "images": images,
-        "output_path": output_path,
-    }
+    """
+    Parse PDF using specified module and preset.
+    
+    Args:
+        pdf_path: Path to PDF file
+        module: Parser module ('marker', 'unstructured', 'tesseract', etc.)
+        preset: Configuration preset for the module
+        model: Model to use (for LLM-enabled presets)
+        output_path: Where to save output
+        
+    Returns:
+        dict: Parser result with text, metadata, timing, etc.
+    """
+    logger.info(f"Processing {Path(pdf_path).name} with {module} (preset: {preset}, model: {model})")
+    
+    try:
+        if module == "marker":
+            from module_marker import parse_marker_preset
+            return parse_marker_preset(pdf_path, preset=preset, model=model, output_path=output_path)
+            
+        elif module == "unstructured":
+            from module_unstructured import parse_unstructured_preset
+            return parse_unstructured_preset(pdf_path, preset=preset, output_path=output_path)
+            
+        elif module == "tesseract":
+            from module_tesseract import parse_tesseract_preset
+            return parse_tesseract_preset(pdf_path, preset=preset, output_path=output_path)
+            
+        else:
+            raise ValueError(f"Unknown module '{module}'. Available: marker, unstructured, tesseract")
+            
+    except Exception as e:
+        logger.error(f"Parser {module} failed on {pdf_path}: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "module": module,
+            "preset": preset,
+            "model": model,
+            "pdf_path": str(pdf_path),
+            "output_path": str(output_path) if output_path else None,
+        }

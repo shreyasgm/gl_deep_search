@@ -9,6 +9,10 @@ data/processed/
 *.xlsx
 *.pdf
 *.ipynb
+*.docx
+*.pdf
+*.doc
+backend/etl/experiments/ocr_pipeline/data/
 
 # Environment
 .env
@@ -228,5 +232,3 @@ pyrightconfig.json
 
 #project dump
 /backend/etl/experiments/ocr_pipeline/archive
-
-

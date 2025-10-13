@@ -86,12 +86,10 @@ model_configs = {
         "openai_model": "gpt-4o-mini",
         "openai_base_url": "https://api.openai.com/v1",
     },
-    # Gemini (cost-effective/fast, non-heavy-reasoning)
     "gemini-flash-lite": {
         "llm_service": "marker.services.gemini.GoogleGeminiService",
         "gemini_model": "models/gemini-2.5-flash-lite-preview-06-17",
     },
-    # Claude family, latest recommended versions
     "claude-3-7-sonnet-latest": {
         "llm_service": "marker.services.claude.ClaudeService",
         "claude_model_name": "claude-3-7-sonnet-20250219",
