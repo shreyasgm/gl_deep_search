@@ -55,11 +55,6 @@ unstructured_presets = {
     },
 }
 
-for el in elements:
-    if el.category == "Table":
-        html = el.metadata.text_as_html
-
-
 def parse_unstructured_preset(
     pdf_path: str | Path,
     preset: str = "baseline",
@@ -165,29 +160,3 @@ def parse_unstructured_preset(
             "error": str(e),
         }
 
-
-# %%
-result = parse_unstructured_preset(
-    "/n/hausmann_lab/lab/kdaryanani/deeplearn/gl_deep_search/backend/etl/experiments/ocr_pipeline/downloaded_papers/gl_url_0ffdb26974b640b8/nostalgic_trade_albanian_americans.pdf",
-    preset="informed_layout_tables_and_images",
-)  # uses default 'baseline' preset
-print("====== Results ======")
-print("Success:", result["success"])
-print("Output Path:", result["output_path"])
-print("Processing Time:", result["processing_time"])
-print("Error:", result["error"])
-print("------ Text Preview ------\n", result["text"][:1000])  # Shows first 1000 chars
-
-# %%
-from collections import Counter
-
-display(Counter(type(element) for element in elements))
-print("")
-
-# %%
-display(*[(type(element), element.text) for element in elements[10:13]])
-
-# %%
-text = "\n\n".join(str(el) for el in elements)
-
-print(text)

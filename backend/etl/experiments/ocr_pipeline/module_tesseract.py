@@ -1,62 +1,70 @@
-# module_tesseract.py
-
 import logging
 import time
+import os
 from pathlib import Path
-
 from dotenv import load_dotenv
+import pytesseract
 
 load_dotenv()
+
+# Set tesseract binary and tessdata paths
+pytesseract.pytesseract.tesseract_cmd = "/n/home04/kdaryanani/local/bin/tesseract"
+os.environ['TESSDATA_PREFIX'] = '/n/home04/kdaryanani/local/share/tessdata'
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# === PRESET CONFIGURATIONS FOR TESSERACT ===
+# === PRESET CONFIGURATIONS FOR TESSERACT (full-page PDFs) ===
+# Optimized for feeding academic paper PDFs directly, without prior column or region segmentation.
+
 tesseract_presets = {
-    "baseline": {
+    # Default, balanced preset for typical academic paper pages.
+    # Works well for most PDFs: clean scans, regular layouts, standard two-column pages.
+    "default_full_page": {
         "languages": ["eng"],
-        "config": "--psm 3",
+        "config": "--psm 3 --oem 1",   # auto layout, no OSD
         "preprocessing": "none",
         "dpi": 300,
     },
-    "fast": {
+
+    # Slightly stricter single-column assumption; can improve accuracy on PDFs
+    # whose text is tightly packed or where column detection misfires.
+    "column_like_page": {
         "languages": ["eng"],
-        "config": "--psm 6 --oem 1",
-        "preprocessing": "none",
-        "dpi": 200,
-    },
-    "accurate": {
-        "languages": ["eng"],
-        "config": "--psm 3 --oem 3",
-        "preprocessing": "enhance",
-        "dpi": 400,
-    },
-    "multilingual": {
-        "languages": ["eng", "fra", "deu", "spa"],
-        "config": "--psm 3",
+        "config": "--psm 4 --oem 1",   # single column mode
         "preprocessing": "none",
         "dpi": 300,
     },
-    "table_focused": {
+
+    # Treats each page as one uniform text block.
+    # Useful for short reports, letters, abstracts, or pages with clean, centered text.
+    "uniform_block": {
         "languages": ["eng"],
-        "config": "--psm 6 --oem 3",
+        "config": "--psm 6 --oem 1",   # one uniform block
+        "preprocessing": "enhance",    # boosts contrast for faint scans
+        "dpi": 300,
+    },
+
+    # “Catch-everything” mode for messy scans, PDFs with figures, tables,
+    # or mixed formatting. Ignores layout, grabs all visible text.
+    "messy_sparse": {
+        "languages": ["eng"],
+        "config": "--psm 11 --oem 3",  # sparse text, no order guaranteed
         "preprocessing": "enhance",
         "dpi": 300,
     },
-    "handwritten": {
+
+    # Like messy_sparse, but automatically detects page rotation and script.
+    # Best for camera-scanned or rotated pages; slightly slower.
+    "rotated_sparse": {
         "languages": ["eng"],
-        "config": "--psm 6 --oem 3",
-        "preprocessing": "enhance",
-        "dpi": 400,
-    },
-    "math": {
-        "languages": ["eng"],
-        "config": "--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789+-=()[]{}.,;:!?",
+        "config": "--psm 12 --oem 3",  # sparse text + OSD
         "preprocessing": "enhance",
         "dpi": 300,
     },
 }
+
 
 
 def preprocess_image(image, method: str):
@@ -81,7 +89,7 @@ def preprocess_image(image, method: str):
 
 def parse_tesseract_preset(
     pdf_path: str | Path,
-    preset: str = "baseline",
+    preset: str = "default_full_page",
     output_path: str | Path | None = None,
     extra_opts: dict = None,
 ) -> dict:

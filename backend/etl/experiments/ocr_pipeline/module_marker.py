@@ -4,11 +4,8 @@ import logging
 import os
 import time
 from pathlib import Path
-
 from dotenv import load_dotenv
 from marker.config.parser import ConfigParser
-
-# marker imports
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
@@ -63,7 +60,7 @@ preset_configs = {
     },
 }
 
-# === MODEL CONFIGURATIONS FOR USING LLM==
+# === MODEL CONFIGURATIONS FOR LLM==
 
 model_configs = {
     "gpt-4.1": {
@@ -88,15 +85,19 @@ model_configs = {
     },
     "gemini-flash-lite": {
         "llm_service": "marker.services.gemini.GoogleGeminiService",
-        "gemini_model": "models/gemini-2.5-flash-lite-preview-06-17",
+        "gemini_model": "models/gemini-2.5-flash-lite",
     },
-    "claude-3-7-sonnet-latest": {
+    "claude-3-7-sonnet": {
         "llm_service": "marker.services.claude.ClaudeService",
         "claude_model_name": "claude-3-7-sonnet-20250219",
     },
-    "claude-3-5-haiku-latest": {
+    "claude-3-5-haiku": {
         "llm_service": "marker.services.claude.ClaudeService",
         "claude_model_name": "claude-3-5-haiku-20241022",
+    },
+    "claude-haiku-4-5": {
+        "llm_service": "marker.services.claude.ClaudeService",
+        "claude_model_name": "claude-haiku-4-5-20251001",
     },
     "none": {},
 }
@@ -120,6 +121,8 @@ def parse_marker_preset(
     Returns:
         dict: Details about extraction, possible error, metadata, timing, etc.
     """
+    
+    pdf_path = str(pdf_path)
 
     # ---- Validate and merge config ----
     if preset not in preset_configs:
