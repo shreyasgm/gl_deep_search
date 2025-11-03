@@ -6,7 +6,7 @@ environment: "development"  # Options: development, production
 # Data sources
 sources:
   growth_lab:
-    base_url: "https://growthlab.hks.harvard.edu/publications"
+    base_url: "https://growthlab.hks.harvard.edu/publications-home/repository"
     scrape_delay: 2.0  # seconds between requests
     concurrency_limit: 2  # Maximum number of concurrent requests
     max_retries: 5  # Maximum number of retries for failed requests
