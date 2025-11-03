@@ -52,8 +52,14 @@ class GrowthLabPublication(BaseModel):
             # Extract the publication slug from the URL
             url_path = str(self.pub_url).lower()
             # Remove the domain and get the path
+            # Handle both /publication/ (singular) and /publications/ (plural) patterns
+            slug = None
             if "/publications/" in url_path:
                 slug = url_path.split("/publications/")[-1]
+            elif "/publication/" in url_path:
+                slug = url_path.split("/publication/")[-1]
+
+            if slug:
                 # Remove any query parameters or fragments
                 slug = slug.split("?")[0].split("#")[0]
                 # Remove trailing slash if present
