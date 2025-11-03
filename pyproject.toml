@@ -27,6 +27,14 @@ dependencies = [
     "python-dotenv>=1",
     "loguru",
     "tqdm",
+    "pre-commit>=4.1.0",
+    "ruff>=0.11.0",
+    "mypy>=1.15.0",
+    "black>=25.1.0",
+    "sqlmodel>=0.0.8",
+    "pytest>=7.4.0",
+    "aiohttp>=3.8.0,!=3.11.14", # Avoid yanked version 3.11.14
+    "aiofiles",
 ]
 
 [project.urls]
@@ -135,6 +143,10 @@ dev = [
     # Documentation
     "mkdocs",
     "mkdocs-material",
+
+    "sqlmodel>=0.0.8",
+    "aiohttp>=3.8.0,!=3.11.14", # Avoid yanked version 3.11.14
+    "aiofiles",
 ]
 
 # Dependencies for running in production
@@ -170,6 +182,8 @@ lint.unfixable = ["D", "ANN"]
 # Make documentation and type annotation rules generate warnings instead of errors
 [tool.ruff.lint.per-file-ignores]
 "**/*" = ["D", "ANN", "E722", "F841"]  # Ignore documentation, type annotations, bare except, and unused vars
+"**/test_*.py" = ["T201"]  # Ignore print statements in test files
+"**/tests/**/*.py" = ["T201"]  # Ignore print statements in test files
 
 # Configure specific documentation rules
 [tool.ruff.lint.pydocstyle]
