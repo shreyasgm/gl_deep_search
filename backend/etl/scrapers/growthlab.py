@@ -13,6 +13,7 @@ import aiohttp
 import pandas as pd
 import yaml
 from bs4 import BeautifulSoup
+from bs4.element import ResultSet, Tag
 from tqdm.asyncio import tqdm as async_tqdm
 
 from backend.etl.models.publications import GrowthLabPublication
@@ -375,14 +376,16 @@ class GrowthLabScraper:
                     soup = BeautifulSoup(html, "html.parser")
 
                     # Try new structure first: look for cp-publication divs or li.wp-block-post
-                    pub_elements = soup.find_all("div", {"class": "cp-publication"})
+                    pub_elements: ResultSet[Tag] = soup.find_all(
+                        "div", {"class": "cp-publication"}
+                    )
 
                     # If not found, try finding li elements with cp-publication nested
                     if not pub_elements:
                         post_items = soup.find_all(
                             "li", {"class": lambda x: x and "wp-block-post" in str(x)}
                         )
-                        pub_elements = []
+                        pub_elements = ResultSet([])  # type: ignore[call-overload]
                         for item in post_items:
                             cp_pub = item.find("div", {"class": "cp-publication"})
                             if cp_pub:
