@@ -111,11 +111,6 @@ def ensure_db_initialized():
         )
 
 
-# Initialize the database when the module is imported
-if os.getenv("AUTO_INIT_DB", "true").lower() in ("true", "1", "yes"):
-    ensure_db_initialized()
-
-
 class Database:
     """Database connection and session management"""
 
