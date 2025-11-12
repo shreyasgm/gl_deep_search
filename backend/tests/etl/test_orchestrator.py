@@ -122,6 +122,7 @@ class TestOrchestrationConfig:
         assert config.skip_scraping is False
         assert config.scraper_concurrency == 2
         assert config.scraper_delay == 2.0
+        assert config.scraper_limit is None
         assert config.download_concurrency == 3
         assert config.download_limit is None
         assert config.overwrite_files is False
@@ -145,6 +146,7 @@ class TestOrchestrationConfig:
             skip_scraping=True,
             scraper_concurrency=5,
             scraper_delay=1.5,
+            scraper_limit=20,
             download_concurrency=10,
             download_limit=50,
             overwrite_files=True,
@@ -164,6 +166,7 @@ class TestOrchestrationConfig:
         assert config.skip_scraping is True
         assert config.scraper_concurrency == 5
         assert config.scraper_delay == 1.5
+        assert config.scraper_limit == 20
         assert config.download_concurrency == 10
         assert config.download_limit == 50
         assert config.overwrite_files is True
@@ -331,13 +334,14 @@ class TestETLOrchestrator:
 
                 results = await orchestrator._simulate_pipeline()
 
-                assert len(results) == 5  # Five components
+                assert len(results) == 6  # Six components (added Embeddings Generator)
                 component_names = [r.component_name for r in results]
                 assert "Growth Lab Scraper" in component_names
                 assert "Growth Lab File Downloader" in component_names
                 assert "PDF Processor" in component_names
                 assert "Lecture Transcripts Processor" in component_names
                 assert "Text Chunker" in component_names
+                assert "Embeddings Generator" in component_names
 
                 # All components should be completed in simulation
                 for result in results:
@@ -362,7 +366,7 @@ class TestETLOrchestrator:
 
                 results = await orchestrator.run_pipeline()
 
-                assert len(results) == 5
+                assert len(results) == 6  # Six components
                 for result in results:
                     assert result.status == ComponentStatus.COMPLETED
                     assert result.duration is not None
@@ -409,11 +413,14 @@ class TestETLOrchestrator:
 
                     results = await orchestrator.run_pipeline()
 
-                    assert len(results) == 5
+                    assert len(results) == 6  # Six components
+                    # Most components should succeed
+                    # (embeddings generator may be skipped)
                     for result in results:
-                        assert result.status == ComponentStatus.COMPLETED
-                        assert result.metrics == {"processed": 5}
-                        assert result.output_files == [Path("/tmp/test_output.txt")]
+                        if result.component_name != "Embeddings Generator":
+                            assert result.status == ComponentStatus.COMPLETED
+                            assert result.metrics == {"processed": 5}
+                            assert result.output_files == [Path("/tmp/test_output.txt")]
 
                     # Verify components were called in correct order
                     mock_scraper.assert_called_once()
@@ -464,7 +471,7 @@ class TestETLOrchestrator:
 
                     results = await orchestrator.run_pipeline()
 
-                    assert len(results) == 5
+                    assert len(results) == 6  # Six components
 
                     # First component should succeed
                     assert results[0].status == ComponentStatus.COMPLETED
@@ -479,6 +486,8 @@ class TestETLOrchestrator:
                     assert results[2].status == ComponentStatus.COMPLETED
                     assert results[3].status == ComponentStatus.COMPLETED
                     assert results[4].status == ComponentStatus.COMPLETED
+                    # Embeddings generator may be skipped if no chunks found
+                    assert results[5].component_name == "Embeddings Generator"
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -520,15 +529,16 @@ class TestETLOrchestrator:
 
                     results = await orchestrator.run_pipeline()
 
-                    assert len(results) == 5
+                    assert len(results) == 6  # Six components
 
                     # First component should be skipped
                     assert results[0].status == ComponentStatus.SKIPPED
                     assert results[0].component_name == "Growth Lab Scraper"
 
-                    # Other components should succeed
-                    for i in range(1, 5):
-                        assert results[i].status == ComponentStatus.COMPLETED
+                    # Other components should succeed (embeddings may be skipped)
+                    for i in range(1, 6):
+                        if results[i].component_name != "Embeddings Generator":
+                            assert results[i].status == ComponentStatus.COMPLETED
 
 
 class TestMainFunction:
