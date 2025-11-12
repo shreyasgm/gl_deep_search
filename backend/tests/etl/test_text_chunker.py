@@ -970,3 +970,30 @@ class TestTextChunkerOutput:
 
         # Content should remain unchanged
         assert output_file.read_text() == '["existing_chunk_data"]'
+
+
+class TestTextChunkerTrackerIntegration:
+    """Tests for text chunker integration with publication tracker."""
+
+    def test_chunker_works_without_tracker(self, test_storage):
+        """Test that chunker works correctly when tracker is None."""
+        temp_dir, storage = test_storage
+
+        # Create a test text file
+        doc_dir = temp_dir / "processed" / "documents" / "growthlab" / "test_doc_789"
+        doc_dir.mkdir(parents=True, exist_ok=True)
+        text_file = doc_dir / "test.txt"
+        text_file.write_text("This is a test document with enough content to chunk.")
+
+        # Create chunker without tracker
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump({"file_processing": {"chunking": {"chunk_size": 100}}}, f)
+            config_path = Path(f.name)
+
+        chunker = TextChunker(config_path=config_path, tracker=None)
+        results = chunker.process_all_documents(storage=storage)
+
+        # Should complete without errors
+        assert isinstance(results, list)

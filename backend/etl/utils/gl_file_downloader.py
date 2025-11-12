@@ -700,6 +700,9 @@ class FileDownloader:
             # We must use string to avoid HttpUrl type error
             tasks.append((pub, url, task))
 
+        # Track download results per publication to determine final status
+        publication_results: dict[str, list[dict[str, Any]]] = {}
+
         # Process downloads with progress bar
         with tqdm.asyncio.tqdm(
             total=len(tasks),
@@ -728,6 +731,11 @@ class FileDownloader:
                         }
                         results.append(pub_result)
 
+                        # Track results per publication
+                        if pub.paper_id not in publication_results:
+                            publication_results[pub.paper_id] = []
+                        publication_results[pub.paper_id].append(pub_result)
+
                         # Update progress
                         pbar.update(1)
 
@@ -736,7 +744,13 @@ class FileDownloader:
                             status = "cached" if result.cached else "downloaded"
                             pbar.set_postfix_str(f"Last: {status}")
                         else:
-                            pbar.set_postfix_str(f"Last: failed - {result.error}")
+                            # Ensure error is a string for display
+                            error_display = (
+                                str(result.error)
+                                if result.error is not None
+                                else "Download failed"
+                            )
+                            pbar.set_postfix_str(f"Last: failed - {error_display}")
 
                     except Exception as e:
                         # Convert url to string for logging and results
@@ -753,10 +767,43 @@ class FileDownloader:
                         }
                         results.append(pub_result)
 
+                        # Track results per publication
+                        if pub.paper_id not in publication_results:
+                            publication_results[pub.paper_id] = []
+                        publication_results[pub.paper_id].append(pub_result)
+
                         pbar.update(1)
 
                     # Rate limiting delay
                     await asyncio.sleep(self.download_delay)
+
+                # Update download status per publication after all files processed
+                for pub_id, file_results in publication_results.items():
+                    # Check if all files succeeded
+                    all_succeeded = all(r.get("success", False) for r in file_results)
+                    any_failed = any(not r.get("success", False) for r in file_results)
+
+                    if all_succeeded:
+                        # All files downloaded successfully
+                        self.publication_tracker.update_download_status(
+                            pub_id, DownloadStatus.DOWNLOADED
+                        )
+                    elif any_failed:
+                        # At least one file failed - collect error messages
+                        error_messages = [
+                            str(r.get("error", "Unknown error"))
+                            for r in file_results
+                            if not r.get("success", False) and r.get("error")
+                        ]
+                        # Ensure error is a string
+                        error_msg = (
+                            "; ".join(error_messages)
+                            if error_messages
+                            else "One or more files failed to download"
+                        )
+                        self.publication_tracker.update_download_status(
+                            pub_id, DownloadStatus.FAILED, error=error_msg
+                        )
 
                 return results
             finally:

@@ -26,6 +26,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import os
 import tempfile
 
+import aiohttp
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -132,12 +133,12 @@ class TestPublicationTrackingIntegration:
 
         # Discover only ONE real publication from GrowthLab for faster testing
         try:
-            # Create scraper instance for testing
-            from backend.etl.scrapers.growthlab import GrowthLabScraper
-
-            scraper = GrowthLabScraper()
+            # Use tracker's scraper for testing
+            scraper = real_publication_tracker.growthlab_scraper
             # Limit scraper to get minimal publications
-            growthlab_publications = await scraper.extract_and_enrich_publications()
+            growthlab_publications = await scraper.extract_and_enrich_publications(
+                limit=1
+            )
 
             # Ensure we have at least one publication for testing
             assert len(growthlab_publications) > 0, (
@@ -280,18 +281,23 @@ class TestPublicationTrackingIntegration:
         )
 
         try:
-            # Create OpenAlex client for testing
-            from backend.etl.scrapers.openalex import OpenAlexClient
-
-            openalex_client = OpenAlexClient()
-            # Discover only ONE real publication from OpenAlex for faster testing
-            openalex_publications = await openalex_client.fetch_publications()
-
-            # Ensure we have at least one publication
-            assert len(openalex_publications) > 0, "No OpenAlex publications discovered"
-
-            # Take ONLY the first publication for testing
-            test_publication = openalex_publications[0]
+            # Use tracker's OpenAlex client for testing
+            openalex_client = real_publication_tracker.openalex_client
+            # Fetch only the first page instead of all pages
+            async with aiohttp.ClientSession() as session:
+                results, _ = await openalex_client.fetch_page(
+                    session, cursor="*"
+                )
+                if not results:
+                    pytest.skip("No OpenAlex publications available")
+                # Process only the first result
+                raw_publications = (
+                    openalex_client.process_results(
+                        [results[0]]
+                    )
+                )
+                assert len(raw_publications) > 0, "No OpenAlex publications discovered"
+                test_publication = raw_publications[0]
             logger.info(f"Testing with OpenAlex publication: {test_publication.title}")
 
             # Validate OpenAlex publication structure
@@ -336,12 +342,12 @@ class TestPublicationTrackingIntegration:
         logger.info("Starting publication update detection test (1 publication)")
 
         try:
-            # Create scraper instance for testing
-            from backend.etl.scrapers.growthlab import GrowthLabScraper
-
-            scraper = GrowthLabScraper()
+            # Use tracker's scraper for testing
+            scraper = real_publication_tracker.growthlab_scraper
             # Get ONE real publication for faster testing
-            growthlab_publications = await scraper.extract_and_enrich_publications()
+            growthlab_publications = await scraper.extract_and_enrich_publications(
+                limit=1
+            )
             assert len(growthlab_publications) > 0, (
                 "Need at least one publication for update test"
             )
@@ -455,12 +461,12 @@ class TestPublicationTrackingIntegration:
         logger.info("Starting complete ETL pipeline simulation test (1 publication)")
 
         try:
-            # Create scraper instance for testing
-            from backend.etl.scrapers.growthlab import GrowthLabScraper
-
-            scraper = GrowthLabScraper()
+            # Use tracker's scraper for testing
+            scraper = real_publication_tracker.growthlab_scraper
             # Discover publications from GrowthLab source only (faster)
-            growthlab_publications = await scraper.extract_and_enrich_publications()
+            growthlab_publications = await scraper.extract_and_enrich_publications(
+                limit=1
+            )
             assert len(growthlab_publications) > 0, (
                 "Should discover at least one publication"
             )

@@ -117,6 +117,98 @@ async def test_extract_publications(scraper):
                 assert publications[0].title == "Test Publication"
 
 
+@pytest.mark.asyncio
+async def test_extract_publications_with_limit(scraper):
+    """Test that extract_publications respects the limit parameter."""
+    # Create multiple test publications
+    test_publications = []
+    for i in range(5):
+        pub = GrowthLabPublication(
+            title=f"Test Publication {i}",
+            authors="John Doe",
+            year=2023,
+            abstract=f"Test abstract {i}",
+            pub_url=f"https://growthlab.hks.harvard.edu/publications/test{i}",
+            source="GrowthLab",
+        )
+        pub.paper_id = pub.generate_id()
+        pub.content_hash = pub.generate_content_hash()
+        test_publications.append(pub)
+
+    # Mock aiohttp session
+    mock_session = AsyncMock()
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_session.get = AsyncMock()
+    mock_session.get.return_value = mock_response
+
+    # Mock get_max_page_num to return multiple pages
+    with patch("aiohttp.ClientSession", return_value=mock_session):
+        with patch.object(scraper, "get_max_page_num", return_value=10):
+            # Mock fetch_page to return publications (3 per page)
+            async def mock_fetch_page(session, page_num):
+                # Return 3 publications per page
+                start_idx = page_num * 3
+                return test_publications[start_idx : start_idx + 3]
+
+            with patch.object(scraper, "fetch_page", side_effect=mock_fetch_page):
+                # Test with limit of 3
+                publications = await scraper.extract_publications(limit=3)
+
+                # Should return exactly 3 publications
+                assert len(publications) == 3
+                assert publications[0].title == "Test Publication 0"
+                assert publications[1].title == "Test Publication 1"
+                assert publications[2].title == "Test Publication 2"
+
+                # Test with limit of 1 (should stop after first page)
+                publications = await scraper.extract_publications(limit=1)
+                assert len(publications) == 1
+                assert publications[0].title == "Test Publication 0"
+
+
+@pytest.mark.asyncio
+async def test_update_publications_with_limit(scraper, sample_publication, tmp_path):
+    """Test that update_publications passes limit through correctly."""
+    from backend.storage.local import LocalStorage
+
+    storage = LocalStorage(tmp_path)
+
+    # Create multiple test publications
+    test_publications = [sample_publication]
+    for i in range(4):
+        pub = GrowthLabPublication(
+            title=f"Test Publication {i}",
+            authors="John Doe",
+            year=2023,
+            abstract=f"Test abstract {i}",
+            pub_url=f"https://growthlab.hks.harvard.edu/publications/test{i}",
+            source="GrowthLab",
+        )
+        pub.paper_id = pub.generate_id()
+        pub.content_hash = pub.generate_content_hash()
+        test_publications.append(pub)
+
+    # Mock extract_and_enrich_publications to return limited publications
+    async def mock_extract_with_limit(limit=None):
+        if limit:
+            return test_publications[:limit]
+        return test_publications
+
+    with patch.object(
+        scraper, "extract_and_enrich_publications", side_effect=mock_extract_with_limit
+    ):
+        # Test with limit of 3
+        publications = await scraper.update_publications(storage=storage, limit=3)
+
+        # Should return exactly 3 publications
+        assert len(publications) == 3
+
+        # Test without limit
+        publications = await scraper.update_publications(storage=storage, limit=None)
+        assert len(publications) == 5
+
+
 def test_publication_model(sample_publication):
     # Test ID generation
     paper_id = sample_publication.generate_id()
@@ -463,3 +555,29 @@ async def test_growthlab_real_website_scraping(scraper):
                 f"biblio-entry, {len(cp_publications)} cp-publication, and "
                 f"{len(post_items)} wp-block-post elements"
             )
+
+
+class TestGrowthLabScraperTrackerIntegration:
+    """Tests for GrowthLab scraper integration with publication tracker."""
+
+    @pytest.mark.asyncio
+    async def test_scraper_works_without_tracker(
+        self, scraper, sample_publication, tmp_path
+    ):
+        """Test that scraper works correctly when tracker is None."""
+        from unittest.mock import patch
+
+        # Mock the extract_and_enrich_publications method
+        with patch.object(scraper, "extract_and_enrich_publications") as mock_extract:
+            mock_extract.return_value = [sample_publication]
+
+            # Mock storage
+            from backend.storage.local import LocalStorage
+
+            storage = LocalStorage(base_path=tmp_path)
+
+            # Call update_publications (should not fail)
+            publications = await scraper.update_publications(storage=storage)
+
+            # Should complete without errors
+            assert len(publications) > 0

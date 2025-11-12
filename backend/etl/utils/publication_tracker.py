@@ -26,9 +26,9 @@ from backend.etl.models.tracking import (
 )
 
 # Import scraper classes for publication discovery
-from backend.etl.scrapers.growthlab import GrowthLabScraper
-from backend.etl.scrapers.openalex import OpenAlexClient
-
+# Import inside methods to avoid circular imports
+# from backend.etl.scrapers.growthlab import GrowthLabScraper
+# from backend.etl.scrapers.openalex import OpenAlexClient
 # Import database connection utilities
 from backend.storage.database import engine, ensure_db_initialized
 
@@ -78,6 +78,14 @@ class PublicationTracker:
         if ensure_db:
             ensure_db_initialized()  # Ensure database connection is ready
             SQLModel.metadata.create_all(engine)  # Create all tables defined in models
+
+        # Initialize scraper instances for publication discovery
+        # Import here to avoid circular imports
+        from backend.etl.scrapers.growthlab import GrowthLabScraper
+        from backend.etl.scrapers.openalex import OpenAlexClient
+
+        self.growthlab_scraper = GrowthLabScraper()  # Harvard Growth Lab scraper
+        self.openalex_client = OpenAlexClient()  # OpenAlex API client
 
     @contextmanager
     def _get_session(self, session: Session | None = None):
@@ -425,7 +433,10 @@ class PublicationTracker:
 
             # Use the model's built-in method to update status with timestamp tracking
             update_method = getattr(pub, f"update_{stage}_status")
-            update_method(status, error)
+            # Ensure error is a string if provided
+            # (handle case where it might be a dict)
+            error_str = str(error) if error is not None else None
+            update_method(status, error_str)
             sess.add(pub)
             sess.commit()
             return True
