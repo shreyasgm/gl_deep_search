@@ -22,6 +22,7 @@ from backend.etl.scrapers.growthlab import GrowthLabScraper
 from backend.etl.utils.embeddings_generator import EmbeddingsGenerator
 from backend.etl.utils.gl_file_downloader import FileDownloader
 from backend.etl.utils.pdf_processor import PDFProcessor
+from backend.etl.utils.profiling import log_component_metrics, profile_operation
 from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.text_chunker import TextChunker
 from backend.storage.factory import get_storage
@@ -211,16 +212,18 @@ class ETLOrchestrator:
             logger.info("Skipping scraping as requested")
             return
 
-        scraper = GrowthLabScraper(
-            config_path=self.config.config_path,
-            concurrency_limit=self.config.scraper_concurrency,
-            tracker=self.tracker,
-        )
+        with profile_operation("Initialize scraper", include_resources=True):
+            scraper = GrowthLabScraper(
+                config_path=self.config.config_path,
+                concurrency_limit=self.config.scraper_concurrency,
+                tracker=self.tracker,
+            )
 
         # Pass limit directly to scraper to avoid fetching unnecessary pages
-        publications = await scraper.update_publications(
-            storage=self.storage, limit=self.config.scraper_limit
-        )
+        with profile_operation("Scrape publications", include_resources=True):
+            publications = await scraper.update_publications(
+                storage=self.storage, limit=self.config.scraper_limit
+            )
 
         result.metrics = {
             "publications_scraped": len(publications),
@@ -237,15 +240,17 @@ class ETLOrchestrator:
             f"Scraped {len(publications)} publications with "
             f"{result.metrics['total_file_urls']} file URLs"
         )
+        log_component_metrics("Growth Lab Scraper", result.metrics)
 
     async def _run_file_downloader(self, result: ComponentResult) -> None:
         """Execute the file downloader component."""
-        downloader = FileDownloader(
-            storage=self.storage,
-            config_path=self.config.config_path,
-            concurrency_limit=self.config.download_concurrency,
-            publication_tracker=self.tracker,
-        )
+        with profile_operation("Initialize file downloader", include_resources=True):
+            downloader = FileDownloader(
+                storage=self.storage,
+                config_path=self.config.config_path,
+                concurrency_limit=self.config.download_concurrency,
+                publication_tracker=self.tracker,
+            )
 
         # Get publications from scraper output
         publications_path = self.storage.get_path(
@@ -255,10 +260,11 @@ class ETLOrchestrator:
             raise FileNotFoundError(f"Publications file not found: {publications_path}")
 
         # Load publications from CSV
-        from backend.etl.scrapers.growthlab import GrowthLabScraper
+        with profile_operation("Load publications from CSV"):
+            from backend.etl.scrapers.growthlab import GrowthLabScraper
 
-        scraper = GrowthLabScraper(config_path=self.config.config_path)
-        publications = scraper.load_from_csv(publications_path)
+            scraper = GrowthLabScraper(config_path=self.config.config_path)
+            publications = scraper.load_from_csv(publications_path)
 
         if not publications:
             logger.warning("No publications found in CSV file")
@@ -285,12 +291,13 @@ class ETLOrchestrator:
             )
 
         # Download files
-        download_results = await downloader.download_publications(
-            publications_to_download,
-            overwrite=self.config.overwrite_files,
-            limit=self.config.download_limit,
-            progress_bar=True,
-        )
+        with profile_operation("Download files", include_resources=True):
+            download_results = await downloader.download_publications(
+                publications_to_download,
+                overwrite=self.config.overwrite_files,
+                limit=self.config.download_limit,
+                progress_bar=True,
+            )
 
         # Calculate metrics
         successful_downloads = sum(
@@ -312,14 +319,16 @@ class ETLOrchestrator:
             f"({total_size / (1024 * 1024):.2f} MB) from "
             f"{len(publications_to_download)} publications"
         )
+        log_component_metrics("File Downloader", result.metrics)
 
     async def _run_pdf_processor(self, result: ComponentResult) -> None:
         """Execute the PDF processor component."""
-        processor = PDFProcessor(
-            storage=self.storage,
-            config_path=self.config.config_path,
-            tracker=self.tracker,
-        )
+        with profile_operation("Initialize PDF processor", include_resources=True):
+            processor = PDFProcessor(
+                storage=self.storage,
+                config_path=self.config.config_path,
+                tracker=self.tracker,
+            )
 
         # Find downloaded PDF files
         documents_path = self.storage.get_path("raw/documents/growthlab")
@@ -329,27 +338,29 @@ class ETLOrchestrator:
             return
 
         # Process PDFs - find all PDF files in the directory
-        pdf_files = []
-        for pdf_path in documents_path.rglob("*.pdf"):
-            if pdf_path.is_file():
-                pdf_files.append(pdf_path)
+        with profile_operation("Find PDF files"):
+            pdf_files = []
+            for pdf_path in documents_path.rglob("*.pdf"):
+                if pdf_path.is_file():
+                    pdf_files.append(pdf_path)
 
         # Process each PDF file
-        processed_files = []
-        for pdf_path in pdf_files:
-            try:
-                output_path = processor.process_pdf(
-                    pdf_path, force_reprocess=self.config.force_reprocess
-                )
-                if output_path:
-                    processed_files.append(
-                        {"output_path": output_path, "success": True}
+        with profile_operation("Process all PDFs", include_resources=True):
+            processed_files = []
+            for pdf_path in pdf_files:
+                try:
+                    output_path = processor.process_pdf(
+                        pdf_path, force_reprocess=self.config.force_reprocess
                     )
-                else:
+                    if output_path:
+                        processed_files.append(
+                            {"output_path": output_path, "success": True}
+                        )
+                    else:
+                        processed_files.append({"output_path": None, "success": False})
+                except Exception as e:
+                    logger.error(f"Error processing PDF {pdf_path}: {e}")
                     processed_files.append({"output_path": None, "success": False})
-            except Exception as e:
-                logger.error(f"Error processing PDF {pdf_path}: {e}")
-                processed_files.append({"output_path": None, "success": False})
 
         result.metrics = {
             "files_processed": len(processed_files),
@@ -366,6 +377,7 @@ class ETLOrchestrator:
         ]
 
         logger.info(f"Processed {len(processed_files)} PDF files")
+        log_component_metrics("PDF Processor", result.metrics)
 
     async def _run_lecture_transcripts(self, result: ComponentResult) -> None:
         """Execute the lecture transcripts processor component."""
@@ -409,18 +421,24 @@ class ETLOrchestrator:
             return
 
         # Find processed text files
-        text_files = list(processed_docs_path.rglob("*.txt"))
+        with profile_operation("Find text files"):
+            text_files = list(processed_docs_path.rglob("*.txt"))
+
         if not text_files:
             logger.warning("No processed text files found, skipping text chunking")
             result.status = ComponentStatus.SKIPPED
             return
 
         # Initialize text chunker
-        chunker = TextChunker(config_path=self.config.config_path, tracker=self.tracker)
+        with profile_operation("Initialize text chunker", include_resources=True):
+            chunker = TextChunker(
+                config_path=self.config.config_path, tracker=self.tracker
+            )
 
         # Process all documents
         try:
-            chunking_results = chunker.process_all_documents(storage=self.storage)
+            with profile_operation("Chunk all documents", include_resources=True):
+                chunking_results = chunker.process_all_documents(storage=self.storage)
 
             # Calculate metrics
             successful_chunks = sum(
@@ -450,6 +468,7 @@ class ETLOrchestrator:
                 f"Text chunking completed: {successful_chunks} chunks created from "
                 f"{len(chunking_results) - failed_documents} documents"
             )
+            log_component_metrics("Text Chunker", result.metrics)
 
             # Mark as failed if no documents were successfully processed
             if successful_chunks == 0:
@@ -481,20 +500,26 @@ class ETLOrchestrator:
             return
 
         # Find chunk files
-        chunk_files = list(chunks_path.rglob("chunks.json"))
+        with profile_operation("Find chunk files"):
+            chunk_files = list(chunks_path.rglob("chunks.json"))
+
         if not chunk_files:
             logger.warning("No chunk files found, skipping embeddings generation")
             result.status = ComponentStatus.SKIPPED
             return
 
         # Initialize embeddings generator
-        generator = EmbeddingsGenerator(config_path=self.config.config_path)
+        with profile_operation(
+            "Initialize embeddings generator", include_resources=True
+        ):
+            generator = EmbeddingsGenerator(config_path=self.config.config_path)
 
         # Process all documents
         try:
-            embedding_results = await generator.process_all_documents(
-                storage=self.storage, tracker=self.tracker
-            )
+            with profile_operation("Generate all embeddings", include_resources=True):
+                embedding_results = await generator.process_all_documents(
+                    storage=self.storage, tracker=self.tracker
+                )
 
             # Calculate metrics
             from backend.etl.utils.embeddings_generator import (
@@ -535,6 +560,7 @@ class ETLOrchestrator:
                 f"created from {len(embedding_results) - failed_documents} documents "
                 f"({total_api_calls} API calls)"
             )
+            log_component_metrics("Embeddings Generator", result.metrics)
 
             # Mark as failed if no documents were successfully processed
             if successful_embeddings == 0:
