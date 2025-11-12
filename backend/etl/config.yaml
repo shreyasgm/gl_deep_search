@@ -53,6 +53,10 @@ file_processing:
     model: "openai"  # Options: openai, sentence_transformer
     dimensions: 1536
     batch_size: 32
+    max_retries: 3                 # Maximum retry attempts for failed API calls
+    retry_delays: [1, 2, 4]        # Exponential backoff delays in seconds
+    timeout: 30                    # API request timeout in seconds
+    rate_limit_delay: 0.1          # Delay between batches to respect rate limits
 
   chunking:
     enabled: true

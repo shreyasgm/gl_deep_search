@@ -73,6 +73,7 @@ etl = [
     "google-cloud-storage",
     "tiktoken>=0.9.0",
     "pdfminer.six>=20211012",
+    "pyarrow",
 ]
 
 # Backend service dependencies
