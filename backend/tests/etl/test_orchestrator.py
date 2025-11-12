@@ -331,12 +331,13 @@ class TestETLOrchestrator:
 
                 results = await orchestrator._simulate_pipeline()
 
-                assert len(results) == 4  # Four components
+                assert len(results) == 5  # Five components
                 component_names = [r.component_name for r in results]
                 assert "Growth Lab Scraper" in component_names
                 assert "Growth Lab File Downloader" in component_names
                 assert "PDF Processor" in component_names
                 assert "Lecture Transcripts Processor" in component_names
+                assert "Text Chunker" in component_names
 
                 # All components should be completed in simulation
                 for result in results:
@@ -361,7 +362,7 @@ class TestETLOrchestrator:
 
                 results = await orchestrator.run_pipeline()
 
-                assert len(results) == 4
+                assert len(results) == 5
                 for result in results:
                     assert result.status == ComponentStatus.COMPLETED
                     assert result.duration is not None
@@ -393,6 +394,7 @@ class TestETLOrchestrator:
                     patch.object(
                         orchestrator, "_run_lecture_transcripts"
                     ) as mock_transcripts,
+                    patch.object(orchestrator, "_run_text_chunker") as mock_chunker,
                 ):
                     # Configure mocks to simulate successful execution
                     async def mock_component_success(result):
@@ -403,10 +405,11 @@ class TestETLOrchestrator:
                     mock_downloader.side_effect = mock_component_success
                     mock_processor.side_effect = mock_component_success
                     mock_transcripts.side_effect = mock_component_success
+                    mock_chunker.side_effect = mock_component_success
 
                     results = await orchestrator.run_pipeline()
 
-                    assert len(results) == 4
+                    assert len(results) == 5
                     for result in results:
                         assert result.status == ComponentStatus.COMPLETED
                         assert result.metrics == {"processed": 5}
@@ -417,6 +420,7 @@ class TestETLOrchestrator:
                     mock_downloader.assert_called_once()
                     mock_processor.assert_called_once()
                     mock_transcripts.assert_called_once()
+                    mock_chunker.assert_called_once()
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -441,6 +445,7 @@ class TestETLOrchestrator:
                     patch.object(
                         orchestrator, "_run_lecture_transcripts"
                     ) as mock_transcripts,
+                    patch.object(orchestrator, "_run_text_chunker") as mock_chunker,
                 ):
                     # First component succeeds
                     async def mock_success(result):
@@ -455,10 +460,11 @@ class TestETLOrchestrator:
                     mock_downloader.side_effect = mock_failure
                     mock_processor.side_effect = mock_success
                     mock_transcripts.side_effect = mock_success
+                    mock_chunker.side_effect = mock_success
 
                     results = await orchestrator.run_pipeline()
 
-                    assert len(results) == 4
+                    assert len(results) == 5
 
                     # First component should succeed
                     assert results[0].status == ComponentStatus.COMPLETED
@@ -472,6 +478,7 @@ class TestETLOrchestrator:
                     # Remaining components should still run
                     assert results[2].status == ComponentStatus.COMPLETED
                     assert results[3].status == ComponentStatus.COMPLETED
+                    assert results[4].status == ComponentStatus.COMPLETED
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -499,6 +506,7 @@ class TestETLOrchestrator:
                     patch.object(
                         orchestrator, "_run_lecture_transcripts"
                     ) as mock_transcripts,
+                    patch.object(orchestrator, "_run_text_chunker") as mock_chunker,
                 ):
 
                     async def mock_component_success(result):
@@ -508,17 +516,18 @@ class TestETLOrchestrator:
                     mock_downloader.side_effect = mock_component_success
                     mock_processor.side_effect = mock_component_success
                     mock_transcripts.side_effect = mock_component_success
+                    mock_chunker.side_effect = mock_component_success
 
                     results = await orchestrator.run_pipeline()
 
-                    assert len(results) == 4
+                    assert len(results) == 5
 
                     # First component should be skipped
                     assert results[0].status == ComponentStatus.SKIPPED
                     assert results[0].component_name == "Growth Lab Scraper"
 
                     # Other components should succeed
-                    for i in range(1, 4):
+                    for i in range(1, 5):
                         assert results[i].status == ComponentStatus.COMPLETED
 
 
