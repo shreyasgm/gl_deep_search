@@ -14,6 +14,8 @@ import yaml
 from tqdm import tqdm
 from unstructured.partition.pdf import partition_pdf
 
+from backend.etl.models.tracking import ProcessingStatus
+from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
 
@@ -28,6 +30,7 @@ class PDFProcessor:
         self,
         storage: StorageBase | None = None,
         config_path: Path | None = None,
+        tracker: PublicationTracker | None = None,
     ):
         """
         Initialize the PDF processor.
@@ -35,9 +38,11 @@ class PDFProcessor:
         Args:
             storage: Storage backend to use (defaults to factory-configured storage)
             config_path: Path to configuration file
+            tracker: Optional PublicationTracker instance for updating processing status
         """
         # Storage configuration
         self.storage = storage or get_storage()
+        self.tracker = tracker
 
         # Load configuration or use defaults
         self.config = self._load_config(config_path)
@@ -113,6 +118,25 @@ class PDFProcessor:
                 f"{self.processed_root}/unknown/{file_hash}.txt"
             )
 
+    def _extract_publication_id(self, pdf_path: Path) -> str | None:
+        """
+        Extract publication ID from PDF file path.
+
+        Args:
+            pdf_path: Path to the PDF file
+
+        Returns:
+            Publication ID if found, None otherwise
+        """
+        try:
+            relative_path = pdf_path.relative_to(self.storage.get_path("raw/documents"))
+            # Expected structure: <source_type>/<publication_id>/<filename>.pdf
+            if len(relative_path.parts) >= 2:
+                return relative_path.parts[1]
+        except (ValueError, IndexError):
+            pass
+        return None
+
     def process_pdf(self, pdf_path: Path, force_reprocess: bool = False) -> Path | None:
         """
         Process a single PDF file to extract text.
@@ -129,12 +153,37 @@ class PDFProcessor:
             logger.warning(f"PDF file not found: {pdf_path}")
             return None
 
+        # Extract publication ID for tracking
+        publication_id = self._extract_publication_id(pdf_path)
+
+        # Update status to IN_PROGRESS if tracker is available
+        if self.tracker and publication_id:
+            try:
+                self.tracker.update_processing_status(
+                    publication_id, ProcessingStatus.IN_PROGRESS
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to update processing status to IN_PROGRESS for "
+                    f"{publication_id}: {e}"
+                )
+
         # Get output path
         output_path = self._get_processed_path(pdf_path)
 
         # Check if already processed
         if output_path.exists() and not force_reprocess:
             logger.info(f"PDF already processed: {pdf_path} -> {output_path}")
+            # Still update status if tracker is available
+            if self.tracker and publication_id:
+                try:
+                    self.tracker.update_processing_status(
+                        publication_id, ProcessingStatus.PROCESSED
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to update processing status for {publication_id}: {e}"
+                    )
             return output_path
 
         # Ensure output directory exists
@@ -204,10 +253,36 @@ class PDFProcessor:
                 f.write(full_text)
 
             logger.info(f"Successfully processed PDF: {pdf_path} -> {output_path}")
+
+            # Update status to PROCESSED on success
+            if self.tracker and publication_id:
+                try:
+                    self.tracker.update_processing_status(
+                        publication_id, ProcessingStatus.PROCESSED
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to update processing status to PROCESSED for "
+                        f"{publication_id}: {e}"
+                    )
+
             return output_path
 
         except Exception as e:
             logger.error(f"Error processing PDF {pdf_path}: {e}")
+
+            # Update status to FAILED on error
+            if self.tracker and publication_id:
+                try:
+                    self.tracker.update_processing_status(
+                        publication_id, ProcessingStatus.FAILED, error=str(e)
+                    )
+                except Exception as tracker_error:
+                    logger.warning(
+                        f"Failed to update processing status to FAILED for "
+                        f"{publication_id}: {tracker_error}"
+                    )
+
             return None
 
     def process_pdfs(

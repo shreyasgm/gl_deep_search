@@ -18,6 +18,9 @@ from typing import Any
 import yaml
 from loguru import logger
 
+from backend.etl.models.tracking import ProcessingStatus
+from backend.etl.utils.publication_tracker import PublicationTracker
+
 
 class ChunkingStatus(Enum):
     """Status of text chunking operation."""
@@ -81,10 +84,17 @@ class ChunkingResult:
 class TextChunker:
     """Main text chunking system with multiple strategies."""
 
-    def __init__(self, config_path: Path):
-        """Initialize text chunker with configuration."""
+    def __init__(self, config_path: Path, tracker: PublicationTracker | None = None):
+        """
+        Initialize text chunker with configuration.
+
+        Args:
+            config_path: Path to configuration file
+            tracker: Optional PublicationTracker instance for updating processing status
+        """
         self.config_path = config_path
         self.config = self._load_config()
+        self.tracker = tracker
         raw_config = self.config.get("file_processing", {}).get("chunking", {})
 
         # Defaults
@@ -179,6 +189,33 @@ class TextChunker:
                 # Save chunks to JSON file
                 self._save_chunks(result, storage)
 
+                # Update tracker status based on result
+                if self.tracker:
+                    try:
+                        if result.status == ChunkingStatus.SUCCESS:
+                            self.tracker.update_processing_status(
+                                result.document_id, ProcessingStatus.PROCESSED
+                            )
+                            logger.debug(
+                                f"Updated processing status to PROCESSED for "
+                                f"{result.document_id}"
+                            )
+                        elif result.status == ChunkingStatus.FAILED:
+                            self.tracker.update_processing_status(
+                                result.document_id,
+                                ProcessingStatus.FAILED,
+                                error=result.error_message,
+                            )
+                            logger.debug(
+                                f"Updated processing status to FAILED for "
+                                f"{result.document_id}"
+                            )
+                    except Exception as tracker_error:
+                        logger.warning(
+                            f"Failed to update processing status for "
+                            f"{result.document_id}: {tracker_error}"
+                        )
+
             except Exception as e:
                 logger.error(f"Failed to process {text_file}: {e}")
                 error_result = ChunkingResult(
@@ -191,6 +228,20 @@ class TextChunker:
                     error_message=str(e),
                 )
                 results.append(error_result)
+
+                # Update tracker status for exception case
+                if self.tracker:
+                    try:
+                        self.tracker.update_processing_status(
+                            error_result.document_id,
+                            ProcessingStatus.FAILED,
+                            error=str(e),
+                        )
+                    except Exception as tracker_error:
+                        logger.warning(
+                            f"Failed to update processing status for "
+                            f"{error_result.document_id}: {tracker_error}"
+                        )
 
         return results
 

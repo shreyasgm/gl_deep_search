@@ -17,6 +17,7 @@ from bs4.element import ResultSet, Tag
 from tqdm.asyncio import tqdm as async_tqdm
 
 from backend.etl.models.publications import GrowthLabPublication
+from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.factory import get_storage
 
@@ -30,7 +31,10 @@ class GrowthLabScraper:
     """Scraper for Growth Lab website publications"""
 
     def __init__(
-        self, config_path: Path | None = None, concurrency_limit: int | None = None
+        self,
+        config_path: Path | None = None,
+        concurrency_limit: int | None = None,
+        tracker: PublicationTracker | None = None,
     ):
         """
         Initialize the scraper with configuration
@@ -38,10 +42,12 @@ class GrowthLabScraper:
         Args:
             config_path: Path to the configuration file
             concurrency_limit: Maximum number of concurrent requests (default from config)
+            tracker: Optional PublicationTracker instance for registering publications
         """
         self.config = self._load_config(config_path)
         self.base_url = self.config["base_url"]
         self.scrape_delay = self.config["scrape_delay"]
+        self.tracker = tracker
 
         # Set concurrency limit (from parameter or config)
         self.concurrency_limit = concurrency_limit or self.config.get(
@@ -430,8 +436,19 @@ class GrowthLabScraper:
             logger.error(f"All retries failed for page {page_num}: {e}")
             return []
 
-    async def extract_publications(self) -> list[GrowthLabPublication]:
-        """Extract all publications from the Growth Lab website"""
+    async def extract_publications(
+        self, limit: int | None = None
+    ) -> list[GrowthLabPublication]:
+        """
+        Extract publications from the Growth Lab website.
+
+        Args:
+            limit: Optional limit on number of publications to extract.
+                   If set, stops fetching pages once limit is reached.
+
+        Returns:
+            List of extracted publications
+        """
         # Create more robust session with timeouts
         timeout = aiohttp.ClientTimeout(
             total=60, connect=20, sock_connect=20, sock_read=20
@@ -460,38 +477,81 @@ class GrowthLabScraper:
             max_page_num = await self.get_max_page_num(session, self.base_url)
             logger.info(f"Found {max_page_num} pages of publications")
 
+            # If limit is set, estimate how many pages we need
+            # (typically ~10-20 publications per page)
+            if limit:
+                estimated_pages_needed = max(1, (limit // 15) + 1)
+                pages_to_fetch = min(estimated_pages_needed, max_page_num + 1)
+                logger.info(
+                    f"Limiting to {limit} publications, fetching approximately "
+                    f"{pages_to_fetch} pages"
+                )
+            else:
+                pages_to_fetch = max_page_num + 1
+
             # Create a list of pages to process
-            all_pages = list(range(max_page_num + 1))
+            all_pages = list(range(pages_to_fetch))
 
             # Process pages using semaphore-controlled concurrency
-            all_publications = []
+            all_publications: list[GrowthLabPublication] = []
             total_file_urls = 0
             failed_pages = 0
 
-            # Create tasks for each page but with concurrency control via semaphore
-            tasks = [self.fetch_page(session, page_num) for page_num in all_pages]
+            # Process pages sequentially if limit is small to avoid unnecessary work
+            # Otherwise use concurrent processing
+            if limit and limit <= 10:
+                # For small limits, process pages sequentially to stop early
+                with async_tqdm(total=pages_to_fetch, desc="Scraping pages") as pbar:
+                    for page_num in all_pages:
+                        if limit and len(all_publications) >= limit:
+                            logger.info(
+                                f"Reached limit of {limit} publications, "
+                                f"stopping page fetching"
+                            )
+                            break
+                        try:
+                            publications = await self.fetch_page(session, page_num)
+                            all_publications.extend(publications)
+                            # Count file URLs
+                            for pub in publications:
+                                total_file_urls += len(pub.file_urls)
+                            pbar.update(1)
+                        except Exception as e:
+                            logger.error(f"Error processing page {page_num}: {e}")
+                            failed_pages += 1
+                            pbar.update(1)
+            else:
+                # For larger limits or no limit, use concurrent processing
+                tasks = [self.fetch_page(session, page_num) for page_num in all_pages]
 
-            # Process tasks with progress bar using as_completed for better error handling
-            with async_tqdm(total=len(tasks), desc="Scraping pages") as pbar:
-                # Use a helper to process tasks and update progress
-                for publications_future in asyncio.as_completed(tasks):
-                    try:
-                        publications = await publications_future
-                        all_publications.extend(publications)
-                        # Count file URLs
-                        for pub in publications:
-                            total_file_urls += len(pub.file_urls)
-                        pbar.update(1)
-                    except Exception as e:
-                        logger.error(f"Error processing page: {e}")
-                        failed_pages += 1
-                        pbar.update(1)
+                # Process tasks with progress bar using as_completed
+                with async_tqdm(total=len(tasks), desc="Scraping pages") as pbar:
+                    for publications_future in asyncio.as_completed(tasks):
+                        try:
+                            publications = await publications_future
+                            all_publications.extend(publications)
+                            # Count file URLs
+                            for pub in publications:
+                                total_file_urls += len(pub.file_urls)
+                            pbar.update(1)
+                        except Exception as e:
+                            logger.error(f"Error processing page: {e}")
+                            failed_pages += 1
+                            pbar.update(1)
+
+            # Apply limit if we exceeded it
+            if limit and len(all_publications) > limit:
+                all_publications = all_publications[:limit]
+                total_file_urls = sum(
+                    len(pub.file_urls) for pub in all_publications if pub.file_urls
+                )
 
             if failed_pages > 0:
                 logger.warning(f"Failed to process {failed_pages} pages due to errors")
 
             logger.info(
-                f"Extracted {len(all_publications)} publications with {total_file_urls} total file URLs"
+                f"Extracted {len(all_publications)} publications with "
+                f"{total_file_urls} total file URLs"
             )
             return all_publications
 
@@ -812,9 +872,19 @@ class GrowthLabScraper:
         # If no Endnote file, enrich from publication page directly
         return await self.enrich_publication_from_page(session, pub)
 
-    async def extract_and_enrich_publications(self) -> list[GrowthLabPublication]:
-        """Extract all publications and enrich them with metadata from publication pages"""
-        publications = await self.extract_publications()
+    async def extract_and_enrich_publications(
+        self, limit: int | None = None
+    ) -> list[GrowthLabPublication]:
+        """
+        Extract publications and enrich them with metadata from publication pages.
+
+        Args:
+            limit: Optional limit on number of publications to extract.
+
+        Returns:
+            List of enriched publications
+        """
+        publications = await self.extract_publications(limit=limit)
 
         # Create more robust session with timeouts
         timeout = aiohttp.ClientTimeout(
@@ -954,6 +1024,7 @@ class GrowthLabScraper:
         existing_path: Path | None = None,
         output_path: Path | None = None,
         storage=None,
+        limit: int | None = None,
     ) -> list[GrowthLabPublication]:
         """
         Update publications by comparing existing ones with newly scraped ones
@@ -964,6 +1035,7 @@ class GrowthLabScraper:
             existing_path: Optional path to existing publications CSV
             output_path: Optional path to save updated publications
             storage: Optional storage instance (will use default if None)
+            limit: Optional limit on number of publications to scrape
         """
         # Get storage instance if not provided
         storage = storage or get_storage()
@@ -983,8 +1055,8 @@ class GrowthLabScraper:
         existing_pub_map = {pub.paper_id: pub for pub in existing_publications}
         logger.info(f"Loaded {len(existing_publications)} existing publications")
 
-        # Get new publications
-        new_publications = await self.extract_and_enrich_publications()
+        # Get new publications (with limit if specified)
+        new_publications = await self.extract_and_enrich_publications(limit=limit)
 
         # Merge existing and new publications, preferring new ones with different content
         updated_publications = []
@@ -1040,5 +1112,18 @@ class GrowthLabScraper:
             # Ensure parent directory exists
             storage.ensure_dir(output_path.parent)
             self.save_to_csv(updated_publications, output_path)
+
+        # Register publications with tracker if provided
+        if self.tracker:
+            logger.info("Registering publications with tracker")
+            for pub in updated_publications:
+                try:
+                    self.tracker.add_publication(pub)
+                    logger.debug(f"Registered publication {pub.paper_id} with tracker")
+                except Exception as e:
+                    logger.error(
+                        f"Failed to register publication {pub.paper_id} with tracker: {e}"
+                    )
+                    # Continue processing other publications even if one fails
 
         return updated_publications

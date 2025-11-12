@@ -176,3 +176,47 @@ class TestPDFProcessor:
 
         # Note: We can't assert specific timing as it depends on the test environment,
         # but we log it for manual verification
+
+
+class TestPDFProcessorTrackerIntegration:
+    """Tests for PDF processor integration with publication tracker."""
+
+    @pytest.fixture
+    def sample_pdfs(self):
+        """Get paths to sample PDF files for testing."""
+        fixtures_dir = Path(__file__).parent / "fixtures" / "pdfs"
+        sample1_path = fixtures_dir / "sample1.pdf"
+        assert sample1_path.exists(), f"Sample PDF {sample1_path} not found"
+        return [sample1_path]
+
+    @pytest.fixture
+    def test_storage(self):
+        """Create a temporary directory for test storage."""
+        temp_dir = Path(tempfile.mkdtemp())
+        raw_dir = temp_dir / "raw" / "documents" / "growthlab" / "test_pub_789"
+        raw_dir.mkdir(parents=True, exist_ok=True)
+        storage = LocalStorage(base_path=temp_dir)
+        yield storage
+        shutil.rmtree(temp_dir)
+
+    def test_processor_works_without_tracker(self, sample_pdfs, test_storage):
+        """Test that processor works correctly when tracker is None."""
+        pdf_path = sample_pdfs[0]
+        dest_path = test_storage.get_path(
+            "raw/documents/growthlab/test_pub_789/sample.pdf"
+        )
+        import shutil
+
+        # Create directory first
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(pdf_path, dest_path)
+
+        # Create processor without tracker
+        processor = PDFProcessor(storage=test_storage, tracker=None)
+
+        # Process the PDF
+        result_path = processor.process_pdf(dest_path)
+
+        # Should complete without errors
+        assert result_path is not None
+        assert result_path.exists()
