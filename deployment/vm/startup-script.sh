@@ -49,10 +49,19 @@ log "  Project ID: $PROJECT_ID"
 # Install system dependencies
 log "Installing system dependencies..."
 export DEBIAN_FRONTEND=noninteractive
+
+# Add deadsnakes PPA for Python 3.12
+log "Adding deadsnakes PPA for Python 3.12..."
+apt-get update -qq
+apt-get install -y -qq software-properties-common > /dev/null 2>&1
+add-apt-repository -y ppa:deadsnakes/ppa > /dev/null 2>&1
+
+# Update package list and install Python 3.12
 apt-get update -qq
 apt-get install -y -qq \
     python3.12 \
     python3.12-venv \
+    python3.12-dev \
     python3-pip \
     git \
     curl \
@@ -72,6 +81,14 @@ if ! command -v uv &> /dev/null; then
 fi
 
 log "uv version: $(uv --version)"
+
+# Verify Python 3.12 is available
+if ! command -v python3.12 &> /dev/null; then
+    log "ERROR: Python 3.12 not found after installation"
+    exit 1
+fi
+
+log "Python 3.12 version: $(python3.12 --version)"
 
 # Set up working directory
 log "Setting up working directory..."
@@ -108,7 +125,8 @@ export ENVIRONMENT="production"
 
 # Install Python dependencies
 log "Installing Python dependencies..."
-uv sync --extra etl --quiet || {
+# Explicitly use Python 3.12 for uv
+uv sync --extra etl --python python3.12 --quiet || {
     log "ERROR: Failed to install Python dependencies"
     exit 1
 }

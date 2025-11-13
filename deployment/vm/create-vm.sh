@@ -1,11 +1,19 @@
 #!/bin/bash
 # Create VM Instance for ETL Pipeline
 #
-# This script creates a spot VM instance that will automatically run the ETL pipeline
+# This script creates a VM instance that will automatically run the ETL pipeline
 # and shut down when complete.
 #
 # Usage:
-#   ./deployment/vm/create-vm.sh [--incremental] [--scraper-limit N] [--dry-run]
+#   ./deployment/vm/create-vm.sh [--incremental] [--scraper-limit N] [--vm-name NAME] [--on-demand|--spot] [--dry-run]
+#
+# Options:
+#   --incremental       Run incremental update instead of full batch
+#   --scraper-limit N   Limit number of publications to process
+#   --vm-name NAME      Custom VM name (default: etl-pipeline-vm)
+#   --on-demand         Use on-demand instance (faster startup, higher cost)
+#   --spot              Use spot instance (slower startup, 76% cost savings)
+#   --dry-run           Show what would be done without executing
 
 set -euo pipefail
 
@@ -21,6 +29,7 @@ INCREMENTAL=false
 SCRAPER_LIMIT=""
 DRY_RUN=false
 VM_NAME="etl-pipeline-vm"
+USE_SPOT=""  # Empty means use config default
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -41,9 +50,17 @@ while [[ $# -gt 0 ]]; do
             VM_NAME="$2"
             shift 2
             ;;
+        --on-demand)
+            USE_SPOT="false"
+            shift
+            ;;
+        --spot)
+            USE_SPOT="true"
+            shift
+            ;;
         *)
             log_error "Unknown option: $1"
-            echo "Usage: $0 [--incremental] [--scraper-limit N] [--vm-name NAME] [--dry-run]"
+            echo "Usage: $0 [--incremental] [--scraper-limit N] [--vm-name NAME] [--on-demand|--spot] [--dry-run]"
             exit 1
             ;;
     esac
@@ -51,6 +68,12 @@ done
 
 # Load GCP configuration
 load_gcp_config
+
+# Override spot instance setting if specified via command line
+if [[ -n "$USE_SPOT" ]]; then
+    VM_USE_SPOT="$USE_SPOT"
+    log_info "Overriding spot instance setting: VM_USE_SPOT=$VM_USE_SPOT"
+fi
 
 # Check prerequisites
 log_step "Checking prerequisites"
