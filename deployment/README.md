@@ -46,11 +46,14 @@ deployment/
 │   ├── 02-setup-storage.sh      # Storage bucket setup
 │   ├── 03-setup-secrets.sh      # Secret Manager setup
 │   ├── 04-create-service-account.sh  # Service account setup
+│   ├── 05-setup-cost-monitoring.sh  # Budget alerts setup
+│   ├── calculate-costs.sh       # Cost calculation utility
 │   └── utils.sh                 # Shared utilities
 ├── vm/
 │   ├── startup-script.sh        # VM initialization script
 │   ├── incremental-update.sh    # Weekly update script
 │   ├── create-vm.sh             # Create VM instance
+│   ├── test_batch_processing.py # Test orchestration script
 │   └── monitor-vm.sh            # Monitor VM execution
 ├── cloud-run/
 │   ├── Dockerfile               # Container image definition
@@ -58,8 +61,9 @@ deployment/
 │   ├── deploy.sh                # Deploy Cloud Run Job
 │   ├── schedule.sh              # Setup Cloud Scheduler
 │   └── execute.sh               # Manual job execution
-└── workflows/
-    └── etl-weekly.yml           # GitHub Actions workflow (optional)
+├── workflows/
+│   └── etl-weekly.yml           # GitHub Actions workflow (optional)
+└── TEST_RESULTS.md              # Test results template
 ```
 
 ## Prerequisites
@@ -128,7 +132,24 @@ Set up automatic weekly execution:
 
 This creates a Cloud Scheduler job that runs every Sunday at 2 AM (configurable).
 
-### Step 5: Initial Batch Processing (Optional)
+### Step 5: Test Batch Processing (Recommended)
+
+Before running the full batch, test with a small subset to validate costs and performance:
+
+```bash
+# Set up cost monitoring first
+./deployment/scripts/05-setup-cost-monitoring.sh --budget 20
+
+# Phase 1: Test with 10 publications
+python deployment/vm/test_batch_processing.py --limit 10 --phase 1
+
+# Phase 2: Test with 100 publications (only if Phase 1 passes)
+python deployment/vm/test_batch_processing.py --limit 100 --phase 2
+```
+
+Test reports will be generated in `deployment/TEST_RESULTS_PHASE*.md`.
+
+### Step 6: Initial Batch Processing (Optional)
 
 For processing a large initial batch of documents, use a VM:
 
@@ -209,6 +230,69 @@ Based on the deployment guide:
 - **Storage**: ~$2.45/year (10 GB)
 
 **Total first year**: ~$12/year
+
+## Testing
+
+### Cost Monitoring Setup
+
+Before running tests, set up budget alerts:
+
+```bash
+./deployment/scripts/05-setup-cost-monitoring.sh --budget 20
+```
+
+This script:
+- Creates a monthly budget with specified amount (default $20)
+- Configures alerts at 50%, 75%, and 100% thresholds
+- Uses the Google Cloud Billing Budgets REST API for full configuration support
+- Automatically detects and allows updating existing budgets
+
+**Note**: The script uses curl to interact with the Billing Budgets API as the gcloud CLI has limited support for budget creation with threshold rules.
+
+### Running Tests
+
+The test suite validates the batch processing pipeline with incremental publication counts. The test script includes active cost monitoring and automatic VM termination if costs exceed thresholds.
+
+**Phase 1 (10 publications, cost threshold: $0.10):**
+```bash
+python deployment/vm/test_batch_processing.py --limit 10 --phase 1
+```
+
+**Phase 2 (100 publications, cost threshold: $1.00):**
+```bash
+python deployment/vm/test_batch_processing.py --limit 100 --phase 2
+```
+
+**Key Safety Features:**
+- **Active Cost Monitoring**: Checks costs every 2 minutes during execution
+- **Automatic VM Termination**: Stops VM immediately if cost thresholds exceeded
+- **Hard Cost Limits**: Phase 1 ($0.10), Phase 2 ($1.00) - prevents cost overruns
+- **Real-time Monitoring**: Tracks VM status, execution time, and costs
+- **Comprehensive Reports**: Generates detailed test reports with metrics
+
+Each test phase:
+- Creates a test VM instance
+- Monitors execution and captures logs
+- Continuously monitors costs and stops VM if thresholds exceeded
+- Verifies outputs
+- Generates a detailed test report
+
+Test reports are saved to `deployment/TEST_RESULTS_PHASE*.md`.
+
+### Calculating Costs
+
+Query costs for a specific time period:
+
+```bash
+# Last 24 hours
+./deployment/scripts/calculate-costs.sh
+
+# Last 7 days
+./deployment/scripts/calculate-costs.sh --days 7
+
+# Since specific timestamp
+./deployment/scripts/calculate-costs.sh --since "2025-01-01T00:00:00Z"
+```
 
 ## Troubleshooting
 
@@ -358,16 +442,18 @@ Create a dashboard in Cloud Console:
 
 ### Cost Monitoring
 
-Set up budget alerts:
+Set up budget alerts using the provided script:
 
 ```bash
-gcloud billing budgets create \
-  --billing-account=$BILLING_ACCOUNT_ID \
-  --display-name="ETL Pipeline Budget" \
-  --budget-amount=20 \
-  --threshold-rule=percent=50 \
-  --threshold-rule=percent=90 \
-  --threshold-rule=percent=100
+./deployment/scripts/05-setup-cost-monitoring.sh --budget 20
+```
+
+This automatically creates a budget with threshold alerts at 50%, 75%, and 100% of your monthly budget. The script uses the Google Cloud Billing Budgets REST API for full configuration support.
+
+To manually check your budget status:
+
+```bash
+gcloud billing budgets list --billing-account=$BILLING_ACCOUNT_ID
 ```
 
 ## Additional Resources
