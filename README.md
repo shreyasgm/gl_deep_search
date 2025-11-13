@@ -200,32 +200,33 @@ Post-initial processing, data is migrated to Google Cloud Storage. Subsequent ET
 
 ## Deployment
 
-### Local to Production Workflow
+### GCP Deployment Infrastructure
 
-1. Development occurs in local Docker environment
-2. Code is pushed to GitHub
-3. GitHub Actions triggers:
-   - Code testing
-   - Building and publishing container images
-   - Deploying to Cloud Run
+The project includes a complete deployment infrastructure for Google Cloud Platform (GCP). See the [deployment guide](deployment/README.md) for detailed instructions.
+
+**Quick Start:**
+1. Configure GCP settings: `cp deployment/config/gcp-config.sh.template deployment/config/gcp-config.sh`
+2. Run setup scripts: `./deployment/scripts/01-setup-gcp-project.sh` (and 02-04)
+3. Deploy Cloud Run Job: `./deployment/cloud-run/deploy.sh`
+4. Schedule weekly updates: `./deployment/cloud-run/schedule.sh`
+
+**Deployment Options:**
+- **VM-based**: For initial batch processing (`./deployment/vm/create-vm.sh`)
+- **Cloud Run Jobs**: For scheduled weekly updates (automated via Cloud Scheduler)
+- **Manual execution**: Run on-demand (`./deployment/cloud-run/execute.sh`)
+
+**Documentation:**
+- [Deployment README](deployment/README.md) - Quick start and troubleshooting
+- [GCP Deployment Guide](docs/GCP_DEPLOYMENT_GUIDE.md) - Comprehensive deployment documentation
 
 ### Production Infrastructure
 
-- **ETL Pipeline**: Scheduled Cloud Run jobs triggered by GitHub Actions
-- **Backend Service**: Cloud Run with autoscaling
+- **ETL Pipeline**: Cloud Run Jobs (scheduled weekly) + VM instances (initial batch)
+- **Backend Service**: Cloud Run with autoscaling (future)
 - **Vector Database**: Managed Qdrant instance or Qdrant Cloud
-- **Document Storage**: Cloud Storage
-- **Frontend**: Streamlit or Chainlit
-
-### Deployment Commands
-
-```bash
-# Deploy to development environment
-./scripts/deploy.sh dev
-
-# Deploy to production environment
-./scripts/deploy.sh prod
-```
+- **Document Storage**: Cloud Storage (GCS)
+- **Frontend**: Streamlit or Chainlit (future)
+- **Scheduling**: Cloud Scheduler or GitHub Actions workflows
 
 ## 🧪 Development Workflow
 

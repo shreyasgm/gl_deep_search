@@ -1,0 +1,181 @@
+#!/bin/bash
+# GCP Deployment Configuration Template
+#
+# Copy this file to gcp-config.sh and fill in your actual values.
+# The gcp-config.sh file is gitignored and should never be committed.
+#
+# Usage:
+#   cp deployment/config/gcp-config.sh.template deployment/config/gcp-config.sh
+#   # Edit deployment/config/gcp-config.sh with your values
+#   source deployment/config/gcp-config.sh
+
+# ==============================================================================
+# GCP Project Configuration
+# ==============================================================================
+
+# Your GCP Project ID (must be unique globally)
+# Example: "cid-hks-1537286359734"
+export PROJECT_ID="your-project-id"
+
+# Display name for your GCP project
+# Example: "Growth Lab Deep Search"
+export PROJECT_NAME="Growth Lab Deep Search"
+
+# Billing account ID (find in GCP Console > Billing)
+# Format: 01XXXX-XXXXXX-XXXXXX
+export BILLING_ACCOUNT_ID="your-billing-account-id"
+
+# ==============================================================================
+# Region and Zone Configuration
+# ==============================================================================
+
+# GCP Region (us-central1 is cheapest, us-east4 is also cost-effective)
+# Options: us-central1, us-east4, us-west1, etc.
+export REGION="us-central1"
+
+# GCP Zone within the region
+# Options: us-central1-a, us-central1-b, us-central1-c
+export ZONE="${REGION}-a"
+
+# ==============================================================================
+# Storage Configuration
+# ==============================================================================
+
+# Cloud Storage bucket name (must be globally unique)
+# Example: "gl-deep-search-data"
+export BUCKET_NAME="gl-deep-search-data"
+
+# Storage class for the bucket
+# Options: STANDARD, NEARLINE, COLDLINE, ARCHIVE
+export STORAGE_CLASS="STANDARD"
+
+# ==============================================================================
+# Compute Configuration
+# ==============================================================================
+
+# VM machine type for initial batch processing
+# n2-standard-4: 4 vCPUs, 16 GB RAM (recommended)
+# Options: n2-standard-4, n2-standard-8, n2-highmem-4, etc.
+export VM_MACHINE_TYPE="n2-standard-4"
+
+# Boot disk size for VM (in GB)
+export VM_BOOT_DISK_SIZE="50"
+
+# Boot disk type
+# Options: pd-standard, pd-balanced, pd-ssd
+export VM_BOOT_DISK_TYPE="pd-balanced"
+
+# Use spot/preemptible instances (76% cost savings)
+# Set to "true" for spot instances, "false" for regular instances
+export VM_USE_SPOT="true"
+
+# Cloud Run Job configuration
+export CLOUD_RUN_MEMORY="8Gi"
+export CLOUD_RUN_CPU="4"
+export CLOUD_RUN_TIMEOUT="2h"
+export CLOUD_RUN_MAX_RETRIES="2"
+
+# ==============================================================================
+# Service Account Configuration
+# ==============================================================================
+
+# Service account name for ETL pipeline
+export SA_NAME="etl-pipeline-service-account"
+
+# Service account email (auto-generated from PROJECT_ID and SA_NAME)
+export SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+# ==============================================================================
+# Secret Manager Configuration
+# ==============================================================================
+
+# Secret name for OpenAI API key
+export OPENAI_SECRET_NAME="openai-api-key"
+
+# ==============================================================================
+# Container Registry Configuration
+# ==============================================================================
+
+# Artifact Registry repository name
+export ARTIFACT_REGISTRY_REPO="etl-pipeline"
+
+# Container image name
+export IMAGE_NAME="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/etl-pipeline:latest"
+
+# ==============================================================================
+# Cloud Scheduler Configuration
+# ==============================================================================
+
+# Schedule for weekly updates (cron format)
+# Default: Every Sunday at 2 AM UTC
+export SCHEDULE_CRON="0 2 * * 0"
+
+# Timezone for scheduler
+export SCHEDULE_TIMEZONE="America/New_York"
+
+# Scheduler job name
+export SCHEDULER_JOB_NAME="etl-weekly-update"
+
+# ==============================================================================
+# Cloud Run Job Configuration
+# ==============================================================================
+
+# Cloud Run Job name
+export CLOUD_RUN_JOB_NAME="etl-pipeline-job"
+
+# ==============================================================================
+# GitHub Configuration (for repository cloning)
+# ==============================================================================
+
+# GitHub repository URL (for VM startup script)
+# Example: "https://github.com/YOUR_ORG/gl_deep_search.git"
+export GITHUB_REPO_URL="https://github.com/YOUR_ORG/gl_deep_search.git"
+
+# GitHub branch to use
+export GITHUB_BRANCH="main"
+
+# ==============================================================================
+# ETL Pipeline Configuration
+# ==============================================================================
+
+# Production config file path (relative to repository root)
+export ETL_CONFIG_PATH="backend/etl/config.production.yaml"
+
+# Log level for ETL pipeline
+# Options: DEBUG, INFO, WARNING, ERROR
+export ETL_LOG_LEVEL="INFO"
+
+# ==============================================================================
+# Validation
+# ==============================================================================
+
+# Validate that required variables are set
+validate_config() {
+    local errors=0
+
+    if [[ -z "$PROJECT_ID" ]] || [[ "$PROJECT_ID" == "your-project-id" ]]; then
+        echo "ERROR: PROJECT_ID must be set" >&2
+        errors=$((errors + 1))
+    fi
+
+    if [[ -z "$BILLING_ACCOUNT_ID" ]] || [[ "$BILLING_ACCOUNT_ID" == "your-billing-account-id" ]]; then
+        echo "ERROR: BILLING_ACCOUNT_ID must be set" >&2
+        errors=$((errors + 1))
+    fi
+
+    if [[ -z "$BUCKET_NAME" ]] || [[ "$BUCKET_NAME" == "gl-deep-search-data" ]]; then
+        echo "WARNING: BUCKET_NAME should be customized to avoid conflicts" >&2
+    fi
+
+    if [[ "$errors" -gt 0 ]]; then
+        echo "Configuration validation failed. Please fix the errors above." >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# Auto-validate when sourced (unless SKIP_VALIDATION is set)
+if [[ "${SKIP_VALIDATION:-}" != "true" ]]; then
+    validate_config || return 1
+fi

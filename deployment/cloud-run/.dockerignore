@@ -1,0 +1,82 @@
+# Git
+.git
+.gitignore
+.github
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.spyderproject
+.spyproject
+.ropeproject
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+
+# Documentation
+docs/_build/
+site/
+.mkdocs/
+
+# Data (not needed in container)
+data/
+*.csv
+*.json
+*.xlsx
+*.pdf
+*.txt
+!**/config*.yaml
+!**/config*.yml
+
+# Logs
+logs/
+*.log
+profiling_*.log
+
+# Cache
+.cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Deployment
+deployment/
+
+# Other
+.DS_Store
+Thumbs.db
+*.md
+!README.md
+
+# Lock files (uv.lock should be included for reproducibility)
+# uv.lock
