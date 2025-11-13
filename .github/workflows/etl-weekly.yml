@@ -1,0 +1,92 @@
+name: ETL Weekly Update
+
+# This workflow can be used as an alternative to Cloud Scheduler for triggering
+# weekly ETL pipeline updates. It requires GCP service account credentials
+# to be stored as a GitHub secret.
+#
+# To use this workflow:
+# 1. Create a GCP service account key and store it as GitHub secret: GCP_SA_KEY
+# 2. Update the REGION variable below to match your deployment
+# 3. Uncomment the schedule trigger or use workflow_dispatch for manual runs
+
+on:
+  schedule:
+    # Every Sunday at 2 AM UTC (equivalent to Saturday 9 PM EST / 6 PM PST)
+    - cron: '0 2 * * 0'
+  workflow_dispatch:  # Allow manual triggers from GitHub UI
+    inputs:
+      scraper_limit:
+        description: 'Limit number of publications to scrape (leave empty for full run)'
+        required: false
+        type: string
+
+env:
+  REGION: us-central1  # Update to match your deployment region
+  CLOUD_RUN_JOB_NAME: etl-pipeline-job  # Update to match your job name
+
+jobs:
+  run-etl:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for workload identity federation (if used)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          # Option 1: Use service account key (stored as GitHub secret)
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+          # Option 2: Use Workload Identity Federation (more secure, recommended)
+          # Uncomment and configure if using Workload Identity Federation:
+          # workload_identity_provider: projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID
+          # service_account: SERVICE_ACCOUNT_EMAIL
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}  # Store as GitHub secret
+
+      - name: Determine execution arguments
+        id: args
+        run: |
+          if [ -n "${{ github.event.inputs.scraper_limit }}" ]; then
+            echo "args=--scraper-limit ${{ github.event.inputs.scraper_limit }}" >> $GITHUB_OUTPUT
+          else
+            # Default incremental update
+            echo "args=--scraper-limit 20" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger Cloud Run Job
+        run: |
+          gcloud run jobs execute ${{ env.CLOUD_RUN_JOB_NAME }} \
+            --region=${{ env.REGION }} \
+            --args="${{ steps.args.outputs.args }} --config backend/etl/config.production.yaml --log-level INFO" \
+            --wait
+
+      - name: Check execution status
+        if: failure()
+        run: |
+          echo "ETL pipeline execution failed!"
+          echo "Check Cloud Run logs for details:"
+          echo "gcloud logging read \"resource.type=cloud_run_job AND resource.labels.job_name=${{ env.CLOUD_RUN_JOB_NAME }}\" --limit 50"
+
+          # Optional: Send notification (Slack, email, etc.)
+          # Uncomment and configure notification service:
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"ETL pipeline failed!"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Get execution logs
+        if: always()
+        run: |
+          echo "## Recent ETL Pipeline Logs" >> $GITHUB_STEP_SUMMARY
+          gcloud logging read \
+            "resource.type=cloud_run_job AND resource.labels.job_name=${{ env.CLOUD_RUN_JOB_NAME }}" \
+            --limit 50 \
+            --format="table(timestamp,severity,textPayload)" \
+            >> $GITHUB_STEP_SUMMARY || echo "No logs available"

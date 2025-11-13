@@ -224,3 +224,11 @@ poetry.toml
 
 # LSP config files
 pyrightconfig.json
+
+# GCP deployment
+deployment/config/gcp-config.sh
+deployment/**/*.key
+deployment/**/*.json
+!deployment/config/*.json.template
+!deployment/config/lifecycle-policy.json
+deployment/**/service-account-*.json
