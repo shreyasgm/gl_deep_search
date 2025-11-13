@@ -43,6 +43,21 @@ if resource_exists "bucket" "$BUCKET_NAME"; then
         log_info "Exiting..."
         exit 0
     fi
+    # Try to enable Autoclass on existing bucket (may fail if bucket has incompatible settings)
+    log_step "Enabling Autoclass on existing bucket"
+    if is_dry_run; then
+        log_info "[DRY RUN] Would enable Autoclass on existing bucket"
+    else
+        log_info "Attempting to enable Autoclass..."
+        if gcloud storage buckets update "gs://$BUCKET_NAME" \
+            --autoclass \
+            --quiet 2>/dev/null; then
+            log_success "Autoclass enabled on existing bucket"
+        else
+            log_warning "Could not enable Autoclass on existing bucket (may require bucket recreation)"
+            log_info "Autoclass can only be enabled on buckets without certain lifecycle rules or configurations"
+        fi
+    fi
 else
     # Create bucket
     log_step "Creating Cloud Storage bucket"
@@ -56,10 +71,11 @@ else
         if gcloud storage buckets create "gs://$BUCKET_NAME" \
             --location="$REGION" \
             --default-storage-class="$STORAGE_CLASS" \
+            --autoclass \
             --uniform-bucket-level-access \
             --public-access-prevention=enforced \
             --quiet; then
-            log_success "Bucket created successfully"
+            log_success "Bucket created successfully with Autoclass enabled"
         else
             error_exit "Failed to create bucket. It may already exist or the name is taken."
         fi
@@ -131,7 +147,8 @@ print_summary "Storage Setup Complete" \
     "Bucket: gs://$BUCKET_NAME" \
     "Region: $REGION" \
     "Storage Class: $STORAGE_CLASS" \
-    "Lifecycle Policy: Applied" \
+    "Autoclass: Enabled (handles storage class transitions)" \
+    "Lifecycle Policy: Applied (log deletion only)" \
     "Versioning: Enabled"
 
 log_success "Storage setup completed successfully!"
