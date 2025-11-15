@@ -1,0 +1,42 @@
+version: '3.8'
+
+# Docker Compose configuration for local ETL pipeline testing
+#
+# This allows you to test the ETL pipeline locally using the same Docker
+# container image that will be deployed to Cloud Run and VM instances.
+#
+# Usage:
+#   docker-compose up                    # Run ETL pipeline
+#   docker-compose up --build            # Rebuild image and run
+#   docker-compose run etl-pipeline --scraper-limit 10  # Run with custom args
+#
+# Prerequisites:
+#   - Docker and Docker Compose installed
+#   - Environment variables set (see .env.example or set below)
+#   - GCP credentials configured (for GCS access)
+
+services:
+  etl-pipeline:
+    build:
+      context: .
+      dockerfile: deployment/cloud-run/Dockerfile
+    image: gl-deep-search-etl:local
+    container_name: gl-deep-search-etl
+    environment:
+      # These should be set in .env file or via environment
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GCS_BUCKET=${GCS_BUCKET:-gl-deep-search-data}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
+    volumes:
+      # Mount data directory for local testing (optional)
+      - ./data:/app/data:rw
+      # Mount logs directory (optional)
+      - ./logs:/app/logs:rw
+    # Default command - can be overridden
+    command: ["--config", "backend/etl/config.production.yaml", "--log-level", "INFO"]
+    # Uncomment to run interactively
+    # stdin_open: true
+    # tty: true
+    # Keep container running for debugging (uncomment if needed)
+    # command: ["tail", "-f", "/dev/null"]
