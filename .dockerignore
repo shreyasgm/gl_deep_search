@@ -1,0 +1,89 @@
+# Git
+.git
+.gitignore
+.github
+
+# Environment files
+.env
+.env.*
+!.env.example
+.python-version
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.spyderproject
+.spyproject
+.ropeproject
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+
+# Documentation
+docs/_build/
+site/
+.mkdocs/
+
+# Data (not needed in container)
+data/
+*.csv
+*.json
+*.xlsx
+*.pdf
+*.txt
+!**/config*.yaml
+!**/config*.yml
+
+# Logs
+logs/
+*.log
+profiling_*.log
+
+# Cache
+.cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Deployment (exclude most, but keep entrypoint.sh)
+deployment/
+!deployment/cloud-run/entrypoint.sh
+
+# Other
+.DS_Store
+Thumbs.db
+# Exclude markdown files except specific ones
+deployment/**/*.md
+tests/**/*.md
+docs/**/*.md
+.github/**/*.md
+# Keep README.md in root and backend
+# (don't exclude *.md globally, be specific instead)
+
+# Lock files (uv.lock should be included for reproducibility)
+# uv.lock

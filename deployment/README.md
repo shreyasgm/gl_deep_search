@@ -18,7 +18,7 @@ This directory contains scripts and configurations for deploying the Growth Lab 
    ./deployment/scripts/04-create-service-account.sh
    ```
 
-3. **Deploy Cloud Run Job:**
+3. **Build and deploy Docker image:**
    ```bash
    ./deployment/cloud-run/deploy.sh
    ```
@@ -38,9 +38,11 @@ This directory contains scripts and configurations for deploying the Growth Lab 
 ```
 deployment/
 ├── README.md                    # This file
+├── cloudbuild.yaml              # Cloud Build configuration (for --cloud-build option)
 ├── config/
 │   ├── gcp-config.sh.template   # GCP configuration template
-│   └── lifecycle-policy.json   # GCS lifecycle rules
+│   ├── gcp-config.sh            # GCP configuration (gitignored)
+│   └── lifecycle-policy.json    # GCS lifecycle rules
 ├── scripts/
 │   ├── 01-setup-gcp-project.sh  # GCP project setup
 │   ├── 02-setup-storage.sh      # Storage bucket setup
@@ -51,28 +53,35 @@ deployment/
 │   └── utils.sh                 # Shared utilities
 ├── vm/
 │   ├── startup-script.sh        # VM initialization script
-│   ├── incremental-update.sh    # Weekly update script
+│   ├── incremental-update.sh    # Incremental update script
 │   ├── create-vm.sh             # Create VM instance
-│   ├── test_batch_processing.py # Test orchestration script
-│   └── monitor-vm.sh            # Monitor VM execution
+│   ├── monitor-vm.sh            # Monitor VM execution
+│   ├── cleanup-vms.sh           # Cleanup VM instances
+│   └── test_batch_processing.py  # Test orchestration script
 ├── cloud-run/
 │   ├── Dockerfile               # Container image definition
-│   ├── .dockerignore            # Docker ignore rules
+│   ├── build.sh                 # Build Docker image locally
 │   ├── deploy.sh                # Deploy Cloud Run Job
 │   ├── schedule.sh              # Setup Cloud Scheduler
-│   └── execute.sh               # Manual job execution
-├── workflows/
-│   └── etl-weekly.yml           # GitHub Actions workflow (optional)
-└── TEST_RESULTS.md              # Test results template
+│   ├── execute.sh               # Manual job execution
+│   ├── entrypoint.sh            # Container entrypoint script
+│   └── test-container-local.sh  # Test container locally
+├── workflows/                   # (Optional) GitHub Actions workflows
+├── TEST_RESULTS.md              # Test results template
+└── TEST_RESULTS_PHASE*.md       # Generated test phase results
 ```
+
+**Note**: The `.dockerignore` file is located in the repository root (not in `deployment/cloud-run/`). The `docker-compose.yml` file is also in the repository root for local testing.
 
 ## Prerequisites
 
 - **GCP Account**: Active Google Cloud Platform account with billing enabled
 - **gcloud CLI**: Installed and authenticated (`gcloud auth login`)
-- **Docker**: Installed (for Cloud Run deployments)
+- **Docker**: Installed locally (for building container images)
 - **Git**: Repository cloned locally
 - **OpenAI API Key**: For embeddings generation
+
+**Note**: Build the Docker image (`./deployment/cloud-run/deploy.sh`) before creating VMs for batch processing.
 
 ## Detailed Setup Instructions
 
@@ -109,7 +118,7 @@ Run the setup scripts in order. Each script checks prerequisites and provides he
 ./deployment/scripts/04-create-service-account.sh
 ```
 
-### Step 3: Deploy Cloud Run Job
+### Step 3: Build and Deploy Docker Image
 
 Build and deploy the containerized ETL pipeline:
 
@@ -117,10 +126,35 @@ Build and deploy the containerized ETL pipeline:
 ./deployment/cloud-run/deploy.sh
 ```
 
-This will:
-- Build a Docker container image
-- Push it to Artifact Registry
-- Create/update a Cloud Run Job
+This builds the Docker image, pushes it to Artifact Registry, and creates/updates the Cloud Run Job. The same image is used for both Cloud Run and VM batch processing.
+
+**Build Options:**
+
+The `deploy.sh` script supports multiple build methods:
+
+```bash
+# Local Docker build (default, requires Docker Desktop)
+./deployment/cloud-run/deploy.sh --local-build
+
+# Cloud Build (uses deployment/cloudbuild.yaml, no local Docker required)
+./deployment/cloud-run/deploy.sh --cloud-build
+
+# Skip build, use existing image from registry
+./deployment/cloud-run/deploy.sh --skip-build
+
+# Dry run (show what would be done)
+./deployment/cloud-run/deploy.sh --dry-run
+```
+
+**Note**: For local testing, you can build the image without deploying:
+
+```bash
+# Build for local platform (ARM64 on Mac)
+./deployment/cloud-run/build.sh --platform linux/arm64 --load
+
+# Build for cloud deployment (AMD64)
+./deployment/cloud-run/build.sh --platform linux/amd64 --push
+```
 
 ### Step 4: Schedule Weekly Updates
 
@@ -170,6 +204,19 @@ Monitor the VM execution:
 ./deployment/vm/monitor-vm.sh etl-pipeline-vm --follow
 ```
 
+Clean up test VMs when done:
+
+```bash
+# List test VMs
+./deployment/vm/cleanup-vms.sh --dry-run
+
+# Delete test VMs matching pattern
+./deployment/vm/cleanup-vms.sh --pattern "test-phase"
+
+# Delete all VMs (use with caution)
+./deployment/vm/cleanup-vms.sh --all --force
+```
+
 ## Manual Execution
 
 ### Execute Cloud Run Job Manually
@@ -200,6 +247,24 @@ gcloud logging read \
 gcloud compute instances get-serial-port-output etl-pipeline-vm --zone=us-central1-a
 ```
 
+## Architecture
+
+All deployments use the same Docker container image. Cloud Run runs containers directly; VMs pull and run containers from Artifact Registry.
+
+### Container Image Build
+
+The Docker image is built using a multi-stage build process:
+- **Builder stage**: Uses `uv` to install dependencies and build the application
+- **Runtime stage**: Minimal Python image with only runtime dependencies
+
+The image is stored in Artifact Registry and can be built either:
+- **Locally**: Using Docker Desktop with `buildx` (requires local Docker installation)
+- **In Cloud**: Using Cloud Build (no local Docker required, uses `deployment/cloudbuild.yaml`)
+
+Both methods produce the same image, which is then used by:
+- Cloud Run Jobs (for scheduled and manual executions)
+- VM instances (for batch processing)
+
 ## Configuration Files
 
 ### Production ETL Config
@@ -218,6 +283,7 @@ The following environment variables are automatically set:
 - `GCS_BUCKET`: Cloud Storage bucket name
 - `OPENAI_API_KEY`: Retrieved from Secret Manager
 - `ENVIRONMENT`: Set to "production"
+- `GOOGLE_CLOUD_PROJECT`: GCP project ID
 
 ## Cost Estimation
 
@@ -241,41 +307,42 @@ Before running tests, set up budget alerts:
 ./deployment/scripts/05-setup-cost-monitoring.sh --budget 20
 ```
 
-This script:
-- Creates a monthly budget with specified amount (default $20)
-- Configures alerts at 50%, 75%, and 100% thresholds
-- Uses the Google Cloud Billing Budgets REST API for full configuration support
-- Automatically detects and allows updating existing budgets
-
-**Note**: The script uses curl to interact with the Billing Budgets API as the gcloud CLI has limited support for budget creation with threshold rules.
+This creates a monthly budget with alerts at 50%, 75%, and 100% thresholds.
 
 ### Running Tests
 
-The test suite validates the batch processing pipeline with incremental publication counts. The test script includes active cost monitoring and automatic VM termination if costs exceed thresholds.
+#### Local Container Testing
 
-**Phase 1 (10 publications, cost threshold: $0.10):**
+Test the container locally before deploying to GCP:
+
+```bash
+# Test locally with 10 documents
+./deployment/cloud-run/test-container-local.sh
+```
+
+This runs the full ETL orchestrator locally in Docker, useful for:
+- Validating code changes before deployment
+- Testing without GCP costs
+- Debugging container issues locally
+
+#### GCP VM Testing
+
+Build the Docker image before running GCP tests:
+```bash
+./deployment/cloud-run/deploy.sh
+```
+
+**Phase 1 (10 publications, cost threshold: $1.00):**
 ```bash
 python deployment/vm/test_batch_processing.py --limit 10 --phase 1
 ```
 
-**Phase 2 (100 publications, cost threshold: $1.00):**
+**Phase 2 (100 publications, cost threshold: $10.00):**
 ```bash
 python deployment/vm/test_batch_processing.py --limit 100 --phase 2
 ```
 
-**Key Safety Features:**
-- **Active Cost Monitoring**: Checks costs every 2 minutes during execution
-- **Automatic VM Termination**: Stops VM immediately if cost thresholds exceeded
-- **Hard Cost Limits**: Phase 1 ($0.10), Phase 2 ($1.00) - prevents cost overruns
-- **Real-time Monitoring**: Tracks VM status, execution time, and costs
-- **Comprehensive Reports**: Generates detailed test reports with metrics
-
-Each test phase:
-- Creates a test VM instance
-- Monitors execution and captures logs
-- Continuously monitors costs and stops VM if thresholds exceeded
-- Verifies outputs
-- Generates a detailed test report
+Tests include active cost monitoring and automatic VM termination if thresholds are exceeded.
 
 Test reports are saved to `deployment/TEST_RESULTS_PHASE*.md`.
 
@@ -298,16 +365,25 @@ Query costs for a specific time period:
 
 ### Common Issues
 
-#### 1. VM Fails to Start
+#### 1. VM Fails to Start or Pull Docker Image
 
-**Symptoms**: VM created but startup script doesn't execute
+**Symptoms**: VM created but startup script fails, or Docker image pull fails
 
 **Solution**:
 ```bash
 # Check serial port output
 gcloud compute instances get-serial-port-output etl-pipeline-vm --zone=us-central1-a
 
-# SSH into VM for debugging
+# Verify Docker image exists in Artifact Registry
+gcloud artifacts docker images list ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}
+
+# Ensure image was built and pushed
+./deployment/cloud-run/deploy.sh
+
+# Check VM metadata includes image-name
+gcloud compute instances describe etl-pipeline-vm --zone=us-central1-a --format="value(metadata.items[image-name])"
+
+# SSH into VM for debugging (if using Ubuntu image)
 gcloud compute ssh etl-pipeline-vm --zone=us-central1-a
 ```
 
@@ -366,7 +442,56 @@ gcloud storage ls -r gs://$BUCKET_NAME/
 
 # View recent error logs
 gcloud logging read "severity>=ERROR" --limit 50
+
+# Docker-specific debugging
+# List container images in Artifact Registry
+gcloud artifacts docker images list ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}
+
+# Test Docker image locally (if needed)
+docker pull ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/etl-pipeline:latest
+docker run --rm -e GCS_BUCKET=$BUCKET_NAME -e ENVIRONMENT=production \
+  ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/etl-pipeline:latest \
+  --config backend/etl/config.production.yaml --scraper-limit 1
 ```
+
+## Local Testing
+
+### Test Container Locally
+
+Test the ETL pipeline container locally (without GCP):
+
+```bash
+# Test with 10 documents (builds image if needed)
+./deployment/cloud-run/test-container-local.sh
+```
+
+This script:
+- Builds the Docker image for your local platform (ARM64 on Mac, AMD64 on Linux)
+- Runs the container with a 10-document limit
+- Uses local data directory for outputs
+- Requires `OPENAI_API_KEY` environment variable
+
+**Prerequisites:**
+- Docker installed
+- `OPENAI_API_KEY` environment variable set
+- GCP credentials configured (for GCS access if using cloud storage)
+
+### Test with Docker Compose
+
+Alternatively, test using Docker Compose (requires `docker-compose.yml` in the repository root):
+
+```bash
+# Run with default command
+docker-compose up
+
+# Run with custom arguments
+docker-compose run etl-pipeline --scraper-limit 10
+
+# Rebuild image and run
+docker-compose up --build
+```
+
+The `docker-compose.yml` file in the repository root provides a convenient way to test the ETL pipeline locally using the same Docker container image that will be deployed to Cloud Run and VM instances. It mounts local data and logs directories for easy access to outputs.
 
 ## Security Best Practices
 
@@ -383,11 +508,14 @@ gcloud logging read "severity>=ERROR" --limit 50
 When code changes:
 
 ```bash
-# Rebuild and redeploy Cloud Run Job
+# Rebuild and redeploy (default: local build)
 ./deployment/cloud-run/deploy.sh
 
-# VM will automatically pull latest code on next run
+# Or use Cloud Build (faster, no local Docker required)
+./deployment/cloud-run/deploy.sh --cloud-build
 ```
+
+VMs automatically pull the latest Docker image on next run. Cloud Run Jobs use the updated image immediately after deployment.
 
 ### Updating Dependencies
 
