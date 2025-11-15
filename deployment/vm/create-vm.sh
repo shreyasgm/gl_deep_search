@@ -142,6 +142,7 @@ log_info "Spot Instance: $VM_USE_SPOT"
 log_info "Startup Script: $STARTUP_SCRIPT_NAME"
 
 # Build gcloud command
+# Use Ubuntu 22.04 LTS for Docker support and standard tooling
 CREATE_CMD=(
     gcloud compute instances create "$VM_NAME"
     --zone="$ZONE"
@@ -152,7 +153,7 @@ CREATE_CMD=(
     --boot-disk-type="$VM_BOOT_DISK_TYPE"
     --service-account="$SA_EMAIL"
     --scopes="cloud-platform"
-    --metadata="gcs-bucket=$BUCKET_NAME,github-repo=$GITHUB_REPO_URL,github-branch=$GITHUB_BRANCH,etl-args=$ETL_ARGS"
+    --metadata="gcs-bucket=$BUCKET_NAME,image-name=$IMAGE_NAME,etl-args=$ETL_ARGS"
     --metadata-from-file="startup-script=$STARTUP_SCRIPT_LOCAL"
     --tags="etl-pipeline"
 )
@@ -188,11 +189,12 @@ print_summary "VM Instance Created" \
 
 log_success "VM instance creation completed!"
 log_info "The VM will automatically:"
-log_info "  1. Install dependencies"
-log_info "  2. Clone repository"
-log_info "  3. Run ETL pipeline"
-log_info "  4. Upload results to GCS"
-log_info "  5. Shut down when complete"
+log_info "  1. Install Docker and Google Cloud SDK"
+log_info "  2. Authenticate with Artifact Registry"
+log_info "  3. Pull container image from Artifact Registry"
+log_info "  4. Run ETL pipeline in container"
+log_info "  5. Upload logs and results to GCS"
+log_info "  6. Shut down when complete"
 log_info ""
 log_info "Monitor progress with:"
 log_info "  ./deployment/vm/monitor-vm.sh $VM_NAME"
