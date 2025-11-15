@@ -228,3 +228,4 @@ if [[ $FAILED_COUNT -gt 0 ]]; then
 fi
 
 log_success "All VMs cleaned up successfully!"
+exit 0

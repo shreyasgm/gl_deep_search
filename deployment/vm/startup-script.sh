@@ -1,175 +1,171 @@
 #!/bin/bash
-# VM Startup Script for ETL Pipeline
+# VM Startup Script - Docker-based ETL Pipeline
 #
 # This script runs automatically when a VM instance starts.
-# It installs dependencies, clones the repository, and runs the ETL pipeline.
+# It installs Docker, pulls the pre-built container image, and runs the ETL pipeline.
 #
 # This script is uploaded to GCS and referenced in VM metadata.
 
 set -e
 
-# Logging function
 log() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*" | tee -a /var/log/etl-pipeline.log
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*" | tee -a /var/log/etl-startup.log
 }
 
 log "=========================================="
-log "ETL Pipeline VM Startup Script"
+log "ETL Pipeline VM Startup Script (Docker-based)"
 log "=========================================="
 log "Starting ETL pipeline VM setup..."
 
-# Get configuration from metadata
+# Get metadata from VM instance
 GCS_BUCKET=$(curl -H "Metadata-Flavor: Google" \
     http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-bucket 2>/dev/null || echo "")
-
-GITHUB_REPO=$(curl -H "Metadata-Flavor: Google" \
-    http://metadata.google.internal/computeMetadata/v1/instance/attributes/github-repo 2>/dev/null || echo "")
-
-GITHUB_BRANCH=$(curl -H "Metadata-Flavor: Google" \
-    http://metadata.google.internal/computeMetadata/v1/instance/attributes/github-branch 2>/dev/null || echo "main")
-
-ETL_ARGS=$(curl -H "Metadata-Flavor: Google" \
-    http://metadata.google.internal/computeMetadata/v1/instance/attributes/etl-args 2>/dev/null || echo "")
 
 PROJECT_ID=$(curl -H "Metadata-Flavor: Google" \
     http://metadata.google.internal/computeMetadata/v1/project/project-id 2>/dev/null || echo "")
 
+IMAGE_NAME=$(curl -H "Metadata-Flavor: Google" \
+    http://metadata.google.internal/computeMetadata/v1/instance/attributes/image-name 2>/dev/null || echo "")
+
+ETL_ARGS=$(curl -H "Metadata-Flavor: Google" \
+    http://metadata.google.internal/computeMetadata/v1/instance/attributes/etl-args 2>/dev/null || echo "")
+
+REGION=$(curl -H "Metadata-Flavor: Google" \
+    http://metadata.google.internal/computeMetadata/v1/instance/zone 2>/dev/null | sed 's|.*/||' | sed 's|-[a-z]$||' || echo "us-central1")
+
 # Set defaults if not provided
 GCS_BUCKET=${GCS_BUCKET:-"gl-deep-search-data"}
-GITHUB_REPO=${GITHUB_REPO:-"https://github.com/YOUR_ORG/gl_deep_search.git"}
-GITHUB_BRANCH=${GITHUB_BRANCH:-"main"}
+REGION=${REGION:-"us-central1"}
 
 log "Configuration:"
 log "  GCS Bucket: $GCS_BUCKET"
-log "  GitHub Repo: $GITHUB_REPO"
-log "  GitHub Branch: $GITHUB_BRANCH"
-log "  ETL Args: $ETL_ARGS"
 log "  Project ID: $PROJECT_ID"
+log "  Image Name: $IMAGE_NAME"
+log "  ETL Args: $ETL_ARGS"
+log "  Region: $REGION"
 
-# Install system dependencies
-log "Installing system dependencies..."
-export DEBIAN_FRONTEND=noninteractive
-
-# Add deadsnakes PPA for Python 3.12
-log "Adding deadsnakes PPA for Python 3.12..."
-apt-get update -qq
-apt-get install -y -qq software-properties-common > /dev/null 2>&1
-add-apt-repository -y ppa:deadsnakes/ppa > /dev/null 2>&1
-
-# Update package list and install Python 3.12
-apt-get update -qq
-apt-get install -y -qq \
-    python3.12 \
-    python3.12-venv \
-    python3.12-dev \
-    python3-pip \
-    git \
-    curl \
-    wget \
-    build-essential \
-    > /dev/null 2>&1
-
-# Install uv package manager
-log "Installing uv package manager..."
-curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="/root/.cargo/bin:$PATH"
-
-# Verify uv installation
-if ! command -v uv &> /dev/null; then
-    log "ERROR: Failed to install uv"
+# Validate required configuration
+if [[ -z "$IMAGE_NAME" ]]; then
+    log "ERROR: Image name not provided in metadata"
     exit 1
 fi
 
-log "uv version: $(uv --version)"
-
-# Verify Python 3.12 is available
-if ! command -v python3.12 &> /dev/null; then
-    log "ERROR: Python 3.12 not found after installation"
+if [[ -z "$PROJECT_ID" ]]; then
+    log "ERROR: Project ID not provided"
     exit 1
 fi
 
-log "Python 3.12 version: $(python3.12 --version)"
+# Install Docker if not present
+if ! command -v docker &> /dev/null; then
+    log "Installing Docker..."
+    export DEBIAN_FRONTEND=noninteractive
 
-# Set up working directory
-log "Setting up working directory..."
-WORK_DIR="/opt/gl-deep-search"
-mkdir -p "$WORK_DIR"
-cd "$WORK_DIR"
+    # Update package list
+    apt-get update -qq
 
-# Clone repository
-log "Cloning repository..."
-if [[ -d ".git" ]]; then
-    log "Repository already exists, pulling latest changes..."
-    git pull origin "$GITHUB_BRANCH" || log "WARNING: Failed to pull latest changes"
-else
-    git clone --branch "$GITHUB_BRANCH" "$GITHUB_REPO" . || {
-        log "ERROR: Failed to clone repository"
+    # Install prerequisites
+    apt-get install -y -qq \
+        ca-certificates \
+        curl \
+        gnupg \
+        lsb-release \
+        > /dev/null 2>&1
+
+    # Add Docker's official GPG key
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+
+    # Set up Docker repository
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    # Install Docker Engine
+    apt-get update -qq
+    apt-get install -y -qq \
+        docker-ce \
+        docker-ce-cli \
+        containerd.io \
+        docker-buildx-plugin \
+        docker-compose-plugin \
+        > /dev/null 2>&1
+
+    # Verify Docker installation
+    if ! command -v docker &> /dev/null; then
+        log "ERROR: Failed to install Docker"
         exit 1
-    }
-fi
-
-# Get OpenAI API key from Secret Manager
-log "Retrieving OpenAI API key from Secret Manager..."
-export OPENAI_API_KEY=$(gcloud secrets versions access latest --secret="openai-api-key" --project="$PROJECT_ID" 2>/dev/null || echo "")
-
-if [[ -z "$OPENAI_API_KEY" ]]; then
-    log "ERROR: Failed to retrieve OpenAI API key from Secret Manager"
-    exit 1
-fi
-
-log "Successfully retrieved OpenAI API key"
-
-# Set GCS bucket environment variable
-export GCS_BUCKET="$GCS_BUCKET"
-export ENVIRONMENT="production"
-
-# Install Python dependencies
-log "Installing Python dependencies..."
-# Explicitly use Python 3.12 for uv
-uv sync --extra etl --python python3.12 --quiet || {
-    log "ERROR: Failed to install Python dependencies"
-    exit 1
-}
-
-# Create .env file
-log "Creating environment configuration..."
-cat > .env << EOF
-OPENAI_API_KEY=$OPENAI_API_KEY
-GCS_BUCKET=$GCS_BUCKET
-ENVIRONMENT=production
-EOF
-
-# Update config.yaml to use GCS storage if production config exists
-PROD_CONFIG="backend/etl/config.production.yaml"
-if [[ -f "$PROD_CONFIG" ]]; then
-    log "Using production configuration: $PROD_CONFIG"
-    # Replace GCS bucket placeholder if needed
-    sed -i "s|\${GCS_BUCKET:-.*}|$GCS_BUCKET|g" "$PROD_CONFIG" || true
+    fi
+    log "Docker installed successfully"
 else
-    log "WARNING: Production config not found, using default config.yaml"
-    PROD_CONFIG="backend/etl/config.yaml"
-    # Update default config for cloud storage
-    sed -i "s|local_storage_path: \"data/\"|gcs_bucket: \"$GCS_BUCKET\"|" "$PROD_CONFIG" || true
-    sed -i "s|sync_to_gcs: false|sync_to_gcs: true|" "$PROD_CONFIG" || true
+    log "Docker already installed"
 fi
 
-# Run ETL pipeline
+log "Docker version: $(docker --version)"
+
+# Configure Docker to authenticate with Artifact Registry
+# The VM's service account will be used for authentication
+log "Configuring Docker authentication for Artifact Registry..."
+
+# Install google-cloud-sdk if not present (for gcloud command)
+if ! command -v gcloud &> /dev/null; then
+    log "Installing Google Cloud SDK..."
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
+        tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+        gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+    apt-get update -qq && apt-get install -y -qq google-cloud-cli > /dev/null 2>&1
+    log "Google Cloud SDK installed"
+fi
+
+# Configure Docker to use gcloud as credential helper
+gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+log "Docker authentication configured"
+
+# Pull container image
+log "Pulling container image: $IMAGE_NAME"
+if ! docker pull "$IMAGE_NAME"; then
+    log "ERROR: Failed to pull container image"
+    log "Check that the image exists in Artifact Registry:"
+    log "  gcloud artifacts docker images list ${REGION}-docker.pkg.dev/${PROJECT_ID}/*"
+    exit 1
+fi
+
+log "Successfully pulled container image"
+
+# Run ETL pipeline in container
 log "=========================================="
-log "Starting ETL pipeline..."
+log "Starting ETL pipeline in container..."
 log "=========================================="
 
-# Build command with arguments
-ETL_CMD="uv run python -m backend.etl.orchestrator --config $PROD_CONFIG --log-level INFO"
+# Build docker run command
+DOCKER_CMD=(
+    docker run --rm
+    --name etl-pipeline
+    -e GCS_BUCKET="$GCS_BUCKET"
+    -e ENVIRONMENT="production"
+    -e GOOGLE_CLOUD_PROJECT="$PROJECT_ID"
+    "$IMAGE_NAME"
+)
 
+# Always include config and log-level (required args)
+# Then append any additional ETL args if provided
+DOCKER_CMD+=(--config backend/etl/config.production.yaml --log-level INFO)
+
+# Add ETL args if provided (e.g., --scraper-limit)
 if [[ -n "$ETL_ARGS" ]]; then
-    ETL_CMD="$ETL_CMD $ETL_ARGS"
+    # Split ETL_ARGS into array and append to DOCKER_CMD
+    read -ra ARGS_ARRAY <<< "$ETL_ARGS"
+    DOCKER_CMD+=("${ARGS_ARRAY[@]}")
 fi
 
-log "Executing: $ETL_CMD"
+log "Executing: ${DOCKER_CMD[*]}"
 
 # Run pipeline and capture exit status
+# Logs go to stdout/stderr and are captured by Docker
 EXIT_STATUS=0
-if $ETL_CMD 2>&1 | tee -a /var/log/etl-pipeline.log; then
+if "${DOCKER_CMD[@]}" 2>&1 | tee -a /var/log/etl-pipeline.log; then
     EXIT_STATUS=0
     log "Pipeline completed successfully!"
 else
@@ -178,36 +174,40 @@ else
 fi
 
 # Upload logs to GCS
+log "=========================================="
 log "Uploading logs to GCS..."
-LOG_FILE="/var/log/etl-pipeline.log"
+log "=========================================="
+
 LOG_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-LOG_GCS_PATH="gs://$GCS_BUCKET/logs/etl-${LOG_TIMESTAMP}.log"
+STARTUP_LOG="/var/log/etl-startup.log"
+PIPELINE_LOG="/var/log/etl-pipeline.log"
 
-if gcloud storage cp "$LOG_FILE" "$LOG_GCS_PATH" --quiet 2>/dev/null; then
-    log "Logs uploaded successfully to: $LOG_GCS_PATH"
-else
-    log "WARNING: Failed to upload logs to GCS"
-fi
-
-# Upload execution report if it exists
-REPORT_FILE="$WORK_DIR/data/reports/etl_execution_report.json"
-if [[ -f "$REPORT_FILE" ]]; then
-    REPORT_GCS_PATH="gs://$GCS_BUCKET/reports/etl-execution-${LOG_TIMESTAMP}.json"
-    if gcloud storage cp "$REPORT_FILE" "$REPORT_GCS_PATH" --quiet 2>/dev/null; then
-        log "Execution report uploaded to: $REPORT_GCS_PATH"
+# Upload startup log
+if [[ -f "$STARTUP_LOG" ]]; then
+    STARTUP_LOG_GCS="gs://$GCS_BUCKET/logs/vm-startup-${LOG_TIMESTAMP}.log"
+    if gcloud storage cp "$STARTUP_LOG" "$STARTUP_LOG_GCS" --quiet 2>/dev/null; then
+        log "Startup log uploaded to: $STARTUP_LOG_GCS"
+    else
+        log "WARNING: Failed to upload startup log"
     fi
 fi
 
-# Final status
-log "=========================================="
-if [[ $EXIT_STATUS -eq 0 ]]; then
-    log "ETL Pipeline completed successfully!"
-else
-    log "ETL Pipeline failed with errors (exit code: $EXIT_STATUS)"
+# Upload pipeline log
+if [[ -f "$PIPELINE_LOG" ]]; then
+    PIPELINE_LOG_GCS="gs://$GCS_BUCKET/logs/etl-${LOG_TIMESTAMP}.log"
+    if gcloud storage cp "$PIPELINE_LOG" "$PIPELINE_LOG_GCS" --quiet 2>/dev/null; then
+        log "Pipeline log uploaded to: $PIPELINE_LOG_GCS"
+    else
+        log "WARNING: Failed to upload pipeline log"
+    fi
 fi
+
+log "=========================================="
+log "Startup script completed"
+log "Exit status: $EXIT_STATUS"
 log "=========================================="
 
-# Shutdown VM after completion
+# Shut down the VM (the orchestrator will delete it)
 log "Shutting down VM..."
 shutdown -h now
 

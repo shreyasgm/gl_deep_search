@@ -6,6 +6,9 @@ This script orchestrates a test run of the ETL pipeline with a limited number
 of publications, monitors execution, tracks costs in real-time, and generates
 a comprehensive test report.
 
+The pipeline runs in Docker containers on VM instances, using pre-built images
+from Artifact Registry. This ensures consistency with Cloud Run deployments.
+
 Safety Features:
 - Active cost monitoring during execution
 - Automatic VM termination if cost thresholds exceeded
@@ -15,6 +18,10 @@ Safety Features:
 Usage:
     python deployment/vm/test_batch_processing.py --limit 10 --phase 1
     python deployment/vm/test_batch_processing.py --limit 100 --phase 2
+
+Prerequisites:
+    - Docker image must be built and pushed: ./deployment/cloud-run/deploy.sh
+    - GCP configuration must include IMAGE_NAME
 """
 
 import argparse
@@ -184,6 +191,65 @@ def check_gcp_auth() -> None:
         sys.exit(1)
 
 
+def check_docker_image_exists(config: dict[str, Any]) -> bool:
+    """
+    Check if Docker image exists in Artifact Registry.
+
+    Args:
+        config: GCP configuration
+
+    Returns:
+        True if image exists, False otherwise
+    """
+    project_id = config.get("PROJECT_ID")
+    region = config.get("REGION", "us-central1")
+    repo_name = config.get("ARTIFACT_REGISTRY_REPO", "etl-pipeline")
+    image_name = config.get("IMAGE_NAME", "")
+
+    if not image_name:
+        # Construct image name from config
+        image_name = (
+            f"{region}-docker.pkg.dev/{project_id}/{repo_name}/etl-pipeline:latest"
+        )
+
+    log_info(f"Checking if Docker image exists: {image_name}")
+
+    try:
+        # List images in the repository
+        result = run_command(
+            [
+                "gcloud",
+                "artifacts",
+                "docker",
+                "images",
+                "list",
+                f"{region}-docker.pkg.dev/{project_id}/{repo_name}",
+                "--format=value(package)",
+            ],
+            check=False,
+            capture_output=True,
+        )
+
+        if result.returncode != 0:
+            log_warning(f"Failed to list images in Artifact Registry: {result.stderr}")
+            return False
+
+        # Check if our image is in the list
+        images = result.stdout.strip().split("\n")
+        image_package = f"{region}-docker.pkg.dev/{project_id}/{repo_name}/etl-pipeline"
+
+        if image_package in images:
+            log_info(f"Found image: {image_package}")
+            return True
+        else:
+            log_warning(f"Image not found in registry. Available images: {images}")
+            return False
+
+    except Exception as e:
+        log_warning(f"Exception checking Docker image existence: {e}")
+        return False
+
+
 def get_cost_baseline(project_id: str) -> float:
     """
     Get current cost baseline by running calculate-costs.sh.
@@ -343,6 +409,164 @@ def stop_vm(config: dict[str, Any], vm_name: str) -> None:
         log_error(f"Failed to stop VM: {e}")
 
 
+def get_serial_port_output(config: dict[str, Any], vm_name: str) -> str:
+    """
+    Get serial port output from VM.
+
+    Args:
+        config: GCP configuration
+        vm_name: VM instance name
+
+    Returns:
+        Serial port output as string
+    """
+    try:
+        result = run_command(
+            [
+                "gcloud",
+                "compute",
+                "instances",
+                "get-serial-port-output",
+                vm_name,
+                "--zone",
+                config["ZONE"],
+                "--port",
+                "1",
+            ],
+            check=False,
+            capture_output=True,
+        )
+        if result.returncode == 0:
+            return result.stdout
+        return ""
+    except Exception:
+        return ""
+
+
+def analyze_serial_output(
+    serial_output: str, last_position: int, startup_script_started: bool
+) -> tuple[bool, bool, list[str], int, bool]:
+    """
+    Analyze serial port output for errors and progress.
+
+    Args:
+        serial_output: Complete serial port output
+        last_position: Last character position analyzed
+        startup_script_started: Whether startup script has begun execution
+
+    Returns:
+        Tuple of (has_errors, is_complete, interesting_lines,
+                  new_position, startup_script_started)
+    """
+    # Get only new content since last check
+    new_content = serial_output[last_position:]
+    new_position = len(serial_output)
+
+    if not new_content:
+        return False, False, [], new_position, startup_script_started
+
+    lines = new_content.split("\n")
+    interesting_lines = []
+    has_errors = False
+    is_complete = False
+
+    # Markers that indicate startup script has started
+    startup_markers = [
+        "startup-script:",  # GCP startup script marker
+        "ETL Pipeline",
+        "Installing Docker",
+        "Installing Google Cloud SDK",
+    ]
+
+    # Error patterns to detect (only after startup script starts)
+    # Must be specific to avoid false positives from normal output
+    error_patterns = [
+        "Failed to pull container",
+        "Failed to fetch",
+        "Failed to install",
+        "docker: Error",
+        "Docker: Error",
+        "Container failed",
+        "ERROR: Failed",
+        "startup-script: Error",
+        "startup-script: error",
+        "startup-script exit",
+        'Script "startup-script" failed',
+        "gcloud: command not found",
+        "docker: command not found",
+        'Permission "artifactregistry',
+    ]
+
+    # Success/completion patterns
+    completion_patterns = [
+        "ETL pipeline completed successfully",
+        "Pipeline execution complete",
+        "Shutting down VM",
+        "VM will shut down",
+    ]
+
+    # Progress patterns to show
+    progress_patterns = [
+        "startup-script:",
+        "ETL Pipeline Container Starting",
+        "Starting ETL Pipeline",
+        "Installing Docker",
+        "Installing Google Cloud SDK",
+        "Pulling container image",
+        "Running ETL pipeline",
+        "Scraping publications",
+        "Processing",
+        "Uploading",
+        "SUCCESS",
+        "✓",
+        "Configuring Docker",
+        "Authenticating",
+    ]
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Check if startup script has started
+        if not startup_script_started:
+            for marker in startup_markers:
+                if marker in line:
+                    startup_script_started = True
+                    interesting_lines.append(f"[STARTUP] {line}")
+                    break
+
+        # Only check for errors after startup script has started
+        if startup_script_started:
+            # Check for errors
+            for pattern in error_patterns:
+                if pattern in line:
+                    has_errors = True
+                    interesting_lines.append(f"[ERROR] {line}")
+                    break
+
+        # Check for completion
+        for pattern in completion_patterns:
+            if pattern in line:
+                is_complete = True
+                interesting_lines.append(f"[COMPLETE] {line}")
+                break
+
+        # Check for progress
+        for pattern in progress_patterns:
+            if pattern in line:
+                interesting_lines.append(f"[PROGRESS] {line}")
+                break
+
+    return (
+        has_errors,
+        is_complete,
+        interesting_lines,
+        new_position,
+        startup_script_started,
+    )
+
+
 def monitor_vm_execution(
     config: dict[str, Any],
     vm_name: str,
@@ -352,7 +576,7 @@ def monitor_vm_execution(
     max_wait_time: int = 7200,
 ) -> tuple[bool, float, int]:
     """
-    Monitor VM execution with active cost monitoring.
+    Monitor VM execution with active cost monitoring and error detection.
 
     Args:
         config: GCP configuration
@@ -368,13 +592,19 @@ def monitor_vm_execution(
     log_step("Monitoring VM execution with active cost monitoring")
     log_info(f"Cost threshold: ${max_cost:.2f} (hard stop)")
     log_info("Checking costs every 2 minutes...")
+    log_info("Monitoring serial port output for errors and progress...")
 
     vm_running = True
     check_interval = 30  # Check VM status every 30 seconds
     cost_check_interval = 120  # Check costs every 2 minutes
+    serial_check_interval = 30  # Check serial output every 30 seconds
     elapsed_time = 0
     last_cost_check = 0
+    last_serial_check = 0
+    serial_position = 0
     cost_exceeded = False
+    error_detected = False
+    startup_script_started = False
 
     while vm_running and elapsed_time < max_wait_time:
         # Check VM status
@@ -384,7 +614,54 @@ def monitor_vm_execution(
             log_info(f"VM status: {vm_status}")
             if vm_status in ["TERMINATED", "STOPPED"]:
                 vm_running = False
-                log_success("VM has completed execution")
+                if not error_detected:
+                    log_success("VM has completed execution")
+                break
+
+        # Check serial output for errors and progress
+        if elapsed_time - last_serial_check >= serial_check_interval:
+            serial_output = get_serial_port_output(config, vm_name)
+            (
+                has_errors,
+                is_complete,
+                interesting_lines,
+                serial_position,
+                startup_script_started,
+            ) = analyze_serial_output(
+                serial_output, serial_position, startup_script_started
+            )
+            last_serial_check = elapsed_time
+
+            # Display interesting lines
+            for line in interesting_lines:
+                if "[ERROR]" in line:
+                    log_error(line.replace("[ERROR] ", ""))
+                elif "[COMPLETE]" in line:
+                    log_success(line.replace("[COMPLETE] ", ""))
+                elif "[STARTUP]" in line:
+                    log_success(line.replace("[STARTUP] ", "Startup script began: "))
+                elif "[PROGRESS]" in line:
+                    log_info(line.replace("[PROGRESS] ", ""))
+
+            # Handle errors
+            if has_errors and not error_detected:
+                error_detected = True
+                log_error("ERROR DETECTED in VM execution!")
+                log_error("Showing last 50 lines of serial output:")
+                lines = serial_output.split("\n")
+                for line in lines[-50:]:
+                    if line.strip():
+                        print(f"  {line}", file=sys.stderr)
+                log_error("Stopping VM due to detected errors...")
+                stop_vm(config, vm_name)
+                vm_running = False
+                break
+
+            # Handle completion
+            if is_complete:
+                log_success("ETL pipeline completed successfully (detected from logs)")
+                # Give VM time to shutdown gracefully
+                time.sleep(30)
                 break
 
         # Check costs periodically
@@ -423,13 +700,22 @@ def monitor_vm_execution(
 
     if elapsed_time >= max_wait_time:
         log_warning("Maximum wait time reached")
+        # Show final serial output before stopping
+        serial_output = get_serial_port_output(config, vm_name)
+        log_warning("Final serial output (last 50 lines):")
+        lines = serial_output.split("\n")
+        for line in lines[-50:]:
+            if line.strip():
+                print(f"  {line}", file=sys.stderr)
         stop_vm(config, vm_name)
         vm_running = False
 
     # Final cost check
     final_cost_delta = check_current_cost(config["PROJECT_ID"], cost_baseline)
 
-    return not cost_exceeded, final_cost_delta, elapsed_time
+    # Return success only if no errors or cost exceeded
+    success = not (cost_exceeded or error_detected)
+    return success, final_cost_delta, elapsed_time
 
 
 def retrieve_execution_report(
@@ -709,6 +995,15 @@ def main() -> None:
     # Load configuration
     config = load_gcp_config()
     check_gcp_auth()
+
+    # Validate Docker image exists in Artifact Registry
+    log_step("Validating Docker image exists")
+    if not check_docker_image_exists(config):
+        log_error("Docker image does not exist in Artifact Registry")
+        log_error("Please build and push the image first:")
+        log_error("  ./deployment/cloud-run/deploy.sh")
+        sys.exit(1)
+    log_success("Docker image validated successfully")
 
     # Generate VM name
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
