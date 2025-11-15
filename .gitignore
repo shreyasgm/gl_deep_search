@@ -5,6 +5,7 @@ CLAUDE.md
 data/raw/
 data/intermediate/
 data/processed/
+data/test-container/
 *.csv
 *.json
 *.xlsx

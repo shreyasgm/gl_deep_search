@@ -126,7 +126,7 @@ elif [[ "$USE_CLOUD_BUILD" == true ]]; then
     # Use Cloud Build
     log_step "Building container image with Cloud Build"
     log_info "Image: $IMAGE_NAME"
-    log_info "Config: $PROJECT_ROOT/cloudbuild.yaml"
+    log_info "Config: $PROJECT_ROOT/deployment/cloudbuild.yaml"
     log_info "Platform: linux/amd64 (required for Cloud Run)"
 
     if is_dry_run; then
@@ -135,12 +135,12 @@ elif [[ "$USE_CLOUD_BUILD" == true ]]; then
         cd "$PROJECT_ROOT"
 
         # Check if cloudbuild.yaml exists
-        if [[ ! -f "cloudbuild.yaml" ]]; then
-            error_exit "cloudbuild.yaml not found in project root. Create it first."
+        if [[ ! -f "deployment/cloudbuild.yaml" ]]; then
+            error_exit "deployment/cloudbuild.yaml not found. Create it first."
         fi
 
         log_info "Submitting to Cloud Build (this may take 10-15 minutes)..."
-        if gcloud builds submit --config cloudbuild.yaml --project="$PROJECT_ID"; then
+        if gcloud builds submit --config deployment/cloudbuild.yaml --project="$PROJECT_ID"; then
             log_success "Cloud Build completed successfully"
         else
             error_exit "Cloud Build failed"

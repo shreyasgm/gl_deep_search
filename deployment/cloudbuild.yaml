@@ -1,0 +1,17 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    env:
+      - 'DOCKER_BUILDKIT=1'
+    args:
+      - 'build'
+      - '-f'
+      - 'deployment/cloud-run/Dockerfile'
+      - '-t'
+      - 'us-east4-docker.pkg.dev/cid-hks-1537286359734/etl-pipeline/etl-pipeline:latest'
+      - '.'
+images:
+  - 'us-east4-docker.pkg.dev/cid-hks-1537286359734/etl-pipeline/etl-pipeline:latest'
+timeout: '1800s'  # 30 minutes
+options:
+  machineType: 'N1_HIGHCPU_8'  # Use higher CPU for faster builds
+  logging: CLOUD_LOGGING_ONLY
