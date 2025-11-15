@@ -5,7 +5,13 @@
 # and creates/updates the Cloud Run Job.
 #
 # Usage:
-#   ./deployment/cloud-run/deploy.sh [--dry-run]
+#   ./deployment/cloud-run/deploy.sh [OPTIONS]
+#
+# Options:
+#   --dry-run           Show what would be done without actually doing it
+#   --skip-build        Skip building, use existing image from registry
+#   --cloud-build       Use Cloud Build instead of local Docker build
+#   --local-build       Use local Docker build (default)
 
 set -euo pipefail
 
@@ -19,10 +25,51 @@ source "${SCRIPT_DIR}/../scripts/utils.sh"
 
 # Parse command line arguments
 DRY_RUN=false
-if [[ "${1:-}" == "--dry-run" ]]; then
-    DRY_RUN=true
-    export DRY_RUN
-fi
+SKIP_BUILD=false
+USE_CLOUD_BUILD=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --dry-run)
+            DRY_RUN=true
+            export DRY_RUN
+            shift
+            ;;
+        --skip-build)
+            SKIP_BUILD=true
+            shift
+            ;;
+        --cloud-build)
+            USE_CLOUD_BUILD=true
+            shift
+            ;;
+        --local-build)
+            USE_CLOUD_BUILD=false
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --dry-run           Show what would be done without actually doing it"
+            echo "  --skip-build        Skip building, use existing image from registry"
+            echo "  --cloud-build       Use Cloud Build instead of local Docker build"
+            echo "  --local-build       Use local Docker build (default)"
+            echo ""
+            echo "Examples:"
+            echo "  $0                           # Local build and deploy"
+            echo "  $0 --cloud-build             # Cloud Build and deploy"
+            echo "  $0 --skip-build              # Deploy using existing image"
+            echo "  $0 --dry-run --cloud-build   # Show what Cloud Build would do"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Run '$0 --help' for usage information"
+            exit 1
+            ;;
+    esac
+done
 
 # Load GCP configuration
 load_gcp_config
@@ -59,46 +106,104 @@ else
     fi
 fi
 
-# Configure Docker authentication
-log_step "Configuring Docker authentication"
-if is_dry_run; then
-    log_info "[DRY RUN] Would configure Docker authentication"
-else
-    gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
-    log_success "Docker authentication configured"
-fi
+# Build and push container image (unless --skip-build)
+if [[ "$SKIP_BUILD" == true ]]; then
+    log_step "Skipping build (using existing image)"
+    log_info "Image: $IMAGE_NAME"
+    log_info "Verifying image exists in registry..."
 
-# Build container image
-log_step "Building container image"
-log_info "Image: $IMAGE_NAME"
-log_info "Context: $PROJECT_ROOT"
-
-if is_dry_run; then
-    log_info "[DRY RUN] Would build Docker image"
-else
-    log_info "Building Docker image (this may take several minutes)..."
-    cd "$PROJECT_ROOT"
-
-    if docker build \
-        -f "$SCRIPT_DIR/Dockerfile" \
-        -t "$IMAGE_NAME" \
-        .; then
-        log_success "Docker image built successfully"
+    if is_dry_run; then
+        log_info "[DRY RUN] Would verify image exists: $IMAGE_NAME"
     else
-        error_exit "Failed to build Docker image"
+        # Verify the image exists
+        if gcloud artifacts docker images describe "$IMAGE_NAME" &> /dev/null; then
+            log_success "Image found in registry"
+        else
+            error_exit "Image not found in registry: $IMAGE_NAME. Build the image first or use --cloud-build or --local-build"
+        fi
     fi
-fi
+elif [[ "$USE_CLOUD_BUILD" == true ]]; then
+    # Use Cloud Build
+    log_step "Building container image with Cloud Build"
+    log_info "Image: $IMAGE_NAME"
+    log_info "Config: $PROJECT_ROOT/cloudbuild.yaml"
+    log_info "Platform: linux/amd64 (required for Cloud Run)"
 
-# Push image to Artifact Registry
-log_step "Pushing image to Artifact Registry"
-if is_dry_run; then
-    log_info "[DRY RUN] Would push image to: $IMAGE_NAME"
-else
-    log_info "Pushing image (this may take several minutes)..."
-    if docker push "$IMAGE_NAME"; then
-        log_success "Image pushed successfully"
+    if is_dry_run; then
+        log_info "[DRY RUN] Would submit Cloud Build"
     else
-        error_exit "Failed to push image"
+        cd "$PROJECT_ROOT"
+
+        # Check if cloudbuild.yaml exists
+        if [[ ! -f "cloudbuild.yaml" ]]; then
+            error_exit "cloudbuild.yaml not found in project root. Create it first."
+        fi
+
+        log_info "Submitting to Cloud Build (this may take 10-15 minutes)..."
+        if gcloud builds submit --config cloudbuild.yaml --project="$PROJECT_ID"; then
+            log_success "Cloud Build completed successfully"
+        else
+            error_exit "Cloud Build failed"
+        fi
+    fi
+else
+    # Use local Docker build
+    log_step "Configuring Docker authentication"
+    if is_dry_run; then
+        log_info "[DRY RUN] Would configure Docker authentication"
+    else
+        gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+        log_success "Docker authentication configured"
+    fi
+
+    log_step "Building container image locally"
+    log_info "Image: $IMAGE_NAME"
+    log_info "Context: $PROJECT_ROOT"
+    log_info "Platform: linux/amd64 (required for Cloud Run)"
+
+    if is_dry_run; then
+        log_info "[DRY RUN] Would build Docker image for linux/amd64"
+    else
+        # Check if Docker buildx is available
+        if ! docker buildx version &> /dev/null; then
+            error_exit "Docker buildx is not available. Please install Docker Desktop or enable buildx."
+        fi
+
+        # Create buildx builder if it doesn't exist
+        BUILDER_NAME="multiarch-builder"
+        if ! docker buildx inspect "$BUILDER_NAME" &> /dev/null; then
+            log_info "Creating buildx builder: $BUILDER_NAME"
+            docker buildx create --name "$BUILDER_NAME" --use --bootstrap
+        else
+            docker buildx use "$BUILDER_NAME"
+        fi
+
+        log_info "Building Docker image for linux/amd64 (this may take several minutes)..."
+        cd "$PROJECT_ROOT"
+
+        if docker buildx build \
+            --platform linux/amd64 \
+            --file "$SCRIPT_DIR/Dockerfile" \
+            --tag "$IMAGE_NAME" \
+            --load \
+            .; then
+            log_success "Docker image built successfully"
+        else
+            error_exit "Failed to build Docker image"
+        fi
+    fi
+
+    # Push image to Artifact Registry
+    log_step "Pushing image to Artifact Registry"
+    if is_dry_run; then
+        log_info "[DRY RUN] Would push image to: $IMAGE_NAME"
+    else
+        log_info "Pushing image (this may take several minutes)..."
+        if docker push "$IMAGE_NAME"; then
+            log_success "Image pushed successfully"
+        else
+            error_exit "Failed to push image"
+        fi
     fi
 fi
 
