@@ -30,71 +30,74 @@ gl_deep_search/
 ├── README.md
 ├── pyproject.toml                   # Python project config for uv
 ├── docker-compose.yml               # Local development setup
-├── docker-compose.prod.yml          # Production setup
 │
 ├── backend/
 │   ├── etl/
-│   │   ├── Dockerfile                # ETL container configuration
-│   │   ├── docker-compose.yml        # Local development setup
-│   │   ├── config.yaml               # Default configuration
-│   │   ├── .env.example              # Environment variables template
-│   │   ├── pyproject.toml            # Python dependencies (uv)
-│   │   ├── main.py                   # ETL orchestration entry point
-│   │   ├── models.py                 # Pydantic data models
-│   │   ├── config.py                 # Configuration management
+│   │   ├── config.yaml               # Default ETL configuration
+│   │   ├── config.production.yaml    # Production ETL configuration
+│   │   ├── orchestrator.py           # ETL orchestration entry point
+│   │   ├── models/
+│   │   │   ├── publications.py       # Publication data models
+│   │   │   └── tracking.py           # ETL tracking models
 │   │   ├── scrapers/
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py               # Abstract scraper interface
 │   │   │   ├── growthlab.py          # Growth Lab website scraper
 │   │   │   └── openalex.py           # OpenAlex API client
-│   │   ├── processors/
-│   │   │   ├── __init__.py
-│   │   │   ├── pdf_processor.py      # PDF processing and OCR
-│   │   │   └── manifest.py           # Manifest management
-│   │   ├── storage/
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py               # Storage abstraction
-│   │   │   ├── local.py              # Local filesystem adapter
-│   │   │   └── gcs.py                # Google Cloud Storage adapter
-│   │   ├── utils/
-│   │   │   ├── __init__.py
-│   │   │   ├── id_utils.py           # ID generation utilities
-│   │   │   ├── async_utils.py        # Async helpers & rate limiting
-│   │   │   ├── ocr_utils.py          # OCR interface
-│   │   │   └── logger.py             # Logging configuration
-│   │   └── tests/                    # Unit and integration tests
+│   │   ├── scripts/                  # ETL execution scripts
+│   │   │   ├── run_growthlab_scraper.py
+│   │   │   ├── run_openalex_scraper.py
+│   │   │   ├── run_gl_file_downloader.py
+│   │   │   ├── run_openalex_file_downloader.py
+│   │   │   ├── run_pdf_processor.py
+│   │   │   └── run_embeddings_generator.py
+│   │   └── utils/
+│   │       ├── pdf_processor.py      # PDF processing and OCR
+│   │       ├── gl_file_downloader.py # Growth Lab file downloader
+│   │       ├── oa_file_downloader.py # OpenAlex file downloader
+│   │       ├── text_chunker.py       # Text chunking utilities
+│   │       ├── embeddings_generator.py # Embedding generation
+│   │       ├── publication_tracker.py # Publication tracking
+│   │       └── retry.py              # Retry utilities
 │   │
-│   ├── service/                      # Main backend service (replaces "agent")
-│   │   ├── Dockerfile                # Service Docker configuration
-│   │   ├── .env.example              # Example environment variables
+│   ├── service/                      # Main backend service (future)
 │   │   ├── main.py                   # FastAPI entry point
 │   │   ├── routes.py                 # API endpoints
-│   │   ├── models.py                 # Data models
-│   │   ├── config.py                 # Service configuration
 │   │   ├── graph.py                  # LangGraph definition
-│   │   ├── tools.py                  # Service tools
 │   │   └── utils/
-│   │       ├── retriever.py          # Vector retrieval
-│   │       └── logger.py             # Logging and observability
+│   │       └── retriever.py          # Vector retrieval
 │   │
-│   ├── storage/                      # Storage configuration
-│   │   ├── qdrant_config.yaml        # Qdrant vector DB config
-│   │   └── metadata_schema.sql       # Metadata schema if needed
+│   ├── storage/                      # Storage abstraction layer
+│   │   ├── base.py                   # Storage interface
+│   │   ├── local.py                  # Local filesystem adapter
+│   │   ├── gcs.py                    # Google Cloud Storage adapter
+│   │   ├── cloud.py                  # Cloud storage utilities
+│   │   ├── database.py               # Database utilities
+│   │   └── factory.py                # Storage factory
 │   │
-│   └── cloud/                        # Cloud deployment configs
-│       ├── etl-cloudrun.yaml         # ETL Cloud Run config
-│       └── service-cloudrun.yaml     # Service Cloud Run config
+│   └── tests/                        # Unit and integration tests
+│       ├── etl/
+│       └── service/
 │
-├── frontend/
-│   ├── Dockerfile                    # Frontend Docker configuration
-│   ├── .env.example                  # Example environment variables
-│   ├── app.py                        # Single Streamlit application file
-│   └── utils.py                      # Frontend utility functions
+├── data/                             # Data directory (gitignored)
+│   ├── raw/                          # Raw scraped data
+│   │   ├── documents/                # Raw documents by source
+│   │   └── pdfs/                     # Downloaded PDF files
+│   ├── intermediate/                 # Intermediate processing data
+│   │   └── *.csv                     # Scraped publication metadata
+│   ├── processed/                    # Processed data
+│   │   ├── documents/                # Processed documents with text
+│   │   ├── chunks/                   # Chunked documents
+│   │   └── embeddings/               # Generated embeddings
+│   └── reports/                      # ETL execution reports
 │
-└── scripts/                          # Utility scripts
-    ├── setup.sh                      # Project setup
-    ├── deploy.sh                     # Deployment to GCP
-    └── storage_switch.sh             # Script to switch between local/cloud storage
+├── deployment/                       # GCP deployment infrastructure
+│   ├── cloud-run/                    # Cloud Run job scripts
+│   ├── vm/                           # VM-based deployment scripts
+│   ├── scripts/                      # Setup and utility scripts
+│   └── config/                       # GCP configuration
+│
+└── frontend/                         # Frontend application (future)
+    ├── app.py                        # Streamlit/Chainlit application
+    └── utils.py                      # Frontend utility functions
 ```
 
 
