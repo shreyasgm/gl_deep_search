@@ -1,5 +1,7 @@
 """
 Scraper module for the Growth Lab website publications
+
+Uses curl_cffi for HTTP requests to bypass Cloudflare TLS fingerprinting.
 """
 
 import asyncio
@@ -9,11 +11,12 @@ import re
 from pathlib import Path
 from typing import Any, TypeVar
 
-import aiohttp
 import pandas as pd
 import yaml
 from bs4 import BeautifulSoup
 from bs4.element import ResultSet, Tag
+from curl_cffi.requests import AsyncSession
+from curl_cffi.requests.errors import RequestsError
 from tqdm.asyncio import tqdm as async_tqdm
 
 from backend.etl.models.publications import GrowthLabPublication
@@ -25,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 # Type variable for generic retry function
 T = TypeVar("T")
+
+# Browser to impersonate for Cloudflare bypass
+BROWSER_IMPERSONATE = "chrome120"
 
 
 class GrowthLabScraper:
@@ -90,9 +96,7 @@ class GrowthLabScraper:
                 "retry_max_delay": 30.0,
             }
 
-    async def _get_max_page_num_impl(
-        self, session: aiohttp.ClientSession, url: str
-    ) -> int:
+    async def _get_max_page_num_impl(self, session: AsyncSession, url: str) -> int:
         """Implementation to get the maximum page number from pagination
 
         For FacetWP-based sites without visible pagination links,
@@ -100,92 +104,84 @@ class GrowthLabScraper:
         """
         async with self.semaphore:
             # First try to find pagination links in HTML (old structure)
-            async with session.get(url) as response:
-                if response.status != 200:
-                    logger.error(f"Failed to fetch {url}: {response.status}")
-                    if response.status == 429 or response.status >= 500:
-                        raise aiohttp.ClientResponseError(
-                            request_info=response.request_info,
-                            history=response.history,
-                            status=response.status,
-                            message=f"Rate limited or server error: {response.status}",
+            response = await session.get(url)
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch {url}: {response.status_code}")
+                if response.status_code == 429 or response.status_code >= 500:
+                    raise RequestsError(
+                        f"Rate limited or server error: {response.status_code}"
+                    )
+                return 0
+
+            html = response.text
+            soup = BeautifulSoup(html, "html.parser")
+
+            # Try old structure: Drupal pager
+            pagination = soup.find("ul", {"class": "pager"})
+            if pagination:
+                last_page_link = pagination.find("li", {"class": "pager-last"})
+                if last_page_link and last_page_link.find("a"):
+                    last_page_url = last_page_link.find("a").get("href")
+                    match = re.search(r"\d+", last_page_url)
+                    if match:
+                        return int(match.group())
+
+            # Try to find pagination links (may not exist with JavaScript-loaded pagination)
+            pagination_links = soup.find_all(
+                "a",
+                href=lambda x: x and ("fwp_paged" in str(x) or "/page/" in str(x)),
+            )
+            if pagination_links:
+                max_page = 0
+                for link in pagination_links:
+                    href = link.get("href", "")
+                    match = re.search(r"(?:fwp_paged=|/page/)(\d+)", href)
+                    if match:
+                        page_num = int(match.group(1))
+                        max_page = max(max_page, page_num)
+                if max_page > 0:
+                    return max_page
+
+            # Pagination links not found - use binary search discovery for FacetWP
+            logger.info("Pagination links not found, using binary search discovery...")
+
+            # Binary search to find the last page
+            low, high = 0, 200  # Search up to page 200
+            max_page_found = 0
+
+            while low <= high:
+                mid = (low + high) // 2
+                test_url = url if mid == 0 else f"{url}?fwp_paged={mid}"
+
+                try:
+                    test_response = await session.get(test_url)
+                    if test_response.status_code == 200:
+                        test_html = test_response.text
+                        test_soup = BeautifulSoup(test_html, "html.parser")
+                        test_items = test_soup.find_all(
+                            "li",
+                            {"class": lambda x: x and "wp-block-post" in str(x)},
                         )
-                    return 0
+                        if not test_items:
+                            test_items = test_soup.find_all(
+                                "div", {"class": "cp-publication"}
+                            )
 
-                html = await response.text()
-                soup = BeautifulSoup(html, "html.parser")
+                        if len(test_items) > 0:
+                            max_page_found = mid
+                            low = mid + 1  # Try higher pages
+                        else:
+                            high = mid - 1  # No items, try lower pages
+                        await asyncio.sleep(0.2)  # Small delay
+                    else:
+                        high = mid - 1  # Error, try lower
+                except Exception as e:
+                    logger.debug(f"Error checking page {mid}: {e}")
+                    high = mid - 1
 
-                # Try old structure: Drupal pager
-                pagination = soup.find("ul", {"class": "pager"})
-                if pagination:
-                    last_page_link = pagination.find("li", {"class": "pager-last"})
-                    if last_page_link and last_page_link.find("a"):
-                        last_page_url = last_page_link.find("a").get("href")
-                        match = re.search(r"\d+", last_page_url)
-                        if match:
-                            return int(match.group())
+            return max_page_found
 
-                # Try to find pagination links (may not exist with JavaScript-loaded pagination)
-                pagination_links = soup.find_all(
-                    "a",
-                    href=lambda x: x and ("fwp_paged" in str(x) or "/page/" in str(x)),
-                )
-                if pagination_links:
-                    max_page = 0
-                    for link in pagination_links:
-                        href = link.get("href", "")
-                        match = re.search(r"(?:fwp_paged=|/page/)(\d+)", href)
-                        if match:
-                            page_num = int(match.group(1))
-                            max_page = max(max_page, page_num)
-                    if max_page > 0:
-                        return max_page
-
-                # Pagination links not found - use binary search discovery for FacetWP
-                logger.info(
-                    "Pagination links not found, using binary search discovery..."
-                )
-
-                # Binary search to find the last page
-                low, high = 0, 200  # Search up to page 200
-                max_page_found = 0
-
-                while low <= high:
-                    mid = (low + high) // 2
-                    test_url = url if mid == 0 else f"{url}?fwp_paged={mid}"
-
-                    try:
-                        async with session.get(test_url) as test_response:
-                            if test_response.status == 200:
-                                test_html = await test_response.text()
-                                test_soup = BeautifulSoup(test_html, "html.parser")
-                                test_items = test_soup.find_all(
-                                    "li",
-                                    {
-                                        "class": lambda x: x
-                                        and "wp-block-post" in str(x)
-                                    },
-                                )
-                                if not test_items:
-                                    test_items = test_soup.find_all(
-                                        "div", {"class": "cp-publication"}
-                                    )
-
-                                if len(test_items) > 0:
-                                    max_page_found = mid
-                                    low = mid + 1  # Try higher pages
-                                else:
-                                    high = mid - 1  # No items, try lower pages
-                                await asyncio.sleep(0.2)  # Small delay
-                            else:
-                                high = mid - 1  # Error, try lower
-                    except Exception as e:
-                        logger.debug(f"Error checking page {mid}: {e}")
-                        high = mid - 1
-
-                return max_page_found
-
-    async def get_max_page_num(self, session: aiohttp.ClientSession, url: str) -> int:
+    async def get_max_page_num(self, session: AsyncSession, url: str) -> int:
         """Get the maximum page number from pagination with retry mechanism"""
         max_retries = self.config.get("max_retries", 3)
         base_delay = self.config.get("retry_base_delay", 1.0)
@@ -198,7 +194,7 @@ class GrowthLabScraper:
             max_retries=max_retries,
             base_delay=base_delay,
             max_delay=max_delay,
-            retry_on=(aiohttp.ClientError, TimeoutError),
+            retry_on=(RequestsError, TimeoutError),
         )
 
     async def parse_publication(
@@ -345,7 +341,7 @@ class GrowthLabScraper:
             return None
 
     async def _fetch_page_impl(
-        self, session: aiohttp.ClientSession, page_num: int
+        self, session: AsyncSession, page_num: int
     ) -> list[GrowthLabPublication]:
         """Implementation to fetch a single page of publications"""
         # Build URL with pagination (try FacetWP format first, then fall back to ?page=)
@@ -363,59 +359,56 @@ class GrowthLabScraper:
         # Use the semaphore to limit concurrency
         async with self.semaphore:
             try:
-                async with session.get(url) as response:
-                    if response.status != 200:
-                        logger.error(
-                            f"Failed to fetch page {page_num}: {response.status}"
-                        )
-                        # Raise exception for non-200 to allow retry mechanism to work
-                        if response.status == 429 or response.status >= 500:
-                            raise aiohttp.ClientResponseError(
-                                request_info=response.request_info,
-                                history=response.history,
-                                status=response.status,
-                                message=f"Rate limited or server error: {response.status}",
-                            )
-                        return []
-
-                    html = await response.text()
-                    soup = BeautifulSoup(html, "html.parser")
-
-                    # Try new structure first: look for cp-publication divs or li.wp-block-post
-                    pub_elements: ResultSet[Tag] = soup.find_all(
-                        "div", {"class": "cp-publication"}
+                response = await session.get(url)
+                if response.status_code != 200:
+                    logger.error(
+                        f"Failed to fetch page {page_num}: {response.status_code}"
                     )
-
-                    # If not found, try finding li elements with cp-publication nested
-                    if not pub_elements:
-                        post_items = soup.find_all(
-                            "li", {"class": lambda x: x and "wp-block-post" in str(x)}
+                    # Raise exception for non-200 to allow retry mechanism to work
+                    if response.status_code == 429 or response.status_code >= 500:
+                        raise RequestsError(
+                            f"Rate limited or server error: {response.status_code}"
                         )
-                        pub_elements = ResultSet([])  # type: ignore[call-overload]
-                        for item in post_items:
-                            cp_pub = item.find("div", {"class": "cp-publication"})
-                            if cp_pub:
-                                pub_elements.append(cp_pub)
+                    return []
 
-                    # Fall back to old structure
-                    if not pub_elements:
-                        pub_elements = soup.find_all("div", {"class": "biblio-entry"})
+                html = response.text
+                soup = BeautifulSoup(html, "html.parser")
 
-                    for pub_element in pub_elements:
-                        pub = await self.parse_publication(pub_element, self.base_url)
-                        if pub:
-                            publications.append(pub)
+                # Try new structure first: look for cp-publication divs or li.wp-block-post
+                pub_elements: ResultSet[Tag] = soup.find_all(
+                    "div", {"class": "cp-publication"}
+                )
 
-                    # Sleep to prevent overwhelming the server
-                    await asyncio.sleep(self.scrape_delay)
-                    return publications
+                # If not found, try finding li elements with cp-publication nested
+                if not pub_elements:
+                    post_items = soup.find_all(
+                        "li", {"class": lambda x: x and "wp-block-post" in str(x)}
+                    )
+                    pub_elements = ResultSet([])  # type: ignore[call-overload]
+                    for item in post_items:
+                        cp_pub = item.find("div", {"class": "cp-publication"})
+                        if cp_pub:
+                            pub_elements.append(cp_pub)
+
+                # Fall back to old structure
+                if not pub_elements:
+                    pub_elements = soup.find_all("div", {"class": "biblio-entry"})
+
+                for pub_element in pub_elements:
+                    pub = await self.parse_publication(pub_element, self.base_url)
+                    if pub:
+                        publications.append(pub)
+
+                # Sleep to prevent overwhelming the server
+                await asyncio.sleep(self.scrape_delay)
+                return publications
             except Exception as e:
                 # Log and re-raise to allow the retry mechanism to work
                 logger.error(f"Error fetching page {page_num}: {e}")
                 raise
 
     async def fetch_page(
-        self, session: aiohttp.ClientSession, page_num: int
+        self, session: AsyncSession, page_num: int
     ) -> list[GrowthLabPublication]:
         """Fetch a single page of publications with retry mechanism"""
         max_retries = self.config.get("max_retries", 3)
@@ -430,7 +423,7 @@ class GrowthLabScraper:
                 max_retries=max_retries,
                 base_delay=base_delay,
                 max_delay=max_delay,
-                retry_on=(aiohttp.ClientError, TimeoutError, Exception),
+                retry_on=(RequestsError, TimeoutError, Exception),
             )
         except Exception as e:
             logger.error(f"All retries failed for page {page_num}: {e}")
@@ -449,29 +442,10 @@ class GrowthLabScraper:
         Returns:
             List of extracted publications
         """
-        # Create more robust session with timeouts
-        timeout = aiohttp.ClientTimeout(
-            total=60, connect=20, sock_connect=20, sock_read=20
-        )
-        connector = aiohttp.TCPConnector(
-            limit=self.concurrency_limit,
-            ttl_dns_cache=300,
-            force_close=False,
-            enable_cleanup_closed=True,
-        )
-
-        # Create a session with custom headers by default
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-        }
-
-        async with aiohttp.ClientSession(
-            timeout=timeout,
-            connector=connector,
-            headers=headers,
-            cookie_jar=aiohttp.CookieJar(unsafe=True),
+        # Create session with browser impersonation to bypass Cloudflare
+        async with AsyncSession(
+            impersonate=BROWSER_IMPERSONATE,
+            timeout=60,
         ) as session:
             # Get the maximum page number
             max_page_num = await self.get_max_page_num(session, self.base_url)
@@ -556,41 +530,28 @@ class GrowthLabScraper:
             return all_publications
 
     async def _get_endnote_file_url_impl(
-        self, session: aiohttp.ClientSession, publication_url: str
+        self, session: AsyncSession, publication_url: str
     ) -> str | None:
         """Implementation to fetch Endnote file URL from a publication page"""
         async with self.semaphore:
             try:
-                # Add custom headers to mimic a browser
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Connection": "keep-alive",
-                    "Upgrade-Insecure-Requests": "1",
-                    "Cache-Control": "max-age=0",
-                }
-
-                async with session.get(publication_url, headers=headers) as response:
-                    if response.status != 200:
-                        # Raise exception for retry on rate limits or server errors
-                        if response.status == 429 or response.status >= 500:
-                            raise aiohttp.ClientResponseError(
-                                request_info=response.request_info,
-                                history=response.history,
-                                status=response.status,
-                                message=f"Rate limited or server error: {response.status}",
-                            )
-                        return None
-
-                    html = await response.text()
-                    soup = BeautifulSoup(html, "html.parser")
-                    endnote_link = soup.find("li", class_="biblio_tagged")
-
-                    if endnote_link and endnote_link.find("a"):
-                        return endnote_link.find("a")["href"]
+                response = await session.get(publication_url)
+                if response.status_code != 200:
+                    # Raise exception for retry on rate limits or server errors
+                    if response.status_code == 429 or response.status_code >= 500:
+                        raise RequestsError(
+                            f"Rate limited or server error: {response.status_code}"
+                        )
                     return None
-            except (aiohttp.ClientError, TimeoutError) as e:
+
+                html = response.text
+                soup = BeautifulSoup(html, "html.parser")
+                endnote_link = soup.find("li", class_="biblio_tagged")
+
+                if endnote_link and endnote_link.find("a"):
+                    return endnote_link.find("a")["href"]
+                return None
+            except (RequestsError, TimeoutError) as e:
                 # Log and re-raise to allow the retry mechanism to work
                 logger.error(f"Error fetching Endnote URL for {publication_url}: {e}")
                 raise
@@ -599,7 +560,7 @@ class GrowthLabScraper:
                 return None
 
     async def get_endnote_file_url(
-        self, session: aiohttp.ClientSession, publication_url: str
+        self, session: AsyncSession, publication_url: str
     ) -> str | None:
         """Fetch Endnote file URL from a publication page with retry mechanism"""
         max_retries = self.config.get("max_retries", 3)
@@ -614,7 +575,7 @@ class GrowthLabScraper:
                 max_retries=max_retries,
                 base_delay=base_delay,
                 max_delay=max_delay,
-                retry_on=(aiohttp.ClientError, TimeoutError),
+                retry_on=(RequestsError, TimeoutError),
             )
         except Exception as e:
             logger.error(
@@ -660,73 +621,57 @@ class GrowthLabScraper:
 
     async def _enrich_publication_impl(
         self,
-        session: aiohttp.ClientSession,
+        session: AsyncSession,
         pub: GrowthLabPublication,
         endnote_url: str,
     ) -> GrowthLabPublication:
         """Implementation to enrich publication with data from Endnote file"""
         async with self.semaphore:
             try:
-                # Add custom headers to mimic a browser
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Connection": "keep-alive",
-                    "Referer": str(pub.pub_url)
-                    if pub.pub_url
-                    else "https://growthlab.hks.harvard.edu/publications",
-                }
-
                 # Log endnote download attempt
                 logger.info(f"Downloading endnote file from {endnote_url}")
 
-                async with session.get(
-                    endnote_url, headers=headers, timeout=30
-                ) as response:
-                    if response.status != 200:
-                        logger.warning(
-                            f"Non-200 status code ({response.status}) when fetching endnote: {endnote_url}"
-                        )
-                        # Raise exception for retry on rate limits or server errors
-                        if response.status == 429 or response.status >= 500:
-                            raise aiohttp.ClientResponseError(
-                                request_info=response.request_info,
-                                history=response.history,
-                                status=response.status,
-                                message=f"Rate limited or server error: {response.status}",
-                            )
-                        return pub
-
-                    content = await response.text()
-                    if not content or len(content.strip()) < 10:
-                        logger.warning(
-                            f"Empty or too short endnote content from {endnote_url}"
-                        )
-                        return pub
-
-                    endnote_data = await self.parse_endnote_content(content)
-
-                    # Update publication with Endnote data if missing
-                    if not pub.title and "title" in endnote_data:
-                        pub.title = endnote_data["title"]
-
-                    if not pub.authors and "author" in endnote_data:
-                        pub.authors = endnote_data["author"]
-
-                    if not pub.abstract and "abstract" in endnote_data:
-                        pub.abstract = endnote_data["abstract"]
-
-                    # Update content hash
-                    pub.content_hash = pub.generate_content_hash()
-
-                    # Log successful endnote enrichment
-                    logger.info(
-                        f"Successfully enriched publication {pub.paper_id} with endnote data"
+                response = await session.get(endnote_url, timeout=30)
+                if response.status_code != 200:
+                    logger.warning(
+                        f"Non-200 status code ({response.status_code}) when fetching endnote: {endnote_url}"
                     )
-
+                    # Raise exception for retry on rate limits or server errors
+                    if response.status_code == 429 or response.status_code >= 500:
+                        raise RequestsError(
+                            f"Rate limited or server error: {response.status_code}"
+                        )
                     return pub
-            except (aiohttp.ClientError, TimeoutError) as e:
+
+                content = response.text
+                if not content or len(content.strip()) < 10:
+                    logger.warning(
+                        f"Empty or too short endnote content from {endnote_url}"
+                    )
+                    return pub
+
+                endnote_data = await self.parse_endnote_content(content)
+
+                # Update publication with Endnote data if missing
+                if not pub.title and "title" in endnote_data:
+                    pub.title = endnote_data["title"]
+
+                if not pub.authors and "author" in endnote_data:
+                    pub.authors = endnote_data["author"]
+
+                if not pub.abstract and "abstract" in endnote_data:
+                    pub.abstract = endnote_data["abstract"]
+
+                # Update content hash
+                pub.content_hash = pub.generate_content_hash()
+
+                # Log successful endnote enrichment
+                logger.info(
+                    f"Successfully enriched publication {pub.paper_id} with endnote data"
+                )
+
+                return pub
+            except (RequestsError, TimeoutError) as e:
                 # Log and re-raise to allow the retry mechanism to work
                 logger.error(f"Error enriching publication from Endnote: {e}")
                 raise
@@ -735,7 +680,7 @@ class GrowthLabScraper:
                 return pub
 
     async def enrich_publication_from_page(
-        self, session: aiohttp.ClientSession, pub: GrowthLabPublication
+        self, session: AsyncSession, pub: GrowthLabPublication
     ) -> GrowthLabPublication:
         """Enrich publication by extracting full metadata from the publication page
 
@@ -747,94 +692,88 @@ class GrowthLabScraper:
 
         async with self.semaphore:
             try:
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.9",
-                }
-
-                async with session.get(str(pub.pub_url), headers=headers) as response:
-                    if response.status != 200:
-                        logger.warning(
-                            f"Failed to fetch publication page {pub.pub_url}: {response.status}"
-                        )
-                        return pub
-
-                    html = await response.text()
-                    soup = BeautifulSoup(html, "html.parser")
-
-                    # Extract full abstract from publication page
-                    abstract_divs = soup.find_all(
-                        "div", {"class": lambda x: x and "abstract" in str(x).lower()}
+                response = await session.get(str(pub.pub_url))
+                if response.status_code != 200:
+                    logger.warning(
+                        f"Failed to fetch publication page {pub.pub_url}: {response.status_code}"
                     )
-                    for div in abstract_divs:
-                        text = div.get_text().strip()
-                        # Skip the word "Abstract" itself, get the actual content
-                        if text.lower().startswith("abstract"):
-                            text = text[8:].strip()  # Remove "Abstract" prefix
-                        # Use the longest abstract we find (likely the full one)
-                        if len(text) > len(pub.abstract or ""):
-                            pub.abstract = text
-
-                    # Extract metadata from JSON-LD if available
-                    scripts = soup.find_all("script", {"type": "application/ld+json"})
-                    for script in scripts:
-                        try:
-                            data = json.loads(script.string)
-                            # Handle @graph format
-                            graph = data.get("@graph", [])
-                            if (
-                                isinstance(data, dict)
-                                and data.get("@type") == "ScholarlyArticle"
-                            ):
-                                graph = [data]  # Single item as list
-
-                            for item in graph:
-                                if item.get("@type") == "ScholarlyArticle":
-                                    # Extract datePublished if year is missing
-                                    if not pub.year and "datePublished" in item:
-                                        date_str = item["datePublished"]
-                                        year_match = re.search(r"\b\d{4}\b", date_str)
-                                        if year_match:
-                                            pub.year = int(year_match.group())
-
-                                    # Extract authors if missing or incomplete
-                                    if "author" in item:
-                                        author = item.get("author", {})
-                                        if isinstance(author, dict):
-                                            author_name = author.get("name", "")
-                                            # Only update if we don't have authors or if JSON-LD has better data
-                                            if not pub.authors or (
-                                                author_name
-                                                and len(author_name)
-                                                > len(pub.authors or "")
-                                            ):
-                                                pub.authors = author_name
-                                        elif isinstance(author, list) and author:
-                                            # Handle list of authors
-                                            author_names = [
-                                                a.get("name", "")
-                                                if isinstance(a, dict)
-                                                else str(a)
-                                                for a in author
-                                            ]
-                                            if author_names:
-                                                pub.authors = ", ".join(author_names)
-                        except Exception as e:
-                            logger.debug(f"Failed to parse JSON-LD: {e}")
-                            continue
-
-                    # Update content hash after enrichment
-                    pub.content_hash = pub.generate_content_hash()
-
-                    logger.debug(f"Enriched publication {pub.paper_id} from page")
                     return pub
+
+                html = response.text
+                soup = BeautifulSoup(html, "html.parser")
+
+                # Extract full abstract from publication page
+                abstract_divs = soup.find_all(
+                    "div", {"class": lambda x: x and "abstract" in str(x).lower()}
+                )
+                for div in abstract_divs:
+                    text = div.get_text().strip()
+                    # Skip the word "Abstract" itself, get the actual content
+                    if text.lower().startswith("abstract"):
+                        text = text[8:].strip()  # Remove "Abstract" prefix
+                    # Use the longest abstract we find (likely the full one)
+                    if len(text) > len(pub.abstract or ""):
+                        pub.abstract = text
+
+                # Extract metadata from JSON-LD if available
+                scripts = soup.find_all("script", {"type": "application/ld+json"})
+                for script in scripts:
+                    try:
+                        data = json.loads(script.string)
+                        # Handle @graph format
+                        graph = data.get("@graph", [])
+                        if (
+                            isinstance(data, dict)
+                            and data.get("@type") == "ScholarlyArticle"
+                        ):
+                            graph = [data]  # Single item as list
+
+                        for item in graph:
+                            if item.get("@type") == "ScholarlyArticle":
+                                # Extract datePublished if year is missing
+                                if not pub.year and "datePublished" in item:
+                                    date_str = item["datePublished"]
+                                    year_match = re.search(r"\b\d{4}\b", date_str)
+                                    if year_match:
+                                        pub.year = int(year_match.group())
+
+                                # Extract authors if missing or incomplete
+                                if "author" in item:
+                                    author = item.get("author", {})
+                                    if isinstance(author, dict):
+                                        author_name = author.get("name", "")
+                                        # Only update if we don't have authors or if JSON-LD has better data
+                                        if not pub.authors or (
+                                            author_name
+                                            and len(author_name)
+                                            > len(pub.authors or "")
+                                        ):
+                                            pub.authors = author_name
+                                    elif isinstance(author, list) and author:
+                                        # Handle list of authors
+                                        author_names = [
+                                            a.get("name", "")
+                                            if isinstance(a, dict)
+                                            else str(a)
+                                            for a in author
+                                        ]
+                                        if author_names:
+                                            pub.authors = ", ".join(author_names)
+                    except Exception as e:
+                        logger.debug(f"Failed to parse JSON-LD: {e}")
+                        continue
+
+                # Update content hash after enrichment
+                pub.content_hash = pub.generate_content_hash()
+
+                logger.debug(f"Enriched publication {pub.paper_id} from page")
+                return pub
             except Exception as e:
                 logger.error(f"Error enriching publication from page: {e}")
                 return pub
 
     async def enrich_publication(
-        self, session: aiohttp.ClientSession, pub: GrowthLabPublication
+        self, session: AsyncSession, pub: GrowthLabPublication
     ) -> GrowthLabPublication:
         """Enrich publication with data from Endnote file or publication page
 
@@ -861,7 +800,7 @@ class GrowthLabScraper:
                     max_retries=max_retries,
                     base_delay=base_delay,
                     max_delay=max_delay,
-                    retry_on=(aiohttp.ClientError, TimeoutError),
+                    retry_on=(RequestsError, TimeoutError),
                 )
             except Exception as e:
                 logger.error(
@@ -886,29 +825,10 @@ class GrowthLabScraper:
         """
         publications = await self.extract_publications(limit=limit)
 
-        # Create more robust session with timeouts
-        timeout = aiohttp.ClientTimeout(
-            total=60, connect=20, sock_connect=20, sock_read=20
-        )
-        connector = aiohttp.TCPConnector(
-            limit=self.concurrency_limit,
-            ttl_dns_cache=300,
-            force_close=False,
-            enable_cleanup_closed=True,
-        )
-
-        # Create a session with custom headers by default
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-        }
-
-        async with aiohttp.ClientSession(
-            timeout=timeout,
-            connector=connector,
-            headers=headers,
-            cookie_jar=aiohttp.CookieJar(unsafe=True),
+        # Create session with browser impersonation to bypass Cloudflare
+        async with AsyncSession(
+            impersonate=BROWSER_IMPERSONATE,
+            timeout=60,
         ) as session:
             # Log session start
             logger.info(

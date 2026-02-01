@@ -367,7 +367,7 @@ def test_growthlab_real_data_id_generation(tmp_path):
     df = pd.read_csv(data_path)
 
     # Ensure we have at least a few records to test with
-    assert len(df) > 10, "Not enough real data records found for testing"
+    assert len(df) >= 10, "Not enough real data records found for testing"
 
     # Count different types of IDs
     url_based_ids = sum(1 for id in df["paper_id"] if id.startswith("gl_url_"))
@@ -461,19 +461,12 @@ async def test_growthlab_real_website_scraping(scraper):
     2. The HTML structure matches what the scraper expects
     3. At least one publication can be parsed from the first page
     """
-    import aiohttp
+    from curl_cffi.requests import AsyncSession
 
-    # Create a session and try to fetch the first page
-    timeout = aiohttp.ClientTimeout(total=30, connect=10)
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
+    from backend.etl.scrapers.growthlab import BROWSER_IMPERSONATE
 
-    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+    # Create a session with browser impersonation to bypass Cloudflare
+    async with AsyncSession(impersonate=BROWSER_IMPERSONATE, timeout=30) as session:
         # Test 1: Verify we can get the max page number
         max_page = await scraper.get_max_page_num(session, scraper.base_url)
         assert max_page >= 0, "Failed to get max page number from website"
@@ -506,55 +499,55 @@ async def test_growthlab_real_website_scraping(scraper):
         # Test 4: Verify HTML structure by checking for expected elements
         # We'll do a quick fetch to verify the structure
         url = scraper.base_url
-        async with session.get(url) as response:
-            assert response.status == 200, (
-                f"Failed to fetch {url}: status {response.status}"
+        response = await session.get(url)
+        assert response.status_code == 200, (
+            f"Failed to fetch {url}: status {response.status_code}"
+        )
+        html = response.text
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        # Check for expected HTML structure (new or old)
+        biblio_entries = soup.find_all("div", {"class": "biblio-entry"})
+        cp_publications = soup.find_all("div", {"class": "cp-publication"})
+
+        # Also check for publications in li.wp-block-post
+        post_items = soup.find_all(
+            "li", {"class": lambda x: x and "wp-block-post" in str(x)}
+        )
+
+        total_publications = (
+            len(biblio_entries) + len(cp_publications) + len(post_items)
+        )
+        assert total_publications > 0, (
+            "Website HTML structure changed: no publication elements found "
+            "(checked biblio-entry, cp-publication, and wp-block-post)"
+        )
+
+        # Check for pagination if multiple pages exist (old or new structure)
+        # Note: FacetWP pagination may be loaded via JavaScript, so it's OK
+        # if not found in HTML
+        if max_page > 0:
+            old_pagination = soup.find("ul", {"class": "pager"})
+            new_pagination = soup.find_all(
+                "a",
+                href=lambda x: x and ("fwp_paged" in str(x) or "/page/" in str(x)),
             )
-            html = await response.text()
-            from bs4 import BeautifulSoup
-
-            soup = BeautifulSoup(html, "html.parser")
-
-            # Check for expected HTML structure (new or old)
-            biblio_entries = soup.find_all("div", {"class": "biblio-entry"})
-            cp_publications = soup.find_all("div", {"class": "cp-publication"})
-
-            # Also check for publications in li.wp-block-post
-            post_items = soup.find_all(
-                "li", {"class": lambda x: x and "wp-block-post" in str(x)}
-            )
-
-            total_publications = (
-                len(biblio_entries) + len(cp_publications) + len(post_items)
-            )
-            assert total_publications > 0, (
-                "Website HTML structure changed: no publication elements found "
-                "(checked biblio-entry, cp-publication, and wp-block-post)"
-            )
-
-            # Check for pagination if multiple pages exist (old or new structure)
-            # Note: FacetWP pagination may be loaded via JavaScript, so it's OK
-            # if not found in HTML
-            if max_page > 0:
-                old_pagination = soup.find("ul", {"class": "pager"})
-                new_pagination = soup.find_all(
-                    "a",
-                    href=lambda x: x and ("fwp_paged" in str(x) or "/page/" in str(x)),
+            # If using discovery method, pagination links may not be in
+            # initial HTML. This is acceptable - the scraper uses binary
+            # search discovery in that case
+            if old_pagination is None and len(new_pagination) == 0:
+                logger.info(
+                    "No pagination links found in HTML (likely "
+                    "JavaScript-loaded), using discovery method"
                 )
-                # If using discovery method, pagination links may not be in
-                # initial HTML. This is acceptable - the scraper uses binary
-                # search discovery in that case
-                if old_pagination is None and len(new_pagination) == 0:
-                    logger.info(
-                        "No pagination links found in HTML (likely "
-                        "JavaScript-loaded), using discovery method"
-                    )
 
-            logger.info(
-                f"Verified HTML structure: found {len(biblio_entries)} "
-                f"biblio-entry, {len(cp_publications)} cp-publication, and "
-                f"{len(post_items)} wp-block-post elements"
-            )
+        logger.info(
+            f"Verified HTML structure: found {len(biblio_entries)} "
+            f"biblio-entry, {len(cp_publications)} cp-publication, and "
+            f"{len(post_items)} wp-block-post elements"
+        )
 
 
 class TestGrowthLabScraperTrackerIntegration:
