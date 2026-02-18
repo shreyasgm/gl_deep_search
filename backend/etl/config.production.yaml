@@ -60,7 +60,10 @@ file_processing:
 
   embedding:
     model: "openai"  # Options: openai, sentence_transformer
+    model_name: "text-embedding-3-small"  # Specific embedding model
     dimensions: 1536
+    max_tokens: 8192               # Embedding model's token limit
+    tiktoken_encoding: "cl100k_base"  # Tokenizer encoding for token counting
     batch_size: 32
     max_retries: 5                 # Increased retries for cloud reliability
     retry_delays: [2, 5, 10]        # Longer delays for cloud networking
@@ -70,10 +73,12 @@ file_processing:
   chunking:
     enabled: true
     strategy: "hybrid"             # Options: fixed, sentence, structure, hybrid
-    chunk_size: 1000               # target characters per chunk
-    chunk_overlap: 200             # characters of overlap between chunks
-    min_chunk_size: 100            # minimum viable chunk size
-    max_chunk_size: 2000           # maximum chunk size before forced split
+    # NOTE: All size limits below are in TOKENS (not characters) to ensure
+    # compatibility with embedding model token limits (text-embedding-3-small: 8192)
+    chunk_size: 500                # target tokens per chunk
+    chunk_overlap: 50              # tokens of overlap between chunks
+    min_chunk_size: 50             # minimum viable chunk size in tokens
+    max_chunk_size: 8000           # maximum tokens (embedding model limit is 8192)
     preserve_structure: true       # respect document hierarchy (headers, sections)
     respect_sentences: true        # prefer sentence boundaries for splits
     structure_markers:             # patterns for detecting document structure
