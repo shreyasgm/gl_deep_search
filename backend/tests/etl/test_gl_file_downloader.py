@@ -6,8 +6,8 @@ import logging
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
-import aiohttp
 import pytest
+from curl_cffi.requests import AsyncSession
 
 from backend.etl.scrapers.growthlab import GrowthLabPublication
 from backend.etl.utils.gl_file_downloader import DownloadResult, FileDownloader
@@ -268,7 +268,7 @@ async def test_cached_file(file_downloader, tmp_path):
         f.write(b"%PDF-1.5\nCached PDF content\n%%EOF")
 
     # Mock session but it shouldn't be used
-    mock_session = MagicMock(spec=aiohttp.ClientSession)
+    mock_session = MagicMock(spec=AsyncSession)
     mock_get = AsyncMock()
     mock_session.get = mock_get
 

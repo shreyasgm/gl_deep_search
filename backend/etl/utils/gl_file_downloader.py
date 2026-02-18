@@ -3,6 +3,8 @@ Growth Lab file downloader module for Deep Search.
 
 Handles asynchronous downloading of files from Growth Lab publication URLs, with
 features like retrying, rate limiting, and validation.
+
+Uses curl_cffi for HTTP requests to bypass Cloudflare TLS fingerprinting.
 """
 
 import asyncio
@@ -19,8 +21,9 @@ from typing import (
 )
 
 import aiofiles
-import aiohttp
 import tqdm.asyncio
+from curl_cffi.requests import AsyncSession
+from curl_cffi.requests.errors import RequestsError
 
 from backend.etl.models.publications import GrowthLabPublication
 from backend.etl.models.tracking import DownloadStatus
@@ -35,6 +38,9 @@ logger = logging.getLogger(__name__)
 
 # Type variable for generic functions
 T = TypeVar("T")
+
+# Browser to impersonate for Cloudflare bypass
+BROWSER_IMPERSONATE = "chrome120"
 
 
 @dataclass
@@ -116,7 +122,7 @@ class FileDownloader:
         }
 
         # Session cache
-        self._session: aiohttp.ClientSession | None = None
+        self._session: AsyncSession | None = None
 
     def _load_config(self, config_path: Path | None) -> dict[str, Any]:
         """Load configuration from YAML file."""
@@ -143,60 +149,25 @@ class FileDownloader:
             "retry_max_delay": 60.0,
             "min_file_size": 1024,  # 1KB
             "max_file_size": 100 * 1024 * 1024,  # 100MB
-            "user_agent_list": [
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ],
         }
 
-    async def _get_session(self) -> aiohttp.ClientSession:
-        """Get or create an aiohttp session with proper configuration."""
-        if self._session is None or self._session.closed:
-            # Configure timeouts
-            timeout = aiohttp.ClientTimeout(
-                total=60,
-                connect=20,
-                sock_connect=20,
-                sock_read=20,
-            )
-
-            # Set up connection pooling
-            connector = aiohttp.TCPConnector(
-                limit=self.concurrency_limit,
-                ttl_dns_cache=300,
-                force_close=False,
-                enable_cleanup_closed=True,
-            )
-
-            # Random user agent
-            user_agents = self.config.get(
-                "user_agent_list",
-                [
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/122.0.0.0 Safari/537.36"
-                ],
-            )
-            user_agent = random.choice(user_agents)
-
-            # Default headers
+    async def _get_session(self) -> AsyncSession:
+        """Get or create a curl_cffi session with browser impersonation."""
+        if self._session is None:
+            # Default headers for file downloads
             headers = {
-                "User-Agent": user_agent,
                 "Accept": (
                     "application/pdf,application/octet-stream,"
                     "application/msword,application/vnd.openxmlformats-officedocument"
                     ".wordprocessingml.document,*/*"
                 ),
                 "Accept-Language": "en-US,en;q=0.9",
-                "Connection": "keep-alive",
             }
 
-            self._session = aiohttp.ClientSession(
-                timeout=timeout,
-                connector=connector,
+            self._session = AsyncSession(
+                impersonate=BROWSER_IMPERSONATE,
+                timeout=60,
                 headers=headers,
-                cookie_jar=aiohttp.CookieJar(unsafe=True),
             )
 
         return self._session
@@ -259,7 +230,7 @@ class FileDownloader:
 
     async def _download_file_impl(
         self,
-        session: aiohttp.ClientSession,
+        session: AsyncSession,
         url: str,
         destination: Path,
         referer: str | None = None,
@@ -268,8 +239,11 @@ class FileDownloader:
         """
         Implementation of file download with resume capability.
 
+        Uses curl_cffi with browser impersonation to bypass Cloudflare TLS
+        fingerprinting.
+
         Args:
-            session: aiohttp session to use
+            session: curl_cffi async session to use
             url: URL to download
             destination: Where to save the file
             referer: Optional referer header
@@ -301,119 +275,108 @@ class FileDownloader:
 
         # Download with progress tracking
         try:
-            # Make range request if resuming, otherwise normal request
-            async with session.get(url, headers=headers) as response:
-                # Handle response
-                if response.status == 416:  # Range Not Satisfiable
-                    # File is already complete
-                    logger.info(f"File {destination} appears to be already complete")
+            response = await session.get(url, headers=headers, stream=True, timeout=60)
 
-                    # Validate the existing file
-                    validation_result = await self._validate_downloaded_file(
-                        destination,
-                        expected_content_type=response.headers.get("Content-Type"),
-                    )
+            # Handle response
+            if response.status_code == 416:  # Range Not Satisfiable
+                # File is already complete
+                logger.info(f"File {destination} appears to be already complete")
 
-                    return DownloadResult(
-                        url=url,
-                        success=validation_result["is_valid"],
-                        file_path=destination,
-                        file_size=file_size,
-                        content_type=response.headers.get(
-                            "Content-Type"
-                        ),  # Use reported content type
-                        cached=True,
-                        validation_info=validation_result,
-                    )
-
-                elif response.status == 206:  # Partial Content (for range requests)
-                    # Resume download
-                    content_length = int(response.headers.get("Content-Length", "0"))
-                    total_size = file_size + content_length
-                    mode = "ab"  # Append binary
-
-                elif response.status == 200:  # OK
-                    # New download or server doesn't support range requests
-                    content_length = int(response.headers.get("Content-Length", "0"))
-                    total_size = content_length
-                    file_size = 0  # Start from beginning
-                    mode = "wb"  # Write binary
-
-                else:
-                    # Other status codes are errors
-                    error_msg = f"HTTP error {response.status} when downloading {url}"
-                    logger.error(error_msg)
-                    return DownloadResult(
-                        url=url,
-                        success=False,
-                        file_path=destination,
-                        error=error_msg,
-                    )
-
-                # Get content type
-                content_type = response.headers.get(
-                    "Content-Type", "application/octet-stream"
-                )
-
-                # Download the file with progress tracking
-                try:
-                    async with aiofiles.open(destination, mode) as f:
-                        downloaded = file_size  # Bytes already downloaded
-                        chunk_size = 64 * 1024  # 64KB chunks
-
-                        async for chunk in response.content.iter_chunked(chunk_size):
-                            await f.write(chunk)
-                            downloaded += len(chunk)
-                except Exception as e:
-                    logger.error(f"Error writing to file {destination}: {e}")
-                    return DownloadResult(
-                        url=url,
-                        success=False,
-                        file_path=destination,
-                        error=f"Failed to write file: {str(e)}",
-                    )
-
-                # Get final file size
-                if destination.exists():
-                    final_size = destination.stat().st_size
-                else:
-                    final_size = 0
-
-                # Validate the downloaded file
+                # Validate the existing file
                 validation_result = await self._validate_downloaded_file(
-                    destination, expected_content_type=content_type
+                    destination,
+                    expected_content_type=response.headers.get("Content-Type"),
                 )
-
-                if not validation_result["is_valid"]:
-                    logger.error(
-                        f"Downloaded file validation failed for {url}: "
-                        f"{validation_result}"
-                    )
-
-                    # Delete invalid file
-                    if destination.exists():
-                        destination.unlink()
-
-                    return DownloadResult(
-                        url=url,
-                        success=False,
-                        file_path=destination,
-                        error=f"Validation failed: {validation_result}",
-                        file_size=final_size,
-                        content_type=content_type,
-                        validation_info=validation_result,
-                    )
 
                 return DownloadResult(
                     url=url,
-                    success=True,
+                    success=validation_result["is_valid"],
                     file_path=destination,
+                    file_size=file_size,
+                    content_type=response.headers.get("Content-Type"),
+                    cached=True,
+                    validation_info=validation_result,
+                )
+
+            elif response.status_code == 206:  # Partial Content (range requests)
+                # Resume download
+                mode = "ab"  # Append binary
+
+            elif response.status_code == 200:  # OK
+                # New download or server doesn't support range requests
+                file_size = 0  # Start from beginning
+                mode = "wb"  # Write binary
+
+            else:
+                # Other status codes are errors
+                error_msg = f"HTTP error {response.status_code} when downloading {url}"
+                logger.error(error_msg)
+                return DownloadResult(
+                    url=url,
+                    success=False,
+                    file_path=destination,
+                    error=error_msg,
+                )
+
+            # Get content type
+            content_type = response.headers.get(
+                "Content-Type", "application/octet-stream"
+            )
+
+            # Download the file using streaming
+            try:
+                async with aiofiles.open(destination, mode) as f:
+                    async for chunk in response.aiter_content():
+                        await f.write(chunk)
+            except Exception as e:
+                logger.error(f"Error writing to file {destination}: {e}")
+                return DownloadResult(
+                    url=url,
+                    success=False,
+                    file_path=destination,
+                    error=f"Failed to write file: {str(e)}",
+                )
+
+            # Get final file size
+            if destination.exists():
+                final_size = destination.stat().st_size
+            else:
+                final_size = 0
+
+            # Validate the downloaded file
+            validation_result = await self._validate_downloaded_file(
+                destination, expected_content_type=content_type
+            )
+
+            if not validation_result["is_valid"]:
+                logger.error(
+                    f"Downloaded file validation failed for {url}: {validation_result}"
+                )
+
+                # Delete invalid file
+                if destination.exists():
+                    destination.unlink()
+
+                return DownloadResult(
+                    url=url,
+                    success=False,
+                    file_path=destination,
+                    error=f"Validation failed: {validation_result}",
                     file_size=final_size,
                     content_type=content_type,
                     validation_info=validation_result,
                 )
 
-        except aiohttp.ClientError as e:
+            return DownloadResult(
+                url=url,
+                success=True,
+                file_path=destination,
+                file_size=final_size,
+                content_type=content_type,
+                validation_info=validation_result,
+            )
+
+        except RequestsError as e:
             error_msg = f"HTTP client error when downloading {url}: {str(e)}"
             logger.error(error_msg)
             return DownloadResult(
@@ -494,7 +457,7 @@ class FileDownloader:
                 validation_info=validation_result,
             )
 
-        # Get aiohttp session
+        # Get curl_cffi session
         session = await self._get_session()
 
         # Use semaphore to limit concurrency
@@ -514,7 +477,7 @@ class FileDownloader:
                 max_retries=self.max_retries,
                 base_delay=self.base_delay,
                 max_delay=self.max_delay,
-                retry_on=(aiohttp.ClientError, TimeoutError, asyncio.TimeoutError),
+                retry_on=(RequestsError, TimeoutError, asyncio.TimeoutError),
             )
 
             # Add a small random delay to avoid overwhelming servers
