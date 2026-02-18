@@ -18,6 +18,7 @@ import uuid
 from pathlib import Path
 
 import pyarrow.parquet as pq
+from fastembed import SparseTextEmbedding
 from loguru import logger
 from qdrant_client import models
 from sqlmodel import Session, select
@@ -105,8 +106,9 @@ def load_publication_metadata(doc_ids: list[str]) -> dict[str, PublicationTracki
 def build_points_for_document(
     doc_dir: Path,
     pub: PublicationTracking | None,
+    sparse_model: SparseTextEmbedding,
 ) -> list[models.PointStruct]:
-    """Build Qdrant PointStruct objects for one document."""
+    """Build Qdrant PointStruct objects with dense + BM25 sparse vectors."""
     # Read parquet
     table = pq.read_table(doc_dir / "embeddings.parquet")
     chunk_ids: list[str] = table.column("chunk_id").to_pylist()
@@ -123,8 +125,19 @@ def build_points_for_document(
     for chunk in meta.get("chunks", []):
         chunk_lookup[chunk["chunk_id"]] = chunk
 
+    # Collect text content for BM25 sparse embedding
+    texts: list[str] = []
+    for cid in chunk_ids:
+        chunk_meta = chunk_lookup.get(cid, {})
+        texts.append(chunk_meta.get("text_content", ""))
+
+    # Generate BM25 sparse vectors for all chunks in this document
+    sparse_vecs = list(sparse_model.embed(texts))
+
     points: list[models.PointStruct] = []
-    for cid, vec in zip(chunk_ids, embeddings, strict=False):
+    for cid, dense_vec, sparse_vec in zip(
+        chunk_ids, embeddings, sparse_vecs, strict=False
+    ):
         chunk_meta = chunk_lookup.get(cid, {})
         payload: dict = {
             "chunk_id": cid,
@@ -138,7 +151,12 @@ def build_points_for_document(
         # Attach publication metadata if available
         if pub:
             payload["document_title"] = pub.title
-            payload["document_authors"] = pub.authors
+            try:
+                payload["document_authors"] = pub.authors
+            except (json.JSONDecodeError, TypeError):
+                # Old records may store authors as plain string
+                raw = pub.authors_json or ""
+                payload["document_authors"] = [raw] if raw else []
             payload["document_year"] = pub.year
             payload["document_abstract"] = pub.abstract
             payload["document_url"] = pub.source_url
@@ -152,7 +170,13 @@ def build_points_for_document(
         points.append(
             models.PointStruct(
                 id=deterministic_uuid(cid),
-                vector=vec,
+                vector={
+                    "dense": dense_vec,
+                    "bm25": models.SparseVector(
+                        indices=sparse_vec.indices.tolist(),
+                        values=sparse_vec.values.tolist(),
+                    ),
+                },
                 payload=payload,
             )
         )
@@ -170,11 +194,21 @@ async def ingest(settings: ServiceSettings) -> int:
     await qdrant.connect()
 
     try:
-        # Ensure collection
+        # Delete old collection (schema changed: unnamed -> named vectors + BM25)
+        collection = settings.qdrant_collection
+        if await qdrant.client.collection_exists(collection):
+            logger.info(f"Deleting old collection '{collection}' for re-creation")
+            await qdrant.client.delete_collection(collection)
+
+        # Create collection with named dense + sparse vectors
         await qdrant.ensure_collection(
-            name=settings.qdrant_collection,
+            name=collection,
             vector_size=settings.embedding_dimensions,
         )
+
+        # Load BM25 sparse model
+        logger.info("Loading BM25 sparse embedding model...")
+        sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
 
         # Discover documents
         doc_dirs = discover_documents(EMBEDDINGS_ROOT)
@@ -191,24 +225,23 @@ async def ingest(settings: ServiceSettings) -> int:
         total = len(doc_ids)
         logger.info(f"Loaded publication metadata for {matched}/{total} docs")
 
-        # Build and upsert points
+        # Build and upsert points (now with BM25 sparse vectors)
         all_points: list[models.PointStruct] = []
         for doc_dir in doc_dirs:
             doc_id = doc_dir.name
             pub = pub_lookup.get(doc_id)
             if not pub:
                 logger.warning(f"No publication metadata for {doc_id}")
-            points = build_points_for_document(doc_dir, pub)
+            points = build_points_for_document(doc_dir, pub, sparse_model)
             all_points.extend(points)
             logger.info(f"  {doc_id}: {len(points)} points")
 
         logger.info(f"Total points to upsert: {len(all_points)}")
-        await qdrant.upsert_points(settings.qdrant_collection, all_points)
+        await qdrant.upsert_points(collection, all_points)
 
         # Verify
         info = await qdrant.collection_info()
-        col = settings.qdrant_collection
-        logger.info(f"Collection '{col}': {info.points_count} points")
+        logger.info(f"Collection '{collection}': {info.points_count} points")
 
         return 0
 

@@ -8,10 +8,14 @@ from fastapi import Depends, FastAPI, HTTPException
 from loguru import logger
 from qdrant_client import models as qdrant_models
 
+from backend.service.agent import SearchAgent
 from backend.service.config import ServiceSettings
 from backend.service.embedding_service import EmbeddingService
 from backend.service.models import (
+    AgentSearchRequest,
+    AgentSearchResponse,
     ChunkResult,
+    Citation,
     HealthResponse,
     SearchFilters,
     SearchRequest,
@@ -25,12 +29,13 @@ from backend.service.qdrant_service import QdrantService
 _settings: ServiceSettings | None = None
 _qdrant: QdrantService | None = None
 _embedding: EmbeddingService | None = None
+_agent: SearchAgent | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Startup / shutdown lifecycle."""
-    global _settings, _qdrant, _embedding  # noqa: PLW0603
+    global _settings, _qdrant, _embedding, _agent  # noqa: PLW0603
 
     _settings = ServiceSettings()
     logger.info("ServiceSettings loaded")
@@ -54,6 +59,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _embedding = EmbeddingService(_settings)
     _embedding.initialize()
     logger.info("EmbeddingService initialized")
+
+    _agent = SearchAgent(_qdrant, _embedding, _settings)
+    logger.info("SearchAgent initialized")
 
     yield
 
@@ -87,6 +95,11 @@ def get_qdrant() -> QdrantService:
 def get_embedding() -> EmbeddingService:
     assert _embedding is not None  # noqa: S101
     return _embedding
+
+
+def get_agent() -> SearchAgent:
+    assert _agent is not None  # noqa: S101
+    return _agent
 
 
 # ---------------------------------------------------------------------------
@@ -204,3 +217,36 @@ async def health(
         collection=settings.qdrant_collection,
         points_count=points_count,
     )
+
+
+@app.post("/search", response_model=AgentSearchResponse)
+async def agent_search(
+    request: AgentSearchRequest,
+    agent: Annotated[SearchAgent, Depends(get_agent)],
+    settings: Annotated[ServiceSettings, Depends(get_service_settings)],
+) -> AgentSearchResponse:
+    """Run the LangGraph search agent with hybrid retrieval."""
+    try:
+        top_k = min(request.top_k, settings.max_top_k)
+
+        filters: dict = {}
+        if request.filters:
+            if request.filters.year is not None:
+                filters["year"] = request.filters.year
+            if request.filters.document_id is not None:
+                filters["document_id"] = request.filters.document_id
+
+        result = await agent.run(query=request.query, filters=filters, top_k=top_k)
+
+        citations = [Citation(**c) for c in result.get("citations", [])]
+
+        return AgentSearchResponse(
+            query=request.query,
+            answer=result.get("answer", ""),
+            citations=citations,
+            search_queries_used=result.get("search_queries", []),
+            chunks_retrieved=len(result.get("chunks", [])),
+        )
+    except Exception as exc:
+        logger.exception(f"Agent search failed: {exc}")
+        raise HTTPException(status_code=500, detail="Agent search failed") from exc

@@ -44,17 +44,19 @@ class QdrantService:
         vector_size: int,
         distance: models.Distance = models.Distance.COSINE,
     ) -> None:
-        """Create the collection if it doesn't already exist."""
+        """Create the collection with named dense + sparse (BM25) vectors."""
         exists = await self.client.collection_exists(name)
         if exists:
             logger.info(f"Collection '{name}' already exists")
             return
         await self.client.create_collection(
             collection_name=name,
-            vectors_config=models.VectorParams(
-                size=vector_size,
-                distance=distance,
-            ),
+            vectors_config={
+                "dense": models.VectorParams(size=vector_size, distance=distance),
+            },
+            sparse_vectors_config={
+                "bm25": models.SparseVectorParams(modifier=models.Modifier.IDF),
+            },
         )
         logger.info(
             f"Created collection '{name}' (size={vector_size}, distance={distance})"
@@ -91,12 +93,45 @@ class QdrantService:
         top_k: int = 10,
         filters: models.Filter | None = None,
     ) -> list[models.ScoredPoint]:
-        """Run a vector similarity search."""
+        """Run a dense vector similarity search."""
         response = await self.client.query_points(
             collection_name=collection,
             query=query_vector,
+            using="dense",
             limit=top_k,
             query_filter=filters,
+            with_payload=True,
+        )
+        return response.points
+
+    async def hybrid_search(
+        self,
+        collection: str,
+        dense_vector: list[float],
+        sparse_vector: models.SparseVector,
+        top_k: int = 10,
+        filters: models.Filter | None = None,
+    ) -> list[models.ScoredPoint]:
+        """Hybrid search combining dense + BM25 sparse via RRF fusion."""
+        prefetch_limit = top_k * 3
+        response = await self.client.query_points(
+            collection_name=collection,
+            prefetch=[
+                models.Prefetch(
+                    query=dense_vector,
+                    using="dense",
+                    limit=prefetch_limit,
+                    filter=filters,
+                ),
+                models.Prefetch(
+                    query=sparse_vector,
+                    using="bm25",
+                    limit=prefetch_limit,
+                    filter=filters,
+                ),
+            ],
+            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            limit=top_k,
             with_payload=True,
         )
         return response.points

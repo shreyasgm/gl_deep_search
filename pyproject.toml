@@ -103,6 +103,7 @@ service = [
 
     # Embeddings
     "sentence-transformers",
+    "fastembed",
     "cohere",
 ]
 

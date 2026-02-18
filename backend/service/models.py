@@ -53,3 +53,37 @@ class HealthResponse(BaseModel):
     qdrant_connected: bool
     collection: str
     points_count: int
+
+
+# ---------------------------------------------------------------------------
+# Agent search models
+# ---------------------------------------------------------------------------
+
+
+class AgentSearchRequest(BaseModel):
+    """Incoming request for the LangGraph agent search endpoint."""
+
+    query: str = Field(..., min_length=1, max_length=2000)
+    top_k: int = Field(default=10, ge=1, le=50)
+    filters: SearchFilters | None = None
+
+
+class Citation(BaseModel):
+    """A single citation reference in the agent's answer."""
+
+    source_number: int
+    document_title: str | None = None
+    document_url: str | None = None
+    document_year: int | None = None
+    document_authors: list[str] = Field(default_factory=list)
+    relevant_quote: str
+
+
+class AgentSearchResponse(BaseModel):
+    """Response from the LangGraph agent search endpoint."""
+
+    query: str
+    answer: str
+    citations: list[Citation]
+    search_queries_used: list[str]
+    chunks_retrieved: int

@@ -31,6 +31,9 @@ class ServiceSettings(BaseSettings):
     default_top_k: int = 10
     max_top_k: int = 50
 
+    # Agent
+    agent_model: str = "claude-sonnet-4-20250514"
+
     # Logging
     log_level: str = "INFO"
 
