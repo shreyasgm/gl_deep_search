@@ -144,7 +144,7 @@ def build_points_for_document(
             payload["document_url"] = pub.source_url
         else:
             payload["document_title"] = None
-            payload["document_authors"] = None
+            payload["document_authors"] = []
             payload["document_year"] = None
             payload["document_abstract"] = None
             payload["document_url"] = None

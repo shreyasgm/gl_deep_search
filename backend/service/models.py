@@ -32,7 +32,7 @@ class ChunkResult(BaseModel):
 
     # Document-level metadata
     document_title: str | None = None
-    document_authors: str | None = None
+    document_authors: list[str] = Field(default_factory=list)
     document_year: int | None = None
     document_abstract: str | None = None
     document_url: str | None = None

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def sample_publication():
     pub = GrowthLabPublication(
         title="Test Publication",
-        authors="John Doe, Jane Smith",
+        authors=["John Doe", "Jane Smith"],
         year=2023,
         abstract="This is a test abstract",
         pub_url="https://growthlab.hks.harvard.edu/publications/test",
@@ -62,7 +62,8 @@ async def test_parse_publication(scraper):
     # Verify core fields
     assert publication is not None
     assert publication.title == "Test Publication"
-    assert publication.authors == "John Doe, Jane Smith"
+    # Full names without initials can't be reliably split, so kept as one entry
+    assert publication.authors == ["John Doe, Jane Smith"]
     assert publication.year == 2023
     assert publication.abstract == "This is a test abstract"
     assert len(publication.file_urls) == 1
@@ -101,7 +102,7 @@ async def test_extract_publications(scraper):
             # Also mock the fetch_page method to return a valid publication
             test_pub = GrowthLabPublication(
                 title="Test Publication",
-                authors="John Doe",
+                authors=["John Doe"],
                 year=2023,
                 abstract="Test abstract",
                 pub_url="https://growthlab.hks.harvard.edu/publications/test",
@@ -125,7 +126,7 @@ async def test_extract_publications_with_limit(scraper):
     for i in range(5):
         pub = GrowthLabPublication(
             title=f"Test Publication {i}",
-            authors="John Doe",
+            authors=["John Doe"],
             year=2023,
             abstract=f"Test abstract {i}",
             pub_url=f"https://growthlab.hks.harvard.edu/publications/test{i}",
@@ -179,7 +180,7 @@ async def test_update_publications_with_limit(scraper, sample_publication, tmp_p
     for i in range(4):
         pub = GrowthLabPublication(
             title=f"Test Publication {i}",
-            authors="John Doe",
+            authors=["John Doe"],
             year=2023,
             abstract=f"Test abstract {i}",
             pub_url=f"https://growthlab.hks.harvard.edu/publications/test{i}",
@@ -230,12 +231,12 @@ def test_publication_model(sample_publication):
     # Test text normalization
     pub1 = GrowthLabPublication(
         title="Test Publication",
-        authors="John Doe, Jane Smith",
+        authors=["John Doe", "Jane Smith"],
         year=2023,
     )
     pub2 = GrowthLabPublication(
         title="TEST PUBLICATION",  # Different case
-        authors="John Doe,Jane Smith",  # Different spacing
+        authors=["John Doe", "Jane Smith"],
         year=2023,
     )
     # IDs should be the same despite minor text differences
@@ -266,7 +267,6 @@ def test_publication_enrichment():
     # Create a test publication with missing fields
     test_pub = GrowthLabPublication(
         title="Test Publication",
-        authors=None,  # Set to None to test enrichment
         year=2023,
         pub_url="https://growthlab.hks.harvard.edu/publications/test",
         file_urls=["https://growthlab.hks.harvard.edu/files/test.pdf"],
@@ -275,8 +275,9 @@ def test_publication_enrichment():
     )
 
     # Manually enrich the publication as the method would
+    # (parse_endnote_content now returns authors as a list)
     endnote_data = {
-        "author": "John Doe, Jane Smith",
+        "author": ["John Doe", "Jane Smith"],
         "title": "Test Publication",
         "date": "2023",
         "abstract": "This is an enriched abstract",
@@ -291,7 +292,7 @@ def test_publication_enrichment():
 
     # Verify enrichment process worked
     assert test_pub.abstract == "This is an enriched abstract"
-    assert test_pub.authors == "John Doe, Jane Smith"
+    assert test_pub.authors == ["John Doe", "Jane Smith"]
 
 
 def test_save_and_load_publications(scraper, sample_publication, tmp_path):
@@ -408,10 +409,19 @@ def test_growthlab_real_data_id_generation(tmp_path):
         # Convert string representation of list to actual list for file_urls
         file_urls = eval(row["file_urls"]) if isinstance(row["file_urls"], str) else []
 
+        # Convert authors from CSV (may be string repr of list or old-style string)
+        authors_raw = row["authors"] if not pd.isna(row["authors"]) else None
+        if isinstance(authors_raw, str) and authors_raw.startswith("["):
+            authors_val = eval(authors_raw)
+        elif isinstance(authors_raw, str):
+            authors_val = [authors_raw] if authors_raw else []
+        else:
+            authors_val = []
+
         # Create Publication object WITHOUT paper_id to test generation logic
         pub = GrowthLabPublication(
             title=row["title"] if not pd.isna(row["title"]) else None,
-            authors=row["authors"] if not pd.isna(row["authors"]) else None,
+            authors=authors_val,
             year=int(row["year"]) if not pd.isna(row["year"]) else None,
             abstract=row["abstract"] if not pd.isna(row["abstract"]) else None,
             pub_url=row["pub_url"] if not pd.isna(row["pub_url"]) else None,

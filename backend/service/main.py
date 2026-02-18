@@ -136,7 +136,7 @@ def _scored_point_to_chunk_result(
         chunk_index=payload.get("chunk_index", 0),
         token_count=payload.get("token_count", 0),
         document_title=payload.get("document_title"),
-        document_authors=payload.get("document_authors"),
+        document_authors=payload.get("document_authors", []),
         document_year=payload.get("document_year"),
         document_abstract=payload.get("document_abstract"),
         document_url=payload.get("document_url"),

@@ -27,7 +27,7 @@ class GrowthLabPublication(BaseModel):
 
     paper_id: str | None = None
     title: str | None = None
-    authors: str | None = None
+    authors: list[str] = Field(default_factory=list)
     year: int | None = None
     abstract: str | None = None
     pub_url: HttpUrl | None = None
@@ -78,7 +78,8 @@ class GrowthLabPublication(BaseModel):
 
         # Normalize authors - lowercase, remove punctuation and extra spaces
         if self.authors:
-            normalized_authors = self._normalize_text(self.authors)
+            authors_str = " ".join(self.authors)
+            normalized_authors = self._normalize_text(authors_str)
             if normalized_authors:
                 components.append(f"a:{normalized_authors}")
 
@@ -139,7 +140,7 @@ class OpenAlexPublication(BaseModel):
     paper_id: str  # OpenAlex ID (e.g., "W2741809807")
     openalex_id: str  # Full OpenAlex URL
     title: str | None = None
-    authors: str | None = None
+    authors: list[str] = Field(default_factory=list)
     year: int | None = None
     abstract: str | None = None
     pub_url: HttpUrl | None = None
@@ -204,7 +205,8 @@ class OpenAlexPublication(BaseModel):
 
         # Normalize authors - lowercase, remove punctuation and extra spaces
         if self.authors:
-            normalized_authors = self._normalize_text(self.authors)
+            authors_str = " ".join(self.authors)
+            normalized_authors = self._normalize_text(authors_str)
             if normalized_authors:
                 components.append(f"a:{normalized_authors}")
 

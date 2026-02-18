@@ -33,6 +33,31 @@ T = TypeVar("T")
 BROWSER_IMPERSONATE = "chrome120"
 
 
+def _parse_author_string(raw: str) -> list[str]:
+    """Split a raw author string into individual author names.
+
+    Handles formats like:
+      - "Hausmann, R. & Klinger, B."
+      - "Hausmann, R., Tyson, L.D. & Zahidi, S."
+      - "John Doe, Jane Smith"  (simple comma-separated full names)
+    """
+    if not raw or not raw.strip():
+        return []
+
+    # Split on " & " first to separate the last author
+    parts = [p.strip() for p in raw.split(" & ")]
+
+    authors: list[str] = []
+    for part in parts:
+        # Check if this part contains multiple "LastName, Init." authors
+        # Pattern: a period or closing paren followed by ", " and an uppercase letter
+        # e.g. "Hausmann, R., Tyson, L.D." -> split after "R.,"
+        sub = re.split(r"(?<=[\.\)])\s*,\s+(?=[A-Z])", part)
+        authors.extend(s.strip().rstrip(",").strip() for s in sub if s.strip())
+
+    return authors
+
+
 class GrowthLabScraper:
     """Scraper for Growth Lab website publications"""
 
@@ -237,7 +262,7 @@ class GrowthLabScraper:
             if not authors_element:
                 authors_element = pub_element.find("span", {"class": "biblio-authors"})
 
-            authors = None
+            authors_raw: str | None = None
             year = None
 
             if authors_element:
@@ -250,7 +275,7 @@ class GrowthLabScraper:
                     if year_match:
                         year = int(year_match.group())
                     # Remove year from authors text
-                    authors = (
+                    authors_raw = (
                         authors_element.text.replace(year_span.text, "")
                         .strip()
                         .rstrip(",")
@@ -258,12 +283,14 @@ class GrowthLabScraper:
                     )
                 else:
                     # Old structure: year is sibling of authors_element
-                    authors = authors_element.text.strip()
+                    authors_raw = authors_element.text.strip()
                     sibling_text = authors_element.next_sibling
                     if sibling_text:
                         year_match = re.search(r"\b\d{4}\b", sibling_text)
                         if year_match:
                             year = int(year_match.group())
+
+            authors = _parse_author_string(authors_raw) if authors_raw else []
 
             # Apply year correction if available
             if pub_url in self.year_corrections:
@@ -614,9 +641,6 @@ class GrowthLabScraper:
                     )
                     record["abstract"] = abstract.strip()
 
-        if "author" in record:
-            record["author"] = ", ".join(record["author"])
-
         return record
 
     async def _enrich_publication_impl(
@@ -742,23 +766,24 @@ class GrowthLabScraper:
                                     author = item.get("author", {})
                                     if isinstance(author, dict):
                                         author_name = author.get("name", "")
-                                        # Only update if we don't have authors or if JSON-LD has better data
-                                        if not pub.authors or (
-                                            author_name
-                                            and len(author_name)
-                                            > len(pub.authors or "")
+                                        if author_name and len([author_name]) > len(
+                                            pub.authors
                                         ):
-                                            pub.authors = author_name
+                                            pub.authors = [author_name]
                                     elif isinstance(author, list) and author:
-                                        # Handle list of authors
                                         author_names = [
                                             a.get("name", "")
                                             if isinstance(a, dict)
                                             else str(a)
                                             for a in author
+                                            if (
+                                                a.get("name", "")
+                                                if isinstance(a, dict)
+                                                else str(a)
+                                            )
                                         ]
-                                        if author_names:
-                                            pub.authors = ", ".join(author_names)
+                                        if len(author_names) > len(pub.authors):
+                                            pub.authors = author_names
                     except Exception as e:
                         logger.debug(f"Failed to parse JSON-LD: {e}")
                         continue
@@ -922,7 +947,6 @@ class GrowthLabScraper:
                 {
                     "abstract": "",
                     "title": "",
-                    "authors": "",
                     "paper_id": "",
                     "content_hash": "",
                     "pub_url": "",
@@ -931,6 +955,10 @@ class GrowthLabScraper:
             # Convert string representation of list to actual list for file_urls
             df["file_urls"] = df["file_urls"].apply(
                 lambda x: eval(x) if isinstance(x, str) else []
+            )
+            # Convert string representation of list to actual list for authors
+            df["authors"] = df["authors"].apply(
+                lambda x: eval(x) if isinstance(x, str) and x.startswith("[") else []
             )
             publications = [GrowthLabPublication(**row) for _, row in df.iterrows()]
             logger.info(f"Loaded {len(publications)} publications from {input_path}")

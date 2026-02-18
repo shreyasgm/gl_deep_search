@@ -341,13 +341,13 @@ class PublicationTracker:
                     publication_id=publication.paper_id,
                     source_url=str(publication.pub_url) if publication.pub_url else "",
                     title=publication.title,
-                    authors=publication.authors,
                     year=publication.year,
                     abstract=publication.abstract,
                     content_hash=publication.content_hash,
                 )
 
-                # Convert file URLs to the format expected by the tracking model
+                # Set list fields via property setters (JSON serialization)
+                tracking.authors = publication.authors
                 tracking.file_urls = [str(url) for url in publication.file_urls]
 
                 # Save new record to database

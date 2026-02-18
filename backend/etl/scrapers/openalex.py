@@ -166,13 +166,14 @@ class OpenAlexClient:
 
                 # Extract authors
                 authorships = result.get("authorships") or []
-                # Build author string
-                author_names = []
+                author_names: list[str] = []
                 for author in authorships:
                     author_obj = author.get("author", {})
                     if author_obj and "display_name" in author_obj:
-                        author_names.append(author_obj.get("display_name", ""))
-                authors = ", ".join(author_names)
+                        name = author_obj.get("display_name", "")
+                        if name:
+                            author_names.append(name)
+                authors = author_names
 
                 # Extract abstract
                 abstract_dict = result.get("abstract_inverted_index", {})
@@ -254,7 +255,7 @@ class OpenAlexClient:
 
             # Convert string representation of lists to actual lists
             # Process list fields
-            for list_field in ["file_urls", "concepts"]:
+            for list_field in ["file_urls", "concepts", "authors"]:
                 if list_field in df.columns:
                     df[list_field] = df[list_field].apply(
                         lambda x: eval(x)
@@ -262,10 +263,12 @@ class OpenAlexClient:
                         else []
                     )
 
-            # Convert NaN values to None (or appropriate default values)
+            # Convert NaN values to None (skip list columns already converted)
+            list_fields = {"file_urls", "concepts", "authors"}
             df = df.replace({pd.NA: None})
             for col in df.columns:
-                df[col] = df[col].apply(lambda x: None if pd.isna(x) else x)
+                if col not in list_fields:
+                    df[col] = df[col].apply(lambda x: None if pd.isna(x) else x)
 
             publications = []
             for _, row in df.iterrows():
@@ -273,7 +276,9 @@ class OpenAlexClient:
                     # Create a clean dictionary without NaN values
                     clean_dict: dict[str, Any] = {}
                     for k, v in row.to_dict().items():
-                        if pd.isna(v):
+                        if isinstance(v, list):
+                            clean_dict[k] = v
+                        elif pd.isna(v):
                             clean_dict[k] = None
                         else:
                             clean_dict[k] = v

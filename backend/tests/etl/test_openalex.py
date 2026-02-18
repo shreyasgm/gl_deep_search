@@ -19,7 +19,7 @@ def sample_publication():
         paper_id="W123456789",
         openalex_id="https://openalex.org/W123456789",
         title="Test OpenAlex Publication",
-        authors="John Doe, Jane Smith",
+        authors=["John Doe", "Jane Smith"],
         year=2023,
         abstract="This is a test abstract for OpenAlex publication",
         pub_url="https://example.com/publication",
@@ -85,13 +85,13 @@ def test_publication_model(sample_publication):
     pub1 = OpenAlexPublication(
         paper_id="test_no_w_id",
         title="Test Publication",
-        authors="John Doe, Jane Smith",
+        authors=["John Doe", "Jane Smith"],
         year=2023,
     )
     pub2 = OpenAlexPublication(
         paper_id="test_no_w_id",
         title="TEST PUBLICATION",  # Different case
-        authors="John Doe,Jane Smith",  # Different spacing
+        authors=["John Doe", "Jane Smith"],
         year=2023,
     )
     # IDs should be the same despite minor text differences
@@ -204,14 +204,14 @@ async def test_fetch_publications(client):
         assert len(publications) == 2
         assert publications[0].title == "Test Publication 1"
         assert publications[0].year == 2023
-        assert publications[0].authors == "John Doe"
+        assert publications[0].authors == ["John Doe"]
         assert publications[0].abstract == "Abstract one"
         assert str(publications[0].pub_url) == "https://example.com/pub1"
         assert publications[0].cited_by_count == 10
 
         assert publications[1].title == "Test Publication 2"
         assert publications[1].year == 2022
-        assert publications[1].authors == "Jane Smith"
+        assert publications[1].authors == ["Jane Smith"]
         assert publications[1].abstract == "Abstract two"
         assert str(publications[1].pub_url) == "https://example.com/pub2"
         assert publications[1].cited_by_count == 20
@@ -359,11 +359,20 @@ def test_openalex_real_data_id_generation(tmp_path):
         original_id = row["paper_id"]
         test_id = "test_id_for_regeneration"  # Temporary ID for testing
 
+        # Convert authors from CSV (may be string repr of list or old-style string)
+        authors_raw = row["authors"] if not pd.isna(row["authors"]) else None
+        if isinstance(authors_raw, str) and authors_raw.startswith("["):
+            authors_val = eval(authors_raw)
+        elif isinstance(authors_raw, str):
+            authors_val = [authors_raw] if authors_raw else []
+        else:
+            authors_val = []
+
         pub = OpenAlexPublication(
             paper_id=test_id,  # Use a temporary ID - we'll test regeneration
             openalex_id=row["openalex_id"] if not pd.isna(row["openalex_id"]) else None,
             title=row["title"] if not pd.isna(row["title"]) else None,
-            authors=row["authors"] if not pd.isna(row["authors"]) else None,
+            authors=authors_val,
             year=int(row["year"]) if not pd.isna(row["year"]) else None,
             abstract=row["abstract"] if not pd.isna(row["abstract"]) else None,
             pub_url=row["pub_url"] if not pd.isna(row["pub_url"]) else None,

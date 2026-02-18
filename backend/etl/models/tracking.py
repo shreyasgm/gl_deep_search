@@ -11,7 +11,7 @@ import json
 from enum import Enum
 
 import sqlalchemy as sa
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from sqlmodel import Field, MetaData, SQLModel
 
 # Create metadata instance for SQLAlchemy table definitions
@@ -111,7 +111,11 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
     publication_id: str = Field(primary_key=True)  # Unique identifier (DOI, hash, etc.)
     source_url: str  # URL where the publication was discovered
     title: str | None = None  # Publication title (if available)
-    authors: str | None = None  # Author names (comma-separated)
+    # Author names stored as JSON array in text field for database compatibility
+    authors_json: str | None = Field(
+        sa_column=sa.Column("authors", sa.Text),
+        default=None,
+    )
     year: int | None = None  # Publication year
     abstract: str | None = None  # Publication abstract/summary
     # File URLs stored as JSON array in text field for database compatibility
@@ -169,6 +173,20 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
     error_message: str | None = None  # Last error message encountered during processing
 
     # --- Data validation methods ---
+    @model_validator(mode="before")
+    @classmethod
+    def _route_authors(cls, values: dict) -> dict:  # type: ignore[type-arg]
+        """Accept 'authors' in the constructor and serialize to authors_json."""
+        if isinstance(values, dict) and "authors" in values:
+            raw = values.pop("authors")
+            if isinstance(raw, list):
+                values["authors_json"] = json.dumps(raw)
+            elif isinstance(raw, str):
+                # Legacy string value — wrap in a single-element list
+                values["authors_json"] = json.dumps([raw]) if raw else None
+            # None stays None
+        return values
+
     @field_validator("year")
     @classmethod
     def validate_year(cls, v: int | None) -> int | None:
@@ -181,6 +199,22 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
         if v is not None and (v < 1900 or v > 2100):
             raise ValueError("Year must be between 1900 and 2100")
         return v
+
+    # --- Authors property accessors ---
+    @property
+    def authors(self) -> list[str]:
+        """Get authors as a list of strings from JSON storage."""
+        if not self.authors_json:
+            return []
+        return json.loads(self.authors_json)
+
+    @authors.setter
+    def authors(self, names: list[str] | None) -> None:
+        """Set authors by converting a list to JSON storage format."""
+        if names is None or len(names) == 0:
+            self.authors_json = None
+        else:
+            self.authors_json = json.dumps(names)
 
     # --- File URLs property accessors ---
     # These methods provide a clean interface to work with file URLs as a list

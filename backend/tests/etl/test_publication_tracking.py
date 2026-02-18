@@ -585,7 +585,7 @@ class TestPublicationTrackingIntegration:
             test_publication = GrowthLabPublication(
                 paper_id="test_dedup_123",
                 title="Test Deduplication Paper",
-                authors="Test Author",
+                authors=["Test Author"],
                 year=2023,
                 abstract="Test abstract for deduplication",
                 source="GrowthLab",
@@ -761,7 +761,7 @@ def sample_growthlab_publication() -> GrowthLabPublication:
     """
     pub = GrowthLabPublication(
         title="Test GrowthLab Publication",
-        authors="John Doe, Jane Smith",
+        authors=["John Doe", "Jane Smith"],
         year=2023,
         abstract="This is a test abstract for a GrowthLab publication",
         pub_url=HttpUrl(
@@ -793,7 +793,7 @@ def sample_openalex_publication() -> OpenAlexPublication:
         paper_id="W123456789",
         openalex_id="https://openalex.org/W123456789",
         title="Test OpenAlex Publication",
-        authors="Alice Johnson, Bob Williams",
+        authors=["Alice Johnson", "Bob Williams"],
         year=2022,
         abstract="This is a test abstract for an OpenAlex publication",
         pub_url=HttpUrl("https://doi.org/10.1234/test.5678"),
@@ -827,11 +827,11 @@ def sample_tracking_publication(
         publication_id=pub.paper_id,
         source_url=str(pub.pub_url) if pub.pub_url else "",
         title=pub.title,
-        authors=pub.authors,
         year=pub.year,
         abstract=pub.abstract,
         content_hash=pub.content_hash,
     )
+    tracking.authors = pub.authors
     tracking.file_urls = [str(url) for url in pub.file_urls]
 
     return tracking
