@@ -13,6 +13,16 @@ Growth Lab Deep Search is an agentic AI system designed to answer complex questi
 - Vector embeddings with hybrid search
 - Agentic RAG system based on LangGraph
 
+## Ideas for where to go from here
+
+These are some brainstorming ideas for applications of the data that we collect using the ETL pipeline.
+
+- Growth Lab search: use embeddings + vector db, use full text of documents, maybe build a knowledge graph, and allow effective "deep search" using LLMs
+- How was GL research changed over time? Who is involved? etc. Simple text clouds, simple topic modeling over time.
+- What are the constraints identified in the applied projects? How has that changed over time? For a given type of constraint, what are the usual policy recommendations?
+- How is GD done in the Growth Lab? How about Economic Complexity analysis? How has that changed over time? What is the modern way of doing it?
+
+
 ## Project Architecture
 
 ### Directory structure
