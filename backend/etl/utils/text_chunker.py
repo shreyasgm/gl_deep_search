@@ -3,6 +3,10 @@ Text Chunking System for Growth Lab Deep Search.
 
 This module provides text chunking functionality that transforms processed text
 documents into semantically meaningful chunks for vector embeddings and retrieval.
+
+All chunk size limits are enforced using token counts (not character counts) to
+ensure compatibility with embedding model token limits (e.g., OpenAI's
+text-embedding-3-small has an 8,192 token limit).
 """
 
 import json
@@ -15,11 +19,16 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import tiktoken
 import yaml
 from loguru import logger
 
 from backend.etl.models.tracking import ProcessingStatus
 from backend.etl.utils.publication_tracker import PublicationTracker
+
+# Fallback defaults if not specified in config
+DEFAULT_TIKTOKEN_ENCODING = "cl100k_base"
+DEFAULT_EMBEDDING_MAX_TOKENS = 8192
 
 
 class ChunkingStatus(Enum):
@@ -45,7 +54,8 @@ class DocumentChunk:
     section_title: str | None  # Parent section if available
     metadata: dict[str, Any]  # Additional metadata
     created_at: datetime  # Processing timestamp
-    chunk_size: int  # Actual chunk size in characters
+    chunk_size: int  # Actual chunk size in characters (for reference)
+    token_count: int  # Actual chunk size in tokens (primary metric)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert chunk to dictionary for JSON serialization."""
@@ -82,7 +92,11 @@ class ChunkingResult:
 
 
 class TextChunker:
-    """Main text chunking system with multiple strategies."""
+    """Main text chunking system with multiple strategies.
+
+    All size limits are enforced using token counts to ensure compatibility
+    with embedding model limits (e.g., OpenAI text-embedding-3-small: 8192 tokens).
+    """
 
     def __init__(self, config_path: Path, tracker: PublicationTracker | None = None):
         """
@@ -91,19 +105,42 @@ class TextChunker:
         Args:
             config_path: Path to configuration file
             tracker: Optional PublicationTracker instance for updating processing status
+
+        Note:
+            All chunk size parameters (chunk_size, chunk_overlap, min_chunk_size,
+            max_chunk_size) are measured in TOKENS, not characters. This ensures
+            chunks fit within embedding model token limits.
         """
         self.config_path = config_path
         self.config = self._load_config()
         self.tracker = tracker
+
+        # Get embedding config for tokenizer settings
+        embedding_config = self.config.get("file_processing", {}).get("embedding", {})
+        tiktoken_encoding = embedding_config.get(
+            "tiktoken_encoding", DEFAULT_TIKTOKEN_ENCODING
+        )
+        self.embedding_max_tokens = embedding_config.get(
+            "max_tokens", DEFAULT_EMBEDDING_MAX_TOKENS
+        )
+
+        # Initialize tiktoken encoder for token counting
+        self.encoder = tiktoken.get_encoding(tiktoken_encoding)
+        logger.debug(
+            f"Using tiktoken encoding: {tiktoken_encoding}, "
+            f"embedding max tokens: {self.embedding_max_tokens}"
+        )
+
         raw_config = self.config.get("file_processing", {}).get("chunking", {})
 
-        # Defaults
+        # Defaults (all sizes in TOKENS, not characters)
+        # These are conservative defaults that work well with text-embedding-3-small
         defaults = {
             "strategy": "hybrid",
-            "chunk_size": 1000,
-            "chunk_overlap": 200,
-            "min_chunk_size": 100,
-            "max_chunk_size": 2000,
+            "chunk_size": 500,  # target tokens per chunk
+            "chunk_overlap": 50,  # tokens of overlap between chunks
+            "min_chunk_size": 50,  # minimum viable chunk size in tokens
+            "max_chunk_size": 8000,  # max tokens (embedding model limit is 8192)
             "preserve_structure": True,
             "respect_sentences": True,
             "structure_markers": [
@@ -133,6 +170,16 @@ class TextChunker:
             merged["min_chunk_size"] = defaults["min_chunk_size"]
             merged["max_chunk_size"] = defaults["max_chunk_size"]
 
+        # Enforce max_chunk_size doesn't exceed embedding model limit
+        if merged["max_chunk_size"] > self.embedding_max_tokens:
+            clamped_value = self.embedding_max_tokens - 100
+            logger.warning(
+                f"max_chunk_size ({merged['max_chunk_size']}) exceeds embedding "
+                f"model limit ({self.embedding_max_tokens}). Clamping to "
+                f"{clamped_value}."
+            )
+            merged["max_chunk_size"] = self.embedding_max_tokens - 100  # Leave buffer
+
         if (
             not isinstance(merged.get("chunk_overlap"), int)
             or merged["chunk_overlap"] < 0
@@ -149,15 +196,78 @@ class TextChunker:
 
         # Extract configuration parameters from normalized config
         self.strategy = merged["strategy"]
-        self.chunk_size = merged["chunk_size"]
-        self.chunk_overlap = merged["chunk_overlap"]
-        self.min_chunk_size = merged["min_chunk_size"]
-        self.max_chunk_size = merged["max_chunk_size"]
+        self.chunk_size = merged["chunk_size"]  # in tokens
+        self.chunk_overlap = merged["chunk_overlap"]  # in tokens
+        self.min_chunk_size = merged["min_chunk_size"]  # in tokens
+        self.max_chunk_size = merged["max_chunk_size"]  # in tokens
         self.preserve_structure = merged["preserve_structure"]
         self.respect_sentences = merged["respect_sentences"]
         self.structure_markers = merged["structure_markers"]
 
-        logger.info(f"TextChunker initialized with strategy: {self.strategy}")
+        logger.info(
+            f"TextChunker initialized with strategy: {self.strategy}, "
+            f"chunk_size: {self.chunk_size} tokens, max: {self.max_chunk_size} tokens"
+        )
+
+    def _count_tokens(self, text: str) -> int:
+        """Count the number of tokens in a text string."""
+        return len(self.encoder.encode(text))
+
+    def _split_text_by_tokens(
+        self, text: str, max_tokens: int, overlap_tokens: int = 0
+    ) -> list[tuple[str, int, int]]:
+        """
+        Split text into chunks that respect token limits.
+
+        Args:
+            text: The text to split
+            max_tokens: Maximum tokens per chunk
+            overlap_tokens: Number of tokens to overlap between chunks
+
+        Returns:
+            List of tuples: (chunk_text, char_start, char_end)
+        """
+        tokens = self.encoder.encode(text)
+        chunks = []
+
+        if len(tokens) <= max_tokens:
+            return [(text, 0, len(text))]
+
+        start_token = 0
+        char_position = 0
+
+        while start_token < len(tokens):
+            end_token = min(start_token + max_tokens, len(tokens))
+            chunk_tokens = tokens[start_token:end_token]
+            chunk_text = self.encoder.decode(chunk_tokens)
+
+            # Calculate character positions
+            char_start = char_position
+            char_end = char_start + len(chunk_text)
+
+            chunks.append((chunk_text, char_start, char_end))
+
+            # Move to next chunk with overlap
+            if end_token >= len(tokens):
+                break
+
+            advance = max_tokens - overlap_tokens
+            if advance <= 0:
+                advance = max_tokens  # Prevent infinite loop
+            start_token += advance
+            # Update char position (approximate - overlap makes this complex)
+            char_position = (
+                char_end
+                - len(
+                    self.encoder.decode(
+                        tokens[start_token - overlap_tokens : start_token]
+                    )
+                )
+                if overlap_tokens > 0
+                else char_end
+            )
+
+        return chunks
 
     def _load_config(self) -> dict[str, Any]:
         """Load configuration from YAML file."""
@@ -365,6 +475,10 @@ class TextChunker:
 
                 if chunks:
                     logger.info(f"Successfully chunked with strategy: {strategy_name}")
+                    # Safety net: split any chunks that exceed embedding token limit
+                    chunks = self._enforce_token_limits(
+                        chunks, source_path, document_id
+                    )
                     return chunks
                 else:
                     logger.warning(f"Strategy {strategy_name} produced no chunks")
@@ -377,10 +491,67 @@ class TextChunker:
         logger.error("All chunking strategies failed")
         return []
 
+    def _enforce_token_limits(
+        self,
+        chunks: list[DocumentChunk],
+        source_path: Path | None,
+        document_id: str | None,
+    ) -> list[DocumentChunk]:
+        """Final safety net: split any chunks exceeding the embedding model token limit.
+
+        This catches oversized chunks that slip through any strategy (e.g., when
+        sentence detection fails on OCR output with missing punctuation).
+        """
+        safe_chunks: list[DocumentChunk] = []
+        reindex_needed = False
+
+        for chunk in chunks:
+            if chunk.token_count <= self.max_chunk_size:
+                safe_chunks.append(chunk)
+            else:
+                reindex_needed = True
+                logger.warning(
+                    f"Chunk {chunk.chunk_id} exceeds token limit "
+                    f"({chunk.token_count} > {self.max_chunk_size}). "
+                    f"Force-splitting."
+                )
+                # Force-split using token-based splitting
+                sub_texts = self._force_split_by_tokens(chunk.text_content)
+                for sub_text in sub_texts:
+                    token_count = self._count_tokens(sub_text)
+                    sub_chunk = DocumentChunk(
+                        chunk_id="",  # Will be reindexed below
+                        source_document_id=chunk.source_document_id,
+                        source_file_path=chunk.source_file_path,
+                        chunk_index=0,  # Will be reindexed below
+                        text_content=sub_text,
+                        character_start=chunk.character_start,
+                        character_end=chunk.character_start + len(sub_text),
+                        page_numbers=chunk.page_numbers,
+                        section_title=chunk.section_title,
+                        metadata={
+                            **chunk.metadata,
+                            "force_split": True,
+                        },
+                        created_at=chunk.created_at,
+                        chunk_size=len(sub_text),
+                        token_count=token_count,
+                    )
+                    safe_chunks.append(sub_chunk)
+
+        # Reindex chunk IDs and indices if any splitting occurred
+        if reindex_needed:
+            doc_id = document_id or "document"
+            for i, chunk in enumerate(safe_chunks):
+                chunk.chunk_index = i
+                chunk.chunk_id = f"{doc_id}_chunk_{i:04d}"
+
+        return safe_chunks
+
     def chunk_fixed_size(
         self, text: str, source_path: Path | None = None, document_id: str | None = None
     ) -> list[DocumentChunk]:
-        """Create fixed-size chunks with overlap."""
+        """Create fixed-size chunks with overlap, using token-based limits."""
         chunks = []
         chunk_index = 0
 
@@ -394,22 +565,51 @@ class TextChunker:
         if document_id is None:
             document_id = source_path.stem or "document"
 
-        start = 0
-        while start < len(clean_text):
-            end = min(start + self.chunk_size, len(clean_text))
+        # Encode the full text into tokens
+        tokens = self.encoder.encode(clean_text)
+        total_tokens = len(tokens)
 
-            # Extract chunk text without stripping to preserve exact overlap
-            chunk_text = clean_text[start:end]
+        # Check if entire text is below minimum
+        if total_tokens < self.min_chunk_size:
+            # Create single chunk for small documents
+            token_count = total_tokens
+            chunk = DocumentChunk(
+                chunk_id=f"{document_id}_chunk_{chunk_index:04d}",
+                source_document_id=document_id,
+                source_file_path=source_path,
+                chunk_index=chunk_index,
+                text_content=clean_text,
+                character_start=0,
+                character_end=len(clean_text),
+                page_numbers=self._find_pages_for_position(
+                    0, len(clean_text), page_info
+                ),
+                section_title=None,
+                metadata={"strategy": "fixed"},
+                created_at=datetime.now(),
+                chunk_size=len(clean_text),
+                token_count=token_count,
+            )
+            return [chunk]
 
-            # Skip chunks that are too small, but always include first chunk if short
-            if (
-                len(chunk_text) < self.min_chunk_size
-                and len(clean_text) >= self.min_chunk_size
-            ):
+        start_token = 0
+        while start_token < total_tokens:
+            end_token = min(start_token + self.chunk_size, total_tokens)
+            chunk_tokens = tokens[start_token:end_token]
+            chunk_text = self.encoder.decode(chunk_tokens)
+            token_count = len(chunk_tokens)
+
+            # Skip chunks that are too small (in tokens)
+            if token_count < self.min_chunk_size and start_token > 0:
                 break
 
+            # Calculate approximate character positions for page mapping
+            # (This is approximate since token boundaries don't align with characters)
+            char_start = len(self.encoder.decode(tokens[:start_token]))
+            char_end = char_start + len(chunk_text)
+
             # Find which pages this chunk covers
-            chunk_pages = self._find_pages_for_position(start, end, page_info)
+            chunk_pages = self._find_pages_for_position(char_start, char_end, page_info)
 
             chunk = DocumentChunk(
                 chunk_id=f"{document_id}_chunk_{chunk_index:04d}",
@@ -417,32 +617,31 @@ class TextChunker:
                 source_file_path=source_path,
                 chunk_index=chunk_index,
                 text_content=chunk_text,
-                character_start=start,
-                character_end=end,
+                character_start=char_start,
+                character_end=char_end,
                 page_numbers=chunk_pages,
                 section_title=None,
                 metadata={"strategy": "fixed"},
                 created_at=datetime.now(),
                 chunk_size=len(chunk_text),
+                token_count=token_count,
             )
 
             chunks.append(chunk)
             chunk_index += 1
 
-            # Move to next chunk with overlap
-            next_start = start + self.chunk_size - self.chunk_overlap
-            # Ensure exactly chunk_overlap characters of overlap when possible
-            if next_start < end:
-                start = next_start
-            else:
-                start = end
+            # Move to next chunk with overlap (in tokens)
+            advance = self.chunk_size - self.chunk_overlap
+            if advance <= 0:
+                advance = self.chunk_size  # Prevent infinite loop
+            start_token += advance
 
         return chunks
 
     def chunk_by_sentences(
         self, text: str, source_path: Path | None = None, document_id: str | None = None
     ) -> list[DocumentChunk]:
-        """Create chunks respecting sentence boundaries."""
+        """Create chunks respecting sentence boundaries, using token-based limits."""
         chunks = []
         chunk_index = 0
 
@@ -457,15 +656,23 @@ class TextChunker:
         sentences = self._detect_sentences(clean_text)
 
         current_chunk = ""
+        current_chunk_tokens = 0
         current_start = 0
         sentence_start = 0
 
         for sentence in sentences:
-            # Check if adding this sentence would exceed chunk size
-            if len(current_chunk) + len(sentence) > self.chunk_size and current_chunk:
+            sentence_tokens = self._count_tokens(sentence)
+
+            # Check if adding this sentence would exceed chunk size (in tokens)
+            if (
+                current_chunk_tokens + sentence_tokens > self.chunk_size
+                and current_chunk
+            ):
                 # Save current chunk
                 chunk_text = current_chunk.strip()
-                if len(chunk_text) >= self.min_chunk_size:
+                token_count = self._count_tokens(chunk_text)
+
+                if token_count >= self.min_chunk_size:
                     chunk_pages = self._find_pages_for_position(
                         current_start, current_start + len(chunk_text), page_info
                     )
@@ -483,61 +690,75 @@ class TextChunker:
                         metadata={"strategy": "sentence"},
                         created_at=datetime.now(),
                         chunk_size=len(chunk_text),
+                        token_count=token_count,
                     )
 
                     chunks.append(chunk)
                     chunk_index += 1
 
-                # Start new chunk with overlap if needed
+                # Start new chunk with overlap if needed (in tokens)
                 if self.chunk_overlap > 0 and chunks:
-                    # Take last part of previous chunk as overlap
-                    overlap_text = (
-                        chunk_text[-self.chunk_overlap :]
-                        if len(chunk_text) >= self.chunk_overlap
-                        else chunk_text
+                    # Take last sentences that fit within overlap token budget
+                    overlap_text = self._get_overlap_text(
+                        chunk_text, self.chunk_overlap
                     )
                     current_chunk = overlap_text + " " + sentence
+                    current_chunk_tokens = self._count_tokens(current_chunk)
                     current_start = current_start + len(chunk_text) - len(overlap_text)
                 else:
                     current_chunk = sentence
+                    current_chunk_tokens = sentence_tokens
                     current_start = sentence_start
             else:
                 current_chunk += sentence
+                current_chunk_tokens += sentence_tokens
                 if not current_chunk.strip():
                     current_start = sentence_start
 
             sentence_start += len(sentence)
 
         # Handle final chunk
-        if current_chunk.strip() and len(current_chunk.strip()) >= self.min_chunk_size:
+        if current_chunk.strip():
             chunk_text = current_chunk.strip()
-            chunk_pages = self._find_pages_for_position(
-                current_start, current_start + len(chunk_text), page_info
-            )
+            token_count = self._count_tokens(chunk_text)
 
-            chunk = DocumentChunk(
-                chunk_id=f"{document_id}_chunk_{chunk_index:04d}",
-                source_document_id=document_id,
-                source_file_path=source_path,
-                chunk_index=chunk_index,
-                text_content=chunk_text,
-                character_start=current_start,
-                character_end=current_start + len(chunk_text),
-                page_numbers=chunk_pages,
-                section_title=None,
-                metadata={"strategy": "sentence"},
-                created_at=datetime.now(),
-                chunk_size=len(chunk_text),
-            )
+            if token_count >= self.min_chunk_size:
+                chunk_pages = self._find_pages_for_position(
+                    current_start, current_start + len(chunk_text), page_info
+                )
 
-            chunks.append(chunk)
+                chunk = DocumentChunk(
+                    chunk_id=f"{document_id}_chunk_{chunk_index:04d}",
+                    source_document_id=document_id,
+                    source_file_path=source_path,
+                    chunk_index=chunk_index,
+                    text_content=chunk_text,
+                    character_start=current_start,
+                    character_end=current_start + len(chunk_text),
+                    page_numbers=chunk_pages,
+                    section_title=None,
+                    metadata={"strategy": "sentence"},
+                    created_at=datetime.now(),
+                    chunk_size=len(chunk_text),
+                    token_count=token_count,
+                )
+
+                chunks.append(chunk)
 
         return chunks
+
+    def _get_overlap_text(self, text: str, target_tokens: int) -> str:
+        """Get the last portion of text that fits within target token count."""
+        tokens = self.encoder.encode(text)
+        if len(tokens) <= target_tokens:
+            return text
+        overlap_tokens = tokens[-target_tokens:]
+        return self.encoder.decode(overlap_tokens)
 
     def chunk_by_structure(
         self, text: str, source_path: Path | None = None, document_id: str | None = None
     ) -> list[DocumentChunk]:
-        """Create chunks based on document structure."""
+        """Create chunks based on document structure, using token-based limits."""
         chunks = []
         chunk_index = 0
 
@@ -554,18 +775,22 @@ class TextChunker:
         for section in sections:
             section_text = section["text"].strip()
             section_title = section.get("title")
+            section_tokens = self._count_tokens(section_text)
 
-            if len(section_text) < self.min_chunk_size:
+            if section_tokens < self.min_chunk_size:
                 continue
 
-            # If section is too large, split it further
-            if len(section_text) > self.max_chunk_size:
+            # If section is too large (in tokens), split it further
+            if section_tokens > self.max_chunk_size:
                 # Fall back to sentence-based chunking for this section
                 sub_chunks = self._split_large_section(section_text, section_title)
                 for sub_chunk_text in sub_chunks:
-                    if len(sub_chunk_text.strip()) >= self.min_chunk_size:
+                    sub_chunk_text_stripped = sub_chunk_text.strip()
+                    token_count = self._count_tokens(sub_chunk_text_stripped)
+
+                    if token_count >= self.min_chunk_size:
                         chunk_pages = self._find_pages_for_text(
-                            sub_chunk_text, page_info
+                            sub_chunk_text_stripped, page_info
                         )
 
                         chunk = DocumentChunk(
@@ -573,7 +798,7 @@ class TextChunker:
                             source_document_id=document_id,
                             source_file_path=source_path,
                             chunk_index=chunk_index,
-                            text_content=sub_chunk_text.strip(),
+                            text_content=sub_chunk_text_stripped,
                             character_start=section["start"],
                             character_end=section["end"],
                             page_numbers=chunk_pages,
@@ -583,7 +808,8 @@ class TextChunker:
                                 "large_section_split": True,
                             },
                             created_at=datetime.now(),
-                            chunk_size=len(sub_chunk_text.strip()),
+                            chunk_size=len(sub_chunk_text_stripped),
+                            token_count=token_count,
                         )
 
                         chunks.append(chunk)
@@ -607,6 +833,7 @@ class TextChunker:
                     metadata={"strategy": "structure"},
                     created_at=datetime.now(),
                     chunk_size=len(section_text),
+                    token_count=section_tokens,
                 )
 
                 chunks.append(chunk)
@@ -666,16 +893,17 @@ class TextChunker:
         start_index: int,
         page_info: list[dict[str, Any]],
     ) -> list[DocumentChunk]:
-        """Chunk a section while respecting size and sentence constraints."""
+        """Chunk a section while respecting token limits and sentence constraints."""
         chunks: list[DocumentChunk] = []
         section_text = section["text"].strip()
         section_title = section.get("title")
+        section_tokens = self._count_tokens(section_text)
 
-        if len(section_text) < self.min_chunk_size:
+        if section_tokens < self.min_chunk_size:
             return chunks
 
-        if len(section_text) <= self.chunk_size:
-            # Section fits in one chunk
+        if section_tokens <= self.chunk_size:
+            # Section fits in one chunk (token-wise)
             chunk_pages = self._find_pages_for_position(
                 section["start"], section["end"], page_info
             )
@@ -693,24 +921,30 @@ class TextChunker:
                 metadata={"strategy": "hybrid", "approach": "single_section"},
                 created_at=datetime.now(),
                 chunk_size=len(section_text),
+                token_count=section_tokens,
             )
 
             chunks.append(chunk)
         else:
-            # Split section using sentence boundaries
+            # Split section using sentence boundaries with token limits
             sentences = self._detect_sentences(section_text)
             current_chunk = ""
+            current_chunk_tokens = 0
             current_start = section["start"]
             chunk_idx = start_index
 
             for sentence in sentences:
+                sentence_tokens = self._count_tokens(sentence)
+
                 if (
-                    len(current_chunk) + len(sentence) > self.chunk_size
+                    current_chunk_tokens + sentence_tokens > self.chunk_size
                     and current_chunk
                 ):
                     # Save current chunk
                     chunk_text = current_chunk.strip()
-                    if len(chunk_text) >= self.min_chunk_size:
+                    token_count = self._count_tokens(chunk_text)
+
+                    if token_count >= self.min_chunk_size:
                         chunk_pages = self._find_pages_for_position(
                             current_start, current_start + len(chunk_text), page_info
                         )
@@ -731,54 +965,60 @@ class TextChunker:
                             },
                             created_at=datetime.now(),
                             chunk_size=len(chunk_text),
+                            token_count=token_count,
                         )
 
                         chunks.append(chunk)
                         chunk_idx += 1
 
-                    # Start new chunk with overlap
+                    # Start new chunk with overlap (in tokens)
                     if self.chunk_overlap > 0:
-                        overlap_text = (
-                            chunk_text[-self.chunk_overlap :]
-                            if len(chunk_text) >= self.chunk_overlap
-                            else chunk_text
+                        overlap_text = self._get_overlap_text(
+                            chunk_text, self.chunk_overlap
                         )
                         current_chunk = overlap_text + " " + sentence
+                        current_chunk_tokens = self._count_tokens(current_chunk)
                         current_start = (
                             current_start + len(chunk_text) - len(overlap_text)
                         )
                     else:
                         current_chunk = sentence
+                        current_chunk_tokens = sentence_tokens
                         current_start = current_start + len(chunk_text)
                 else:
                     current_chunk += sentence
+                    current_chunk_tokens += sentence_tokens
 
             # Handle final chunk
-            if (
-                current_chunk.strip()
-                and len(current_chunk.strip()) >= self.min_chunk_size
-            ):
+            if current_chunk.strip():
                 chunk_text = current_chunk.strip()
-                chunk_pages = self._find_pages_for_position(
-                    current_start, current_start + len(chunk_text), page_info
-                )
+                token_count = self._count_tokens(chunk_text)
 
-                chunk = DocumentChunk(
-                    chunk_id=f"{document_id}_chunk_{chunk_idx:04d}",
-                    source_document_id=document_id,
-                    source_file_path=source_path,
-                    chunk_index=chunk_idx,
-                    text_content=chunk_text,
-                    character_start=current_start,
-                    character_end=current_start + len(chunk_text),
-                    page_numbers=chunk_pages,
-                    section_title=section_title,
-                    metadata={"strategy": "hybrid", "approach": "section_sentences"},
-                    created_at=datetime.now(),
-                    chunk_size=len(chunk_text),
-                )
+                if token_count >= self.min_chunk_size:
+                    chunk_pages = self._find_pages_for_position(
+                        current_start, current_start + len(chunk_text), page_info
+                    )
 
-                chunks.append(chunk)
+                    chunk = DocumentChunk(
+                        chunk_id=f"{document_id}_chunk_{chunk_idx:04d}",
+                        source_document_id=document_id,
+                        source_file_path=source_path,
+                        chunk_index=chunk_idx,
+                        text_content=chunk_text,
+                        character_start=current_start,
+                        character_end=current_start + len(chunk_text),
+                        page_numbers=chunk_pages,
+                        section_title=section_title,
+                        metadata={
+                            "strategy": "hybrid",
+                            "approach": "section_sentences",
+                        },
+                        created_at=datetime.now(),
+                        chunk_size=len(chunk_text),
+                        token_count=token_count,
+                    )
+
+                    chunks.append(chunk)
 
         return chunks
 
@@ -922,30 +1162,73 @@ class TextChunker:
         return sections
 
     def _split_large_section(self, text: str, section_title: str | None) -> list[str]:
-        """Split a large section into smaller chunks using sentence boundaries."""
+        """Split a large section into smaller chunks.
+
+        Uses sentence boundaries and token limits.
+        """
         sentences = self._detect_sentences(text)
         chunks = []
         current_chunk = ""
+        current_chunk_tokens = 0
 
         for sentence in sentences:
-            if len(current_chunk) + len(sentence) > self.chunk_size and current_chunk:
+            sentence_tokens = self._count_tokens(sentence)
+
+            # Check token limit
+            if (
+                current_chunk_tokens + sentence_tokens > self.chunk_size
+                and current_chunk
+            ):
                 chunks.append(current_chunk.strip())
 
-                # Add overlap if configured
+                # Add overlap if configured (in tokens)
                 if self.chunk_overlap > 0:
-                    overlap = (
-                        current_chunk[-self.chunk_overlap :]
-                        if len(current_chunk) >= self.chunk_overlap
-                        else current_chunk
-                    )
+                    overlap = self._get_overlap_text(current_chunk, self.chunk_overlap)
                     current_chunk = overlap + " " + sentence
+                    current_chunk_tokens = self._count_tokens(current_chunk)
                 else:
                     current_chunk = sentence
+                    current_chunk_tokens = sentence_tokens
             else:
                 current_chunk += sentence
+                current_chunk_tokens += sentence_tokens
 
         if current_chunk.strip():
             chunks.append(current_chunk.strip())
+
+        # Final safety check: split any chunks that still exceed max_chunk_size
+        safe_chunks = []
+        for chunk in chunks:
+            if self._count_tokens(chunk) > self.max_chunk_size:
+                # Force split using token-based splitting
+                sub_chunks = self._force_split_by_tokens(chunk)
+                safe_chunks.extend(sub_chunks)
+            else:
+                safe_chunks.append(chunk)
+
+        return safe_chunks
+
+    def _force_split_by_tokens(self, text: str) -> list[str]:
+        """Force split text into chunks that fit within max_chunk_size tokens.
+
+        This is a last-resort method for text that can't be split at sentence
+        boundaries while staying within token limits.
+        """
+        tokens = self.encoder.encode(text)
+        chunks = []
+
+        start = 0
+        while start < len(tokens):
+            end = min(start + self.max_chunk_size, len(tokens))
+            chunk_tokens = tokens[start:end]
+            chunk_text = self.encoder.decode(chunk_tokens)
+            chunks.append(chunk_text)
+
+            # Advance with overlap
+            advance = self.max_chunk_size - self.chunk_overlap
+            if advance <= 0:
+                advance = self.max_chunk_size
+            start += advance
 
         return chunks
 
