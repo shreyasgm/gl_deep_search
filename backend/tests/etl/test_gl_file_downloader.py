@@ -22,7 +22,7 @@ def sample_publication():
     """Create a sample publication for testing."""
     pub = GrowthLabPublication(
         title="Test Publication",
-        authors="John Doe, Jane Smith",
+        authors=["John Doe", "Jane Smith"],
         year=2023,
         abstract="This is a test abstract",
         pub_url="https://growthlab.hks.harvard.edu/publications/test",
@@ -305,7 +305,7 @@ async def test_download_publications(file_downloader, sample_publication, tmp_pa
     pub1 = sample_publication
     pub2 = GrowthLabPublication(
         title="Another Publication",
-        authors="Jane Smith",
+        authors=["Jane Smith"],
         year=2022,
         file_urls=["https://example.com/file2.pdf", "https://example.com/file2.docx"],
         paper_id="gl_test_123",
@@ -440,7 +440,7 @@ async def test_integration_end_to_end(storage, tmp_path):
     # Create test publications with known good URLs that are likely to work
     pub = GrowthLabPublication(
         title="Test Publication",
-        authors="Integration Test",
+        authors=["Integration Test"],
         year=2023,
         file_urls=[
             # Simple, reliable PDF from Harvard

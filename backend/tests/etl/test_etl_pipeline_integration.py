@@ -122,7 +122,7 @@ def test_publication():
     pub = GrowthLabPublication(
         paper_id="test_pub_123",
         title="Test Publication",
-        authors="Test Author",
+        authors=["Test Author"],
         year=2023,
         abstract="Test abstract",
         source="GrowthLab",
@@ -305,7 +305,7 @@ class TestETLPipelineIntegration:
         pub = GrowthLabPublication(
             paper_id="test_pub_123",
             title="Test Publication",
-            authors="Test Author",
+            authors=["Test Author"],
             year=2023,
             abstract="Test abstract",
             source="GrowthLab",
