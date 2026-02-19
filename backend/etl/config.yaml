@@ -43,11 +43,19 @@ gl_file_downloader:
 # File processing
 file_processing:
   ocr:
-    default_model: "docling"  # Options: docling, marker, gemini_flash
+    default_model: "marker"  # Options: marker, docling
     max_concurrent: 4
-    chunk_size: 1000
-    chunk_overlap: 200
-    language_detection_pages: 5
+    min_chars_per_page: 100
+
+    marker:
+      force_ocr: false
+
+    docling:
+      do_ocr: true
+      do_table_structure: true
+      table_mode_accurate: true
+      do_picture_description: false
+      num_threads: 4
 
   embedding:
     model: "openai"  # Options: openai, sentence_transformer

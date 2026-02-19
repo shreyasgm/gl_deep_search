@@ -1,9 +1,9 @@
 """
 PDF processing and OCR module for extracting text from PDF documents.
 
-This module uses the unstructured library to extract text from PDF files downloaded
-by the Growth Lab scraper or other sources. It handles OCR, layout analysis, and
-text extraction in a consistent way.
+This module delegates to configurable backends (Marker primary, Docling fallback)
+for actual PDF text extraction. The PDFProcessor class is a facade that handles
+file management, status tracking, and output writing.
 """
 
 import hashlib
@@ -12,9 +12,10 @@ from pathlib import Path
 
 import yaml
 from tqdm import tqdm
-from unstructured.partition.pdf import partition_pdf
 
 from backend.etl.models.tracking import ProcessingStatus
+from backend.etl.utils.pdf_backends import get_backend
+from backend.etl.utils.pdf_backends.base import PDFBackend
 from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
@@ -45,46 +46,60 @@ class PDFProcessor:
         self.tracker = tracker
 
         # Load configuration or use defaults
-        self.config = self._load_config(config_path)
+        self._full_config = self._load_config(config_path)
+        self.config = self._full_config.get("ocr", {})
 
         # Processing settings
-        self.ocr_languages = self.config.get("ocr_languages", ["eng"])
         self.min_chars_per_page = self.config.get("min_chars_per_page", 100)
-        self.extract_images = self.config.get("extract_images", False)
-
-        # PDF specific processing settings
-        self.split_pdf_page = self.config.get("split_pdf_page", True)
-        self.split_pdf_allow_failed = self.config.get("split_pdf_allow_failed", True)
 
         # Storage paths
-        self.processed_root = self.config.get(
+        self.processed_root = self._full_config.get(
             "processed_root", "processed/documents/growthlab"
         )
 
+        # Initialize the extraction backend
+        self._backend = self._init_backend()
+
     def _load_config(self, config_path: Path | None) -> dict:
-        """Load configuration from YAML file."""
+        """Load file_processing configuration from YAML file."""
         if not config_path:
-            # Look for config in standard location
             config_path = Path(__file__).parent.parent / "config.yaml"
 
-            try:
-                with open(config_path) as f:
-                    config = yaml.safe_load(f)
-                    return config.get("pdf_processor", {})
-            except Exception as e:
-                logger.warning(
-                    f"Error loading PDF processor config: {e}. Using defaults."
-                )
+        try:
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+                return config.get("file_processing", {})
+        except Exception as e:
+            logger.warning(f"Error loading PDF processor config: {e}. Using defaults.")
 
-        # Default configuration
         return {
-            "ocr_languages": ["eng"],
-            "min_chars_per_page": 100,
-            "extract_images": False,
+            "ocr": {
+                "default_model": "marker",
+                "min_chars_per_page": 100,
+            },
             "processed_root": "processed/documents/growthlab",
-            "split_pdf_page": True,
-            "split_pdf_allow_failed": True,
         }
+
+    def _init_backend(self) -> PDFBackend:
+        """Initialize the configured PDF extraction backend with fallback.
+
+        Tries the configured default backend first (marker). If that fails
+        to import, falls back to docling.
+        """
+        backend_name = self.config.get("default_model", "marker")
+        fallback_name = "docling" if backend_name == "marker" else "marker"
+
+        try:
+            backend_config = self.config.get(backend_name, {})
+            logger.info(f"Initializing PDF backend: {backend_name}")
+            return get_backend(backend_name, config=backend_config)
+        except (ImportError, ValueError) as e:
+            logger.warning(
+                f"Failed to initialize {backend_name}: {e}. "
+                f"Falling back to {fallback_name}."
+            )
+            fallback_config = self.config.get(fallback_name, {})
+            return get_backend(fallback_name, config=fallback_config)
 
     def _get_processed_path(self, raw_file_path: Path) -> Path:
         """
@@ -190,56 +205,29 @@ class PDFProcessor:
         self.storage.ensure_dir(output_path.parent)
 
         try:
-            # Use unstructured partition function
-            pdf_elements = partition_pdf(
-                filename=str(pdf_path),
-                extract_images=self.extract_images,
-                languages=self.ocr_languages,
-                strategy="fast",  # Use fast strategy by default
-                infer_table_structure=True,
-                chunking_strategy="by_title",
-                hi_res_model_name=None,  # Use default model
-                split_pdf_page=self.split_pdf_page,
-                split_pdf_allow_failed=self.split_pdf_allow_failed,
-            )
+            # Delegate extraction to the configured backend
+            result = self._backend.extract(pdf_path)
 
-            # Build text content from elements, preserving structural information
-            text_content: list[str] = []
-            for element in pdf_elements:
-                # Extract element text and metadata
-                element_text = str(element)
+            if not result.success:
+                logger.warning(
+                    f"Backend extraction failed for {pdf_path}: {result.error}"
+                )
+                # Update tracker to FAILED
+                if self.tracker and publication_id:
+                    try:
+                        self.tracker.update_processing_status(
+                            publication_id,
+                            ProcessingStatus.FAILED,
+                            error=result.error or "Extraction failed",
+                        )
+                    except Exception as tracker_error:
+                        logger.warning(
+                            f"Failed to update processing status to FAILED for "
+                            f"{publication_id}: {tracker_error}"
+                        )
+                return None
 
-                # Add metadata if available (based on unstructured element types)
-                if hasattr(element, "metadata") and element.metadata:
-                    # Add page number if available
-                    if (
-                        hasattr(element.metadata, "page_number")
-                        and element.metadata.page_number is not None
-                    ):
-                        page_num = element.metadata.page_number
-                        if not text_content or not text_content[-1].startswith(
-                            f"--- Page {page_num} ---"
-                        ):
-                            text_content.append(f"--- Page {page_num} ---")
-
-                    # For table elements, add special formatting
-                    if getattr(element, "category", "") == "Table":
-                        text_content.append("--- Table Start ---")
-                        text_content.append(element_text)
-                        text_content.append("--- Table End ---")
-                    # For title elements, add formatting
-                    elif getattr(element, "category", "") == "Title":
-                        text_content.append(f"# {element_text}")
-                    # For list items, add formatting
-                    elif getattr(element, "category", "") == "ListItem":
-                        text_content.append(f"• {element_text}")
-                    else:
-                        text_content.append(element_text)
-                else:
-                    text_content.append(element_text)
-
-            # Join all text content with line breaks
-            full_text = "\n\n".join(text_content)
+            full_text = result.text
 
             # Skip if the extracted text is too short (likely a failed extraction)
             if len(full_text) < self.min_chars_per_page:

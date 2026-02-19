@@ -78,8 +78,8 @@ class TestPDFProcessor:
         text_content = result_path.read_text()
         assert len(text_content) > 0, "Output file is empty"
 
-        # Basic validation that it contains some expected PDF content
-        assert "Page" in text_content, "Output doesn't contain page markers"
+        # Basic validation that extracted text is substantial
+        assert len(text_content) > 100, "Output text too short for a real PDF"
 
         logger.info(f"Processed PDF {dest_path} to {result_path}")
         logger.info(f"Output length: {len(text_content)} characters")
@@ -122,10 +122,8 @@ class TestPDFProcessor:
             text_content = result_path.read_text()
             assert len(text_content) > 0, f"Output file for {pdf_path} is empty"
 
-            # Basic validation
-            assert "Page" in text_content, (
-                f"Output for {pdf_path} doesn't contain page markers"
-            )
+            # Basic validation that extracted text is substantial
+            assert len(text_content) > 100, f"Output text too short for {pdf_path}"
 
             logger.info(f"Processed PDF {pdf_path} to {result_path}")
             logger.info(f"Output length: {len(text_content)} characters")

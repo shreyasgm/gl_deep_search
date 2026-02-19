@@ -60,7 +60,7 @@ etl = [
     "langdetect",
     "unstructured[all-docs]",
     "docling",
-    "marker-pdf",
+    "marker-pdf>=1.0.0",
     # Vector databases and embeddings
     "qdrant-client",
     "sentence-transformers",
@@ -139,6 +139,9 @@ dev = [
     "types-aiofiles",
     "pandas-stubs",
     "types-beautifulsoup4",
+
+    # Benchmark / profiling
+    "psutil",
 
     # Pre-commit hooks
     "pre-commit",

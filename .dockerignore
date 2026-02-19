@@ -70,9 +70,10 @@ profiling_*.log
 .dmypy.json
 dmypy.json
 
-# Deployment (exclude most, but keep entrypoint.sh)
+# Deployment (exclude most, but keep needed files)
 deployment/
 !deployment/cloud-run/entrypoint.sh
+!deployment/pdf-processing/Dockerfile
 
 # Other
 .DS_Store

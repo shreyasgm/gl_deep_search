@@ -10,6 +10,12 @@ version: '3.8'
 #   docker-compose up --build            # Rebuild image and run
 #   docker-compose run etl-pipeline --scraper-limit 10  # Run with custom args
 #
+# PDF Processing (local dev):
+#   docker-compose run --rm pdf-processor backend.etl.scripts.run_pdf_processor
+#   docker-compose run --rm pdf-processor backend.etl.scripts.benchmark_pdf_backends \
+#       --pdf-dir /app/data/raw/documents/growthlab --sample-size 5 \
+#       --backends marker docling --output /app/reports/benchmark.json
+#
 # Prerequisites:
 #   - Docker and Docker Compose installed
 #   - Environment variables set (see .env.example or set below)
@@ -40,3 +46,20 @@ services:
     # tty: true
     # Keep container running for debugging (uncomment if needed)
     # command: ["tail", "-f", "/dev/null"]
+
+  pdf-processor:
+    build:
+      context: .
+      dockerfile: deployment/pdf-processing/Dockerfile
+    image: gl-pdf-processing:local
+    container_name: gl-pdf-processor
+    environment:
+      - PDF_DEVICE=${PDF_DEVICE:-cpu}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    volumes:
+      - ./data:/app/data:rw
+      - ./logs:/app/logs:rw
+      - ./reports:/app/reports:rw
+    # Default: run the PDF processor. Override with docker-compose run.
+    # Example: docker-compose run --rm pdf-processor backend.etl.scripts.benchmark_pdf_backends --help
+    command: ["backend.etl.scripts.run_pdf_processor"]
