@@ -140,10 +140,32 @@ log "Starting ETL pipeline in container..."
 log "=========================================="
 
 # Prepare host directory for pipeline data (bind-mounted into container)
-# Container runs as nonroot (UID 999), so set ownership accordingly
 ETL_DATA_DIR="/tmp/etl-data"
 mkdir -p "$ETL_DATA_DIR"
-chown 999:999 "$ETL_DATA_DIR"
+
+# Restore existing data from GCS to enable incremental processing
+# Components (downloader, PDF processor, chunker, embeddings) all have
+# skip logic that checks if output files already exist
+log "=========================================="
+log "Restoring existing data from GCS..."
+log "=========================================="
+
+for dir in raw intermediate processed; do
+    SRC="gs://${GCS_BUCKET}/${dir}"
+    DEST="${ETL_DATA_DIR}/${dir}"
+    mkdir -p "$DEST"
+    if gcloud storage rsync -r "$SRC/" "$DEST/" --quiet 2>/dev/null; then
+        FILE_COUNT=$(find "$DEST" -type f | wc -l)
+        log "  Restored ${dir}/ from GCS ($FILE_COUNT files)"
+    else
+        log "  No existing ${dir}/ in GCS (starting fresh)"
+    fi
+done
+
+log "Data restore complete"
+
+# Container runs as nonroot (UID 999), so set ownership accordingly
+chown -R 999:999 "$ETL_DATA_DIR"
 
 # Build docker run command
 # Bind-mount host dir so pipeline output persists after container exits
