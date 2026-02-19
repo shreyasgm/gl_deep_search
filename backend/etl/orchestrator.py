@@ -10,10 +10,12 @@ import asyncio
 import json
 import sys
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
 from loguru import logger
@@ -21,7 +23,7 @@ from loguru import logger
 from backend.etl.scrapers.growthlab import GrowthLabScraper
 from backend.etl.utils.embeddings_generator import EmbeddingsGenerator
 from backend.etl.utils.gl_file_downloader import FileDownloader
-from backend.etl.utils.pdf_processor import PDFProcessor
+from backend.etl.utils.pdf_processor import PDFProcessor, find_growth_lab_pdfs
 from backend.etl.utils.profiling import log_component_metrics, profile_operation
 from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.text_chunker import TextChunker
@@ -242,6 +244,62 @@ class ETLOrchestrator:
         )
         log_component_metrics("Growth Lab Scraper", result.metrics)
 
+    def _report_file_url_analysis(
+        self, publications: list, publications_with_files: list
+    ) -> None:
+        """Log a pre-download analysis of file URLs from scraped publications.
+
+        Reports unique URL count, file type distribution from URL stems,
+        and potential PDF count to help diagnose scraping/download issues.
+        """
+        # Collect all file URLs
+        all_urls: list[str] = []
+        for pub in publications_with_files:
+            for url in pub.file_urls:
+                all_urls.append(str(url))
+
+        unique_urls = set(all_urls)
+        duplicate_urls = len(all_urls) - len(unique_urls)
+
+        # Analyze file types from URL path stems
+        ext_counter: Counter[str] = Counter()
+        for url in unique_urls:
+            path = urlparse(url).path
+            # Get the last segment of the URL path
+            stem = path.rsplit("/", 1)[-1] if "/" in path else path
+            # Extract extension if present
+            if "." in stem:
+                ext = "." + stem.rsplit(".", 1)[-1].lower()
+                # Truncate very long "extensions" (likely not real extensions)
+                if len(ext) > 10:
+                    ext = "(no extension)"
+            else:
+                ext = "(no extension)"
+            ext_counter[ext] += 1
+
+        # Report
+        logger.info("=" * 60)
+        logger.info("PRE-DOWNLOAD FILE URL ANALYSIS")
+        logger.info("=" * 60)
+        logger.info(
+            f"Total publications: {len(publications)} | "
+            f"With file URLs: {len(publications_with_files)} "
+            f"({len(publications_with_files) / max(1, len(publications)) * 100:.0f}%)"
+        )
+        logger.info(
+            f"Total file URLs: {len(all_urls)} | "
+            f"Unique: {len(unique_urls)} | "
+            f"Duplicates: {duplicate_urls}"
+        )
+        logger.info("File type distribution (from URL path):")
+        for ext, count in ext_counter.most_common():
+            logger.info(f"  {ext:20s} {count:4d} URLs")
+        logger.info(
+            "NOTE: URL extensions are hints only. Actual file type is "
+            "determined by Content-Type header after download."
+        )
+        logger.info("=" * 60)
+
     async def _run_file_downloader(self, result: ComponentResult) -> None:
         """Execute the file downloader component."""
         with profile_operation("Initialize file downloader", include_resources=True):
@@ -278,6 +336,9 @@ class ETLOrchestrator:
             logger.warning("No publications with file URLs found")
             result.status = ComponentStatus.SKIPPED
             return
+
+        # Report file URL analysis before downloading
+        self._report_file_url_analysis(publications, publications_with_files)
 
         # Apply download limit if specified
         publications_to_download = publications_with_files
@@ -330,19 +391,15 @@ class ETLOrchestrator:
                 tracker=self.tracker,
             )
 
-        # Find downloaded PDF files
-        documents_path = self.storage.get_path("raw/documents/growthlab")
-        if not self._path_exists(documents_path):
-            logger.warning("No downloaded documents found, skipping PDF processing")
+        # Find downloaded PDF files (includes magic-byte fallback for
+        # files with wrong extensions)
+        with profile_operation("Find PDF files"):
+            pdf_files = find_growth_lab_pdfs(self.storage)
+
+        if not pdf_files:
+            logger.warning("No PDF files found, skipping PDF processing")
             result.status = ComponentStatus.SKIPPED
             return
-
-        # Process PDFs - find all PDF files in the directory
-        with profile_operation("Find PDF files"):
-            pdf_files = []
-            for pdf_path in documents_path.rglob("*.pdf"):
-                if pdf_path.is_file():
-                    pdf_files.append(pdf_path)
 
         # Process each PDF file
         with profile_operation("Process all PDFs", include_resources=True):
