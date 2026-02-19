@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import streamlit as st
 
 from frontend.api_client import (
-    AgentSearchResponse,
     APIError,
-    ChunkSearchResponse,
+    HealthStatus,
     SearchClient,
 )
 
@@ -30,7 +30,7 @@ def get_client() -> SearchClient:
 
 
 @st.cache_data(ttl=60)
-def cached_health(_client_id: int) -> object:
+def cached_health(_client_id: int) -> HealthStatus | APIError:
     """Fetch health status, cached for 60s. _client_id is used for cache key."""
     return get_client().health()
 
@@ -126,8 +126,11 @@ def _run_search(q: str) -> None:
     st.session_state.last_query = q
     st.session_state.last_error = None
     st.session_state.last_results = None
+    st.session_state.last_search_mode = None
 
-    if search_mode == "Agent Search":
+    is_agent = search_mode == "Agent Search"
+    result: Any
+    if is_agent:
         with st.spinner("Searching and synthesizing answer..."):
             result = client.agent_search(q, top_k=top_k, year=year)
     else:
@@ -138,6 +141,7 @@ def _run_search(q: str) -> None:
         st.session_state.last_error = result
     else:
         st.session_state.last_results = result
+        st.session_state.last_search_mode = "agent" if is_agent else "chunks"
 
 
 # Determine if we should search
@@ -167,24 +171,36 @@ if st.session_state.last_error is not None:
 # ---------------------------------------------------------------------------
 # Render results
 # ---------------------------------------------------------------------------
-def _render_agent_results(result: AgentSearchResponse) -> None:
+def _render_agent_results(result: Any) -> None:
     """Render agent search results with answer and citations."""
     st.markdown("## Answer")
     st.markdown(result.answer)
 
-    if result.citations:
-        st.markdown("## Sources")
+    st.divider()
+    st.markdown("## References")
+    if not result.citations:
+        st.info("No source citations were returned for this query.")
+    else:
         for cite in result.citations:
             title = cite.document_title or "Untitled"
             year_str = f" ({cite.document_year})" if cite.document_year else ""
             authors = ", ".join(cite.document_authors) if cite.document_authors else ""
-            author_str = f" — {authors}" if authors else ""
 
-            with st.expander(f"[{cite.source_number}] {title}{year_str}{author_str}"):
-                if cite.relevant_quote:
-                    st.markdown(f"> {cite.relevant_quote}")
-                if cite.document_url:
-                    st.markdown(f"[View original document]({cite.document_url})")
+            # Build reference line: [1] Authors (Year). Title. [Link]
+            ref_parts = [f"**[{cite.source_number}]**"]
+            if authors:
+                ref_parts.append(f"{authors}{year_str}.")
+            else:
+                ref_parts.append(f"*Unknown author*{year_str}.")
+            if cite.document_url:
+                ref_parts.append(f"[{title}]({cite.document_url})")
+            else:
+                ref_parts.append(f"*{title}*")
+            st.markdown(" ".join(ref_parts))
+
+            # Show the relevant quote indented below
+            if cite.relevant_quote:
+                st.caption(f'"{cite.relevant_quote}"')
 
     # Search metadata
     with st.expander("Search details"):
@@ -193,7 +209,7 @@ def _render_agent_results(result: AgentSearchResponse) -> None:
         st.markdown(f"**Chunks retrieved:** {result.chunks_retrieved}")
 
 
-def _render_chunk_results(result: ChunkSearchResponse) -> None:
+def _render_chunk_results(result: Any) -> None:
     """Render raw chunk search results."""
     if result.total_results == 0:
         st.info(
@@ -231,7 +247,8 @@ def _render_chunk_results(result: ChunkSearchResponse) -> None:
 
 results = st.session_state.last_results
 if results is not None:
-    if isinstance(results, AgentSearchResponse):
+    mode = st.session_state.get("last_search_mode")
+    if mode == "agent":
         _render_agent_results(results)
-    elif isinstance(results, ChunkSearchResponse):
+    elif mode == "chunks":
         _render_chunk_results(results)
