@@ -357,6 +357,20 @@ def find_growth_lab_pdfs(storage: StorageBase | None = None) -> list[Path]:
     # Find all PDF files recursively
     pdf_files = list(raw_path.glob("**/*.pdf"))
 
+    # Also check files without .pdf extension for PDF magic bytes.
+    # This catches files that were downloaded before the Content-Type
+    # rename fix, or where the server didn't return a Content-Type header.
+    pdf_file_set = set(pdf_files)
+    for f in raw_path.glob("**/*"):
+        if f.is_file() and f.suffix.lower() != ".pdf" and f not in pdf_file_set:
+            try:
+                with open(f, "rb") as fh:
+                    if fh.read(5) == b"%PDF-":
+                        pdf_files.append(f)
+                        logger.info(f"Found PDF with wrong extension: {f}")
+            except (OSError, PermissionError):
+                pass
+
     logger.info(f"Found {len(pdf_files)} Growth Lab PDF files")
     return pdf_files
 

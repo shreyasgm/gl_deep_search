@@ -127,13 +127,36 @@ VM_INSTANCES=$(gcloud compute instances list \
     --format="json" 2>/dev/null || echo "[]")
 
 if [[ "$VM_INSTANCES" != "[]" ]]; then
-    # Parse VM usage (this is simplified - actual billing is more complex)
-    log_info "Found ETL pipeline VMs"
-    # Note: Actual cost calculation would require:
-    # - VM uptime tracking
-    # - Machine type pricing
-    # - Spot instance discounts
-    # This is a placeholder for the actual calculation
+    log_info "Found ETL pipeline VMs — estimating compute cost from uptime"
+    COMPUTE_COST=$(echo "$VM_INSTANCES" | python3 -c "
+import json, sys
+from datetime import datetime, timezone
+
+# On-demand pricing (USD/hour) for common machine types in us-east4
+PRICING = {
+    'n2-standard-2': 0.0971,
+    'n2-standard-4': 0.1942,
+    'n2-standard-8': 0.3884,
+    'n2-standard-16': 0.7768,
+    'e2-standard-2': 0.0670,
+    'e2-standard-4': 0.1340,
+    'e2-standard-8': 0.2680,
+    'e2-medium': 0.0335,
+}
+DEFAULT_RATE = 0.20  # fallback for unknown machine types
+
+vms = json.load(sys.stdin)
+total = 0.0
+for vm in vms:
+    machine_type = vm.get('machineType', '').split('/')[-1]
+    rate = PRICING.get(machine_type, DEFAULT_RATE)
+    created = vm.get('creationTimestamp', '')
+    if created:
+        start = datetime.fromisoformat(created)
+        hours = (datetime.now(timezone.utc) - start).total_seconds() / 3600
+        total += rate * max(hours, 0)
+print(f'{total:.4f}')
+" 2>/dev/null || echo "0")
 fi
 
 # Get storage usage
@@ -174,7 +197,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Note about accuracy
-log_warning "Note: This is an estimated calculation based on resource usage."
+log_warning "Note: Compute cost is estimated from VM uptime and on-demand pricing."
+log_warning "GCP billing data is delayed 24-48h, so this is an approximation."
 log_info "For accurate costs, check: https://console.cloud.google.com/billing"
 log_info "Or set up BigQuery billing export for detailed cost analysis."
 

@@ -228,6 +228,51 @@ class FileDownloader:
 
         return self.storage.get_path(relative_path)
 
+    def _correct_file_extension(self, file_path: Path, content_type: str) -> Path:
+        """
+        Rename file to match actual Content-Type if extension is wrong.
+
+        Many Growth Lab publication URLs are DOI links or landing pages that
+        don't end in .pdf, so the initial filename gets a .bin extension.
+        After download, we know the real Content-Type from the server response
+        and can fix the extension.
+
+        Args:
+            file_path: Current path of the downloaded file
+            content_type: Content-Type header from the server response
+
+        Returns:
+            The (possibly renamed) file path
+        """
+        if not content_type or not file_path.exists():
+            return file_path
+
+        # Map Content-Type to expected extension
+        _docx = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        _xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ct_to_ext = {
+            "application/pdf": ".pdf",
+            "application/msword": ".doc",
+            _docx: ".docx",
+            "application/vnd.ms-excel": ".xls",
+            _xlsx: ".xlsx",
+        }
+
+        base_ct = content_type.split(";")[0].strip().lower()
+        expected_ext = ct_to_ext.get(base_ct)
+
+        if expected_ext and file_path.suffix.lower() != expected_ext:
+            new_path = file_path.with_suffix(expected_ext)
+            file_path.rename(new_path)
+            logger.info(
+                f"Renamed {file_path.name} -> {new_path.name} (Content-Type: {base_ct})"
+            )
+            return new_path
+
+        return file_path
+
     async def _download_file_impl(
         self,
         session: AsyncSession,
@@ -336,6 +381,9 @@ class FileDownloader:
                     file_path=destination,
                     error=f"Failed to write file: {str(e)}",
                 )
+
+            # Fix file extension based on actual Content-Type from server
+            destination = self._correct_file_extension(destination, content_type)
 
             # Get final file size
             if destination.exists():
