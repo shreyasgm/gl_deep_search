@@ -537,6 +537,7 @@ class ETLOrchestrator:
                 if r.status == EmbeddingGenerationStatus.FAILED
             )
             total_api_calls = sum(r.api_calls for r in embedding_results)
+            total_tokens = sum(r.total_tokens for r in embedding_results)
             total_processing_time = sum(r.processing_time for r in embedding_results)
 
             result.metrics = {
@@ -545,6 +546,7 @@ class ETLOrchestrator:
                 "failed_documents": failed_documents,
                 "total_embeddings_created": successful_embeddings,
                 "total_api_calls": total_api_calls,
+                "total_tokens": total_tokens,
                 "total_processing_time": total_processing_time,
                 "average_embeddings_per_document": successful_embeddings
                 / max(1, len(embedding_results) - failed_documents),

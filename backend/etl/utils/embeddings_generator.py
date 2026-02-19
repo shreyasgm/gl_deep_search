@@ -57,6 +57,7 @@ class EmbeddingResult:
     total_embeddings: int
     processing_time: float
     api_calls: int
+    total_tokens: int
     status: EmbeddingGenerationStatus
     error_message: str | None = None
 
@@ -176,6 +177,7 @@ class EmbeddingsGenerator:
                     total_embeddings=0,
                     processing_time=time.time() - start_time,
                     api_calls=0,
+                    total_tokens=0,
                     status=EmbeddingGenerationStatus.FAILED,
                     error_message=error_msg,
                 )
@@ -201,6 +203,7 @@ class EmbeddingsGenerator:
                     total_embeddings=0,
                     processing_time=time.time() - start_time,
                     api_calls=0,
+                    total_tokens=0,
                     status=EmbeddingGenerationStatus.FAILED,
                     error_message=error_msg,
                 )
@@ -212,7 +215,9 @@ class EmbeddingsGenerator:
             chunk_ids = [chunk["chunk_id"] for chunk in chunks_data]
 
             # Generate embeddings in batches
-            embeddings, api_calls = await self._generate_embeddings_batch(texts)
+            embeddings, api_calls, total_tokens = await self._generate_embeddings_batch(
+                texts
+            )
 
             if not embeddings:
                 error_msg = "Failed to generate any embeddings"
@@ -224,6 +229,7 @@ class EmbeddingsGenerator:
                     total_embeddings=0,
                     processing_time=time.time() - start_time,
                     api_calls=api_calls,
+                    total_tokens=0,
                     status=EmbeddingGenerationStatus.FAILED,
                     error_message=error_msg,
                 )
@@ -251,7 +257,8 @@ class EmbeddingsGenerator:
             processing_time = time.time() - start_time
             logger.info(
                 f"Generated {len(chunk_embeddings)} embeddings in "
-                f"{processing_time:.2f}s ({api_calls} API calls)"
+                f"{processing_time:.2f}s ({api_calls} API calls, "
+                f"{total_tokens} tokens)"
             )
 
             return EmbeddingResult(
@@ -261,6 +268,7 @@ class EmbeddingsGenerator:
                 total_embeddings=len(chunk_embeddings),
                 processing_time=processing_time,
                 api_calls=api_calls,
+                total_tokens=total_tokens,
                 status=EmbeddingGenerationStatus.SUCCESS,
             )
 
@@ -273,6 +281,7 @@ class EmbeddingsGenerator:
                 total_embeddings=0,
                 processing_time=time.time() - start_time,
                 api_calls=0,
+                total_tokens=0,
                 status=EmbeddingGenerationStatus.FAILED,
                 error_message=str(e),
             )
@@ -280,7 +289,7 @@ class EmbeddingsGenerator:
     async def _generate_embeddings_batch(
         self,
         texts: list[str],
-    ) -> tuple[list[list[float]], int]:
+    ) -> tuple[list[list[float]], int, int]:
         """
         Generate embeddings for a list of texts using batching and retry logic.
 
@@ -288,10 +297,11 @@ class EmbeddingsGenerator:
             texts: List of text strings to embed
 
         Returns:
-            Tuple of (embeddings list, api_calls count)
+            Tuple of (embeddings list, api_calls count, total_tokens used)
         """
         embeddings = []
         api_calls = 0
+        total_tokens = 0
 
         # Process in batches
         for i in range(0, len(texts), self.batch_size):
@@ -312,6 +322,7 @@ class EmbeddingsGenerator:
                     )
 
                     api_calls += 1
+                    total_tokens += response.usage.total_tokens
 
                     # Extract embeddings from response
                     batch_embeddings = [item.embedding for item in response.data]
@@ -351,7 +362,7 @@ class EmbeddingsGenerator:
                     logger.error(f"Unexpected error generating embeddings: {e}")
                     raise
 
-        return embeddings, api_calls
+        return embeddings, api_calls, total_tokens
 
     def _save_embeddings(
         self,
