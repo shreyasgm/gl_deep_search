@@ -122,13 +122,14 @@ class GrowthLabScraper:
             }
 
     async def _get_max_page_num_impl(self, session: AsyncSession, url: str) -> int:
-        """Implementation to get the maximum page number from pagination
+        """Get total page count from FacetWP preload data.
 
-        For FacetWP-based sites without visible pagination links,
-        we discover pages by trying sequential pages until we get an empty result.
+        The Growth Lab website uses FacetWP for pagination, which stores the
+        total page count in a JavaScript variable (FWP_JSON) embedded in the
+        initial HTML. We extract this instead of binary-searching URL parameters,
+        which don't work because FacetWP only paginates via AJAX.
         """
         async with self.semaphore:
-            # First try to find pagination links in HTML (old structure)
             response = await session.get(url)
             if response.status_code != 200:
                 logger.error(f"Failed to fetch {url}: {response.status_code}")
@@ -139,72 +140,37 @@ class GrowthLabScraper:
                 return 0
 
             html = response.text
-            soup = BeautifulSoup(html, "html.parser")
 
-            # Try old structure: Drupal pager
-            pagination = soup.find("ul", {"class": "pager"})
-            if pagination:
-                last_page_link = pagination.find("li", {"class": "pager-last"})
-                if last_page_link and last_page_link.find("a"):
-                    last_page_url = last_page_link.find("a").get("href")
-                    match = re.search(r"\d+", last_page_url)
-                    if match:
-                        return int(match.group())
-
-            # Try to find pagination links (may not exist with JavaScript-loaded pagination)
-            pagination_links = soup.find_all(
-                "a",
-                href=lambda x: x and ("fwp_paged" in str(x) or "/page/" in str(x)),
-            )
-            if pagination_links:
-                max_page = 0
-                for link in pagination_links:
-                    href = link.get("href", "")
-                    match = re.search(r"(?:fwp_paged=|/page/)(\d+)", href)
-                    if match:
-                        page_num = int(match.group(1))
-                        max_page = max(max_page, page_num)
-                if max_page > 0:
-                    return max_page
-
-            # Pagination links not found - use binary search discovery for FacetWP
-            logger.info("Pagination links not found, using binary search discovery...")
-
-            # Binary search to find the last page
-            low, high = 0, 200  # Search up to page 200
-            max_page_found = 0
-
-            while low <= high:
-                mid = (low + high) // 2
-                test_url = url if mid == 0 else f"{url}?fwp_paged={mid}"
-
+            # Extract FacetWP config from FWP_JSON JavaScript variable
+            fwp_match = re.search(r"FWP_JSON\s*=\s*({.*?});", html, re.DOTALL)
+            if fwp_match:
                 try:
-                    test_response = await session.get(test_url)
-                    if test_response.status_code == 200:
-                        test_html = test_response.text
-                        test_soup = BeautifulSoup(test_html, "html.parser")
-                        test_items = test_soup.find_all(
-                            "li",
-                            {"class": lambda x: x and "wp-block-post" in str(x)},
+                    fwp_config = json.loads(fwp_match.group(1))
+                    preload = fwp_config.get("preload_data", {})
+                    settings = preload.get("settings", {})
+                    pager = settings.get("pager", {})
+                    total_pages = pager.get("total_pages", 0)
+                    total_rows = pager.get("total_rows", 0)
+
+                    if total_pages > 0:
+                        logger.info(
+                            f"FacetWP reports {total_rows} publications "
+                            f"across {total_pages} pages"
                         )
-                        if not test_items:
-                            test_items = test_soup.find_all(
-                                "div", {"class": "cp-publication"}
-                            )
+                        return total_pages
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.warning(f"Failed to parse FWP_JSON: {e}")
 
-                        if len(test_items) > 0:
-                            max_page_found = mid
-                            low = mid + 1  # Try higher pages
-                        else:
-                            high = mid - 1  # No items, try lower pages
-                        await asyncio.sleep(0.2)  # Small delay
-                    else:
-                        high = mid - 1  # Error, try lower
-                except Exception as e:
-                    logger.debug(f"Error checking page {mid}: {e}")
-                    high = mid - 1
+            # Fallback: count publications on page 1 (at minimum 1 page exists)
+            soup = BeautifulSoup(html, "html.parser")
+            pubs = soup.find_all("div", {"class": "cp-publication"})
+            if pubs:
+                logger.info(
+                    f"FWP_JSON not found; found {len(pubs)} publications on page 1"
+                )
+                return 1
 
-            return max_page_found
+            return 0
 
     async def get_max_page_num(self, session: AsyncSession, url: str) -> int:
         """Get the maximum page number from pagination with retry mechanism"""
@@ -367,59 +333,116 @@ class GrowthLabScraper:
             logger.error(f"Error parsing publication: {e}")
             return None
 
+    def _build_facetwp_payload(self, page_num: int) -> dict[str, Any]:
+        """Build FacetWP AJAX payload for a given page number."""
+        return {
+            "action": "facetwp_refresh",
+            "data": {
+                "facets": {
+                    "search": "",
+                    "policy_area": [],
+                    "format": [],
+                    "geography": [],
+                    "year": [],
+                    "research_project": [],
+                    "research_type": [],
+                    "author": [],
+                },
+                "frozen_facets": {},
+                "http_params": {
+                    "get": {},
+                    "uri": "publications-home/repository",
+                    "url_vars": {},
+                },
+                "template": "wp",
+                "extras": {
+                    "pager": True,
+                    "per_page": "default",
+                    "counts": True,
+                },
+                "soft_refresh": 0,
+                "is_bfcache": 0,
+                "first_load": 0,
+                "paged": page_num,
+            },
+        }
+
+    def _parse_publication_elements(self, soup: BeautifulSoup) -> ResultSet[Tag]:
+        """Extract publication elements from parsed HTML."""
+        # Try new structure first: cp-publication divs
+        pub_elements: ResultSet[Tag] = soup.find_all("div", {"class": "cp-publication"})
+
+        # If not found, try li elements with cp-publication nested
+        if not pub_elements:
+            post_items = soup.find_all(
+                "li", {"class": lambda x: x and "wp-block-post" in str(x)}
+            )
+            pub_elements = ResultSet([])  # type: ignore[call-overload]
+            for item in post_items:
+                cp_pub = item.find("div", {"class": "cp-publication"})
+                if cp_pub:
+                    pub_elements.append(cp_pub)
+
+        # Fall back to old structure
+        if not pub_elements:
+            pub_elements = soup.find_all("div", {"class": "biblio-entry"})
+
+        return pub_elements
+
     async def _fetch_page_impl(
         self, session: AsyncSession, page_num: int
     ) -> list[GrowthLabPublication]:
-        """Implementation to fetch a single page of publications"""
-        # Build URL with pagination (try FacetWP format first, then fall back to ?page=)
-        if page_num == 0:
-            url = self.base_url
-        else:
-            # Try FacetWP pagination format
-            if "fwp_paged" not in self.base_url:
-                url = f"{self.base_url}?fwp_paged={page_num}"
-            else:
-                url = f"{self.base_url}?page={page_num}"
+        """Fetch a single page of publications using FacetWP AJAX.
 
-        publications = []
+        Page 1 is fetched via a normal GET (server-rendered HTML).
+        Pages 2+ are fetched via FacetWP AJAX POST which returns JSON
+        containing the rendered template HTML.
+        """
+        publications: list[GrowthLabPublication] = []
 
         # Use the semaphore to limit concurrency
         async with self.semaphore:
             try:
-                response = await session.get(url)
-                if response.status_code != 200:
-                    logger.error(
-                        f"Failed to fetch page {page_num}: {response.status_code}"
-                    )
-                    # Raise exception for non-200 to allow retry mechanism to work
-                    if response.status_code == 429 or response.status_code >= 500:
-                        raise RequestsError(
-                            f"Rate limited or server error: {response.status_code}"
+                if page_num <= 1:
+                    # Page 1: normal GET request (server-rendered)
+                    response = await session.get(self.base_url)
+                    if response.status_code != 200:
+                        logger.error(
+                            f"Failed to fetch page {page_num}: {response.status_code}"
                         )
-                    return []
-
-                html = response.text
-                soup = BeautifulSoup(html, "html.parser")
-
-                # Try new structure first: look for cp-publication divs or li.wp-block-post
-                pub_elements: ResultSet[Tag] = soup.find_all(
-                    "div", {"class": "cp-publication"}
-                )
-
-                # If not found, try finding li elements with cp-publication nested
-                if not pub_elements:
-                    post_items = soup.find_all(
-                        "li", {"class": lambda x: x and "wp-block-post" in str(x)}
+                        if response.status_code == 429 or response.status_code >= 500:
+                            raise RequestsError(
+                                f"Rate limited or server error: {response.status_code}"
+                            )
+                        return []
+                    html = response.text
+                else:
+                    # Pages 2+: FacetWP AJAX POST
+                    payload = self._build_facetwp_payload(page_num)
+                    response = await session.post(
+                        self.base_url,
+                        json=payload,
+                        headers={"Content-Type": "application/json"},
                     )
-                    pub_elements = ResultSet([])  # type: ignore[call-overload]
-                    for item in post_items:
-                        cp_pub = item.find("div", {"class": "cp-publication"})
-                        if cp_pub:
-                            pub_elements.append(cp_pub)
+                    if response.status_code != 200:
+                        logger.error(
+                            f"FacetWP AJAX failed for page {page_num}: "
+                            f"{response.status_code}"
+                        )
+                        if response.status_code == 429 or response.status_code >= 500:
+                            raise RequestsError(
+                                f"Rate limited or server error: {response.status_code}"
+                            )
+                        return []
 
-                # Fall back to old structure
-                if not pub_elements:
-                    pub_elements = soup.find_all("div", {"class": "biblio-entry"})
+                    data = response.json()
+                    if not isinstance(data, dict) or "template" not in data:
+                        logger.error(f"Unexpected FacetWP response for page {page_num}")
+                        return []
+                    html = data["template"]
+
+                soup = BeautifulSoup(html, "html.parser")
+                pub_elements = self._parse_publication_elements(soup)
 
                 for pub_element in pub_elements:
                     pub = await self.parse_publication(pub_element, self.base_url)
@@ -482,16 +505,19 @@ class GrowthLabScraper:
             # (typically ~10-20 publications per page)
             if limit:
                 estimated_pages_needed = max(1, (limit // 15) + 1)
-                pages_to_fetch = min(estimated_pages_needed, max_page_num + 1)
+                pages_to_fetch = min(estimated_pages_needed, max_page_num)
                 logger.info(
                     f"Limiting to {limit} publications, fetching approximately "
                     f"{pages_to_fetch} pages"
                 )
             else:
-                pages_to_fetch = max_page_num + 1
+                pages_to_fetch = max_page_num
 
-            # Create a list of pages to process
-            all_pages = list(range(pages_to_fetch))
+            # Create a list of pages to process.
+            # FacetWP uses 1-based pagination: ?fwp_paged=1 is the first page.
+            # Start from 1 to avoid fetching page 1 twice (the base URL without
+            # a pagination parameter also returns page 1 content).
+            all_pages = list(range(1, pages_to_fetch + 1))
 
             # Process pages using semaphore-controlled concurrency
             all_publications: list[GrowthLabPublication] = []
@@ -540,18 +566,36 @@ class GrowthLabScraper:
                             failed_pages += 1
                             pbar.update(1)
 
+            # Deduplicate publications by paper_id (concurrent fetching or
+            # overlapping pagination can produce duplicates)
+            seen_ids: set[str] = set()
+            unique_publications: list[GrowthLabPublication] = []
+            for pub in all_publications:
+                if pub.paper_id and pub.paper_id not in seen_ids:
+                    seen_ids.add(pub.paper_id)
+                    unique_publications.append(pub)
+
+            duplicates_removed = len(all_publications) - len(unique_publications)
+            if duplicates_removed > 0:
+                logger.info(
+                    f"Removed {duplicates_removed} duplicate publications (by paper_id)"
+                )
+            all_publications = unique_publications
+
             # Apply limit if we exceeded it
             if limit and len(all_publications) > limit:
                 all_publications = all_publications[:limit]
-                total_file_urls = sum(
-                    len(pub.file_urls) for pub in all_publications if pub.file_urls
-                )
+
+            # Recalculate file URL count after dedup/limit
+            total_file_urls = sum(
+                len(pub.file_urls) for pub in all_publications if pub.file_urls
+            )
 
             if failed_pages > 0:
                 logger.warning(f"Failed to process {failed_pages} pages due to errors")
 
             logger.info(
-                f"Extracted {len(all_publications)} publications with "
+                f"Extracted {len(all_publications)} unique publications with "
                 f"{total_file_urls} total file URLs"
             )
             return all_publications

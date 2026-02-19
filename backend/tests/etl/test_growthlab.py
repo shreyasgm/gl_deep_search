@@ -146,10 +146,10 @@ async def test_extract_publications_with_limit(scraper):
     # Mock get_max_page_num to return multiple pages
     with patch("aiohttp.ClientSession", return_value=mock_session):
         with patch.object(scraper, "get_max_page_num", return_value=10):
-            # Mock fetch_page to return publications (3 per page)
+            # Mock fetch_page to return publications (3 per page, 1-based pages)
             async def mock_fetch_page(session, page_num):
-                # Return 3 publications per page
-                start_idx = page_num * 3
+                # Return 3 publications per page (pages are 1-based)
+                start_idx = (page_num - 1) * 3
                 return test_publications[start_idx : start_idx + 3]
 
             with patch.object(scraper, "fetch_page", side_effect=mock_fetch_page):
@@ -483,7 +483,7 @@ async def test_growthlab_real_website_scraping(scraper):
         logger.info(f"Found {max_page} pages on Growth Lab website")
 
         # Test 2: Verify we can fetch and parse the first page
-        publications = await scraper.fetch_page(session, 0)
+        publications = await scraper.fetch_page(session, 1)
         assert len(publications) > 0, (
             "Failed to extract any publications from first page"
         )
@@ -558,6 +558,197 @@ async def test_growthlab_real_website_scraping(scraper):
             f"biblio-entry, {len(cp_publications)} cp-publication, and "
             f"{len(post_items)} wp-block-post elements"
         )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pagination_returns_unique_publications_across_pages():
+    """Integration test: verify that pages 1, 2, 3 return different publications.
+
+    This is the critical pagination test. The Growth Lab site uses FacetWP
+    which only paginates via AJAX POST. Page 1 is server-rendered (GET),
+    pages 2+ come from a JSON template via POST. This test confirms that
+    each page actually returns a distinct set of publications.
+    """
+    from curl_cffi.requests import AsyncSession
+
+    from backend.etl.scrapers.growthlab import BROWSER_IMPERSONATE
+
+    scraper = GrowthLabScraper()
+
+    async with AsyncSession(impersonate=BROWSER_IMPERSONATE, timeout=30) as session:
+        page_results: dict[int, list[GrowthLabPublication]] = {}
+
+        # Fetch 3 pages
+        for page_num in [1, 2, 3]:
+            pubs = await scraper.fetch_page(session, page_num)
+            page_results[page_num] = pubs
+            logger.info(
+                f"Page {page_num}: {len(pubs)} publications, "
+                f"IDs: {[p.paper_id for p in pubs[:3]]}..."
+            )
+
+        # 1) Each page must have publications
+        for page_num in [1, 2, 3]:
+            assert len(page_results[page_num]) > 0, (
+                f"Page {page_num} returned 0 publications"
+            )
+
+        # 2) Paper IDs from each page must be mutually exclusive
+        ids_by_page = {
+            p: {pub.paper_id for pub in pubs} for p, pubs in page_results.items()
+        }
+
+        overlap_1_2 = ids_by_page[1] & ids_by_page[2]
+        overlap_1_3 = ids_by_page[1] & ids_by_page[3]
+        overlap_2_3 = ids_by_page[2] & ids_by_page[3]
+
+        assert len(overlap_1_2) == 0, (
+            f"Pages 1 and 2 share {len(overlap_1_2)} paper_ids: {overlap_1_2}"
+        )
+        assert len(overlap_1_3) == 0, (
+            f"Pages 1 and 3 share {len(overlap_1_3)} paper_ids: {overlap_1_3}"
+        )
+        assert len(overlap_2_3) == 0, (
+            f"Pages 2 and 3 share {len(overlap_2_3)} paper_ids: {overlap_2_3}"
+        )
+
+        # 3) Titles should mostly differ (same title can appear with different
+        # URLs if there are multiple editions/versions of a publication)
+        titles_by_page = {
+            p: {pub.title for pub in pubs} for p, pubs in page_results.items()
+        }
+        title_overlap_1_2 = titles_by_page[1] & titles_by_page[2]
+        if title_overlap_1_2:
+            logger.warning(
+                f"Pages 1 and 2 share {len(title_overlap_1_2)} titles "
+                f"(may be different editions): {title_overlap_1_2}"
+            )
+        # Allow a small number of shared titles (different editions), but
+        # if most titles overlap the pagination is clearly broken
+        assert len(title_overlap_1_2) <= 2, (
+            f"Pages 1 and 2 share {len(title_overlap_1_2)} titles — "
+            f"pagination is likely broken: {title_overlap_1_2}"
+        )
+
+        # 4) Combined unique count should equal sum of page counts
+        all_ids = set()
+        for ids in ids_by_page.values():
+            all_ids.update(ids)
+        total_pubs = sum(len(pubs) for pubs in page_results.values())
+        assert len(all_ids) == total_pubs, (
+            f"Expected {total_pubs} unique IDs but got {len(all_ids)} "
+            f"({total_pubs - len(all_ids)} duplicates)"
+        )
+
+        logger.info(
+            f"Pagination test passed: {total_pubs} publications across 3 pages, "
+            f"all unique"
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_facetwp_max_page_detection():
+    """Integration: FWP_JSON extraction returns a plausible page count."""
+    from curl_cffi.requests import AsyncSession
+
+    from backend.etl.scrapers.growthlab import BROWSER_IMPERSONATE
+
+    scraper = GrowthLabScraper()
+
+    async with AsyncSession(impersonate=BROWSER_IMPERSONATE, timeout=30) as session:
+        max_page = await scraper.get_max_page_num(session, scraper.base_url)
+
+        # Growth Lab has hundreds of publications, ~10 per page, so >10 pages
+        assert max_page >= 10, (
+            f"Expected at least 10 pages but got {max_page}. "
+            f"FWP_JSON extraction may be broken."
+        )
+        # Sanity upper bound (they'd need 5000+ publications for 500 pages)
+        assert max_page < 500, f"Got {max_page} pages which seems implausibly high"
+
+        logger.info(f"FacetWP reports {max_page} total pages")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_extract_publications_with_real_limit():
+    """Integration test: extract_publications(limit=25) returns ~25 unique pubs.
+
+    This tests the full extraction pipeline end-to-end with a small limit,
+    verifying deduplication, pagination, and the limit mechanism all work
+    together against the real website.
+    """
+    scraper = GrowthLabScraper()
+    publications = await scraper.extract_publications(limit=25)
+
+    # Should have publications
+    assert len(publications) > 0, "extract_publications returned empty list"
+
+    # Should respect limit
+    assert len(publications) <= 25, (
+        f"extract_publications returned {len(publications)} pubs, expected <= 25"
+    )
+
+    # All paper_ids should be unique
+    ids = [p.paper_id for p in publications]
+    assert len(ids) == len(set(ids)), (
+        f"Found duplicate paper_ids in results: {[x for x in ids if ids.count(x) > 1]}"
+    )
+
+    # Each publication should have basic fields
+    for pub in publications:
+        assert pub.title, f"Publication {pub.paper_id} has no title"
+        assert pub.paper_id, "Publication has no paper_id"
+        assert pub.paper_id.startswith("gl_"), (
+            f"Unexpected paper_id format: {pub.paper_id}"
+        )
+
+    # Count publications with file URLs
+    pubs_with_files = [p for p in publications if p.file_urls]
+    total_urls = sum(len(p.file_urls) for p in pubs_with_files)
+    logger.info(
+        f"Extracted {len(publications)} publications: "
+        f"{len(pubs_with_files)} have file URLs ({total_urls} total URLs)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_deduplication_in_extract_publications():
+    """Unit test: verify that extract_publications deduplicates by paper_id."""
+    scraper = GrowthLabScraper()
+
+    # Create publications with duplicate paper_ids
+    pubs = []
+    for i in range(6):
+        pub = GrowthLabPublication(
+            title=f"Publication {i % 3}",  # 3 unique titles
+            authors=["Author"],
+            year=2023,
+            pub_url=f"https://growthlab.hks.harvard.edu/publications/test{i % 3}",
+            source="GrowthLab",
+        )
+        pub.paper_id = pub.generate_id()
+        pub.content_hash = pub.generate_content_hash()
+        pubs.append(pub)
+
+    # Mock fetch_page to return all 6 (with 3 duplicate paper_ids)
+    mock_session = AsyncMock()
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_session.get = AsyncMock()
+    mock_session.get.return_value = mock_response
+
+    with patch("aiohttp.ClientSession", return_value=mock_session):
+        with patch.object(scraper, "get_max_page_num", return_value=1):
+            with patch.object(scraper, "fetch_page", return_value=pubs):
+                result = await scraper.extract_publications()
+
+    # Should have only 3 unique publications
+    assert len(result) == 3
+    ids = [p.paper_id for p in result]
+    assert len(ids) == len(set(ids))
 
 
 class TestGrowthLabScraperTrackerIntegration:

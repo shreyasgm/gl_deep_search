@@ -434,19 +434,18 @@ async def test_download_growthlab_files(storage, sample_publication, tmp_path):
     mock_downloader.download_publications.assert_called_once()
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_integration_end_to_end(storage, tmp_path):
     """End-to-end integration test with actual files."""
-    # Create test publications with known good URLs that are likely to work
+    # Create test publications with known good Growth Lab PDF URLs
     pub = GrowthLabPublication(
         title="Test Publication",
         authors=["Integration Test"],
-        year=2023,
+        year=2024,
         file_urls=[
-            # Simple, reliable PDF from Harvard
-            "https://www.hks.harvard.edu/sites/default/files/centers/cid/files/publications/faculty-working-papers/391_Self%20Discovery%20Hausmann.pdf",
-            # Alternate URL if the first one fails
-            "https://cdn.who.int/media/docs/default-source/documents/about-us/who-brochure.pdf",
+            "https://growthlab.hks.harvard.edu/wp-content/uploads/2024/09/2024-09-glwp-235-global-trends-innovation-patterns.pdf",
+            "https://growthlab.hks.harvard.edu/wp-content/uploads/2026/01/2025-12-glwp-259-new-mexico-economy.pdf",
         ],
         paper_id="gl_test_integration",
     )
@@ -504,3 +503,226 @@ async def test_integration_end_to_end(storage, tmp_path):
     except Exception as e:
         logger.error(f"Exception during test: {e}")
         raise
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_download_pdf_url_ends_in_pdf(tmp_path):
+    """Integration test: download a file whose URL clearly ends in .pdf.
+
+    Verifies the saved file has a .pdf extension and starts with PDF magic bytes.
+    """
+    storage = LocalStorage(tmp_path)
+    downloader = FileDownloader(storage=storage, concurrency_limit=1)
+    downloader.min_file_size = 10
+
+    pub = GrowthLabPublication(
+        title="Explicit PDF URL test",
+        file_urls=[
+            "https://growthlab.hks.harvard.edu/wp-content/uploads/2024/09/2024-09-glwp-235-global-trends-innovation-patterns.pdf",
+        ],
+        paper_id="gl_test_explicit_pdf",
+    )
+
+    results = await downloader.download_publications(
+        [pub], overwrite=True, progress_bar=False
+    )
+    successful = [r for r in results if r["success"]]
+    if not successful:
+        pytest.skip("Download failed (network issue), skipping")
+
+    result = successful[0]
+    file_path = result["file_path"]
+
+    # File should exist
+    assert file_path.exists(), f"Downloaded file not found at {file_path}"
+
+    # Extension should be .pdf
+    assert file_path.suffix.lower() == ".pdf", (
+        f"Expected .pdf extension but got {file_path.suffix}"
+    )
+
+    # Should contain PDF magic bytes
+    with open(file_path, "rb") as f:
+        header = f.read(5)
+    assert header == b"%PDF-", f"File does not start with PDF magic bytes: {header!r}"
+
+    # Size should be reasonable
+    assert result["file_size"] > 100, (
+        f"PDF is suspiciously small: {result['file_size']} bytes"
+    )
+
+    logger.info(
+        f"Downloaded PDF: {file_path.name}, "
+        f"{result['file_size']} bytes, "
+        f"Content-Type: {result.get('content_type')}"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_download_pdf_from_non_pdf_url(tmp_path):
+    """Integration test: download a PDF from a URL that doesn't end in .pdf.
+
+    Many Growth Lab publication URLs are DOI links or landing pages that
+    don't have a .pdf extension. The downloader should detect the Content-Type
+    from the server response and rename the file accordingly.
+    This tests the core _correct_file_extension fix.
+    """
+    storage = LocalStorage(tmp_path)
+    downloader = FileDownloader(storage=storage, concurrency_limit=1)
+    downloader.min_file_size = 10
+
+    # Use an arXiv PDF URL without .pdf extension — arXiv serves PDFs at
+    # /pdf/<id> without an extension, returning Content-Type: application/pdf
+    pub = GrowthLabPublication(
+        title="Non-PDF URL test",
+        file_urls=[
+            "https://arxiv.org/pdf/2301.00774",
+        ],
+        paper_id="gl_test_non_pdf_url",
+    )
+
+    results = await downloader.download_publications(
+        [pub], overwrite=True, progress_bar=False
+    )
+    successful = [r for r in results if r["success"]]
+    if not successful:
+        pytest.skip("Download failed (network issue), skipping")
+
+    result = successful[0]
+    file_path = result["file_path"]
+
+    assert file_path.exists()
+    assert result["file_size"] > 1000
+
+    # Verify it's actually a PDF by checking magic bytes
+    with open(file_path, "rb") as f:
+        header = f.read(5)
+    assert header == b"%PDF-", f"Downloaded file is not a PDF (header: {header!r})"
+
+    # The file should have been renamed to .pdf by _correct_file_extension
+    # (original URL has no extension, so initial save would be .bin)
+    assert file_path.suffix.lower() == ".pdf", (
+        f"Expected .pdf extension after Content-Type correction, got {file_path.suffix}"
+    )
+
+    logger.info(
+        f"Non-.pdf URL download: {file_path.name}, "
+        f"extension={file_path.suffix}, "
+        f"Content-Type={result.get('content_type')}, "
+        f"size={result['file_size']}"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_download_multiple_publications_unique_files(tmp_path):
+    """Integration test: download files for multiple publications, verify uniqueness.
+
+    Creates 2 publications with different real URLs and verifies:
+    - Each publication's files land in the correct paper_id directory
+    - Files from different publications don't overwrite each other
+    - All downloaded files have non-zero size
+    """
+    storage = LocalStorage(tmp_path)
+    downloader = FileDownloader(storage=storage, concurrency_limit=1)
+    downloader.min_file_size = 10
+
+    pub1 = GrowthLabPublication(
+        title="Global Trends in Innovation Patterns",
+        file_urls=[
+            "https://growthlab.hks.harvard.edu/wp-content/uploads/2024/09/2024-09-glwp-235-global-trends-innovation-patterns.pdf",
+        ],
+        paper_id="gl_test_pub_one",
+    )
+    pub2 = GrowthLabPublication(
+        title="New Mexico Economy",
+        file_urls=[
+            "https://growthlab.hks.harvard.edu/wp-content/uploads/2026/01/2025-12-glwp-259-new-mexico-economy.pdf",
+        ],
+        paper_id="gl_test_pub_two",
+    )
+
+    results = await downloader.download_publications(
+        [pub1, pub2], overwrite=True, progress_bar=False
+    )
+    successful = [r for r in results if r["success"]]
+    if len(successful) < 2:
+        pytest.skip(f"Only {len(successful)}/2 downloads succeeded (network issue)")
+
+    # Verify files are in different directories (by paper_id)
+    paths = [r["file_path"] for r in successful]
+    parent_dirs = [p.parent.name for p in paths]
+    assert "gl_test_pub_one" in parent_dirs, (
+        f"pub1's file not in expected directory. Dirs: {parent_dirs}"
+    )
+    assert "gl_test_pub_two" in parent_dirs, (
+        f"pub2's file not in expected directory. Dirs: {parent_dirs}"
+    )
+
+    # Verify files are distinct (different content)
+    sizes = [r["file_size"] for r in successful]
+    # They should have different sizes (different documents)
+    assert sizes[0] != sizes[1], (
+        f"Both files have identical size ({sizes[0]}), "
+        f"possibly same file downloaded twice"
+    )
+
+    # Each file should exist and have reasonable size
+    for r in successful:
+        assert r["file_path"].exists()
+        assert r["file_size"] > 1000
+
+    logger.info(
+        f"Multi-publication download: {len(successful)} files, "
+        f"sizes={sizes}, dirs={parent_dirs}"
+    )
+
+
+def test_correct_file_extension_renames_bin_to_pdf(tmp_path):
+    """Unit test: _correct_file_extension renames .bin to .pdf for PDF content type."""
+    storage = LocalStorage(tmp_path)
+    downloader = FileDownloader(storage=storage, concurrency_limit=1)
+
+    # Create a fake .bin file with PDF content
+    bin_file = tmp_path / "test_doc.bin"
+    bin_file.write_bytes(b"%PDF-1.5 fake pdf content")
+
+    # Call the extension corrector
+    result = downloader._correct_file_extension(bin_file, "application/pdf")
+
+    assert result.suffix == ".pdf"
+    assert result.name == "test_doc.pdf"
+    assert result.exists()
+    assert not bin_file.exists()  # Original should be gone
+
+
+def test_correct_file_extension_no_op_when_already_correct(tmp_path):
+    """Unit test: _correct_file_extension is a no-op when extension already matches."""
+    storage = LocalStorage(tmp_path)
+    downloader = FileDownloader(storage=storage, concurrency_limit=1)
+
+    pdf_file = tmp_path / "test_doc.pdf"
+    pdf_file.write_bytes(b"%PDF-1.5 fake pdf content")
+
+    result = downloader._correct_file_extension(pdf_file, "application/pdf")
+
+    assert result == pdf_file
+    assert result.exists()
+
+
+def test_correct_file_extension_handles_charset_in_content_type(tmp_path):
+    """Unit test: _correct_file_extension strips charset from Content-Type."""
+    storage = LocalStorage(tmp_path)
+    downloader = FileDownloader(storage=storage, concurrency_limit=1)
+
+    bin_file = tmp_path / "report.bin"
+    bin_file.write_bytes(b"%PDF-1.5 fake")
+
+    result = downloader._correct_file_extension(
+        bin_file, "application/pdf; charset=utf-8"
+    )
+
+    assert result.suffix == ".pdf"
+    assert result.exists()
