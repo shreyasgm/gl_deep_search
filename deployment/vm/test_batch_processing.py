@@ -314,7 +314,12 @@ def check_current_cost(project_id: str, baseline: float) -> float:
 
 
 def create_test_vm(
-    config: dict[str, Any], vm_name: str, publication_limit: int
+    config: dict[str, Any],
+    vm_name: str,
+    publication_limit: int,
+    *,
+    scraper_limit: int | None = None,
+    download_limit: int | None = None,
 ) -> None:
     """
     Create test VM instance using create-vm.sh script.
@@ -322,23 +327,36 @@ def create_test_vm(
     Args:
         config: GCP configuration
         vm_name: Name for the VM instance
-        publication_limit: Number of publications to process
+        publication_limit: Number of publications to process (legacy, used as
+            scraper_limit fallback)
+        scraper_limit: Limit number of publications to scrape
+        download_limit: Limit number of publications to download/process
     """
     script_dir = Path(__file__).parent
     create_vm_script = script_dir / "create-vm.sh"
 
-    log_info(f"Creating VM '{vm_name}' with {publication_limit} publication limit...")
+    cmd = [
+        str(create_vm_script),
+        "--vm-name",
+        vm_name,
+        "--on-demand",  # Use on-demand for testing (not spot)
+    ]
+
+    # Use explicit limits if provided; None means no limit
+    effective_scraper_limit = scraper_limit
+    effective_download_limit = download_limit
+
+    if effective_scraper_limit is not None:
+        cmd.extend(["--scraper-limit", str(effective_scraper_limit)])
+        log_info(f"Scraper limit: {effective_scraper_limit}")
+
+    if effective_download_limit is not None:
+        cmd.extend(["--download-limit", str(effective_download_limit)])
+        log_info(f"Download limit: {effective_download_limit}")
+
+    log_info(f"Creating VM '{vm_name}'...")
     log_info("Using on-demand instance for predictable test execution")
-    run_command(
-        [
-            str(create_vm_script),
-            "--scraper-limit",
-            str(publication_limit),
-            "--vm-name",
-            vm_name,
-            "--on-demand",  # Use on-demand for testing (not spot)
-        ]
-    )
+    run_command(cmd)
     log_success("VM created successfully")
 
 
@@ -866,7 +884,7 @@ def generate_test_report(
         time_threshold = 600  # 10 minutes
     else:
         cost_threshold = 10.00
-        time_threshold = 3600  # 60 minutes
+        time_threshold = 7200  # 2 hours
 
     cost_passed = cost_delta < cost_threshold
     time_passed = execution_time < time_threshold
@@ -971,6 +989,23 @@ def main() -> None:
     parser.add_argument(
         "--vm-name", type=str, help="Custom VM name (default: auto-generated)"
     )
+    parser.add_argument(
+        "--download-limit",
+        type=int,
+        help=(
+            "Limit number of publications to download/process"
+            " (default: same as --limit)"
+        ),
+    )
+    parser.add_argument(
+        "--scraper-limit",
+        type=int,
+        help=(
+            "Limit number of publications to scrape"
+            " (default: same as --limit for Phase 1,"
+            " unlimited for Phase 2)"
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -985,7 +1020,7 @@ def main() -> None:
         max_time = 600  # 10 minutes
     else:
         max_cost = 10.00  # $10.00 for Phase 2
-        max_time = 3600  # 60 minutes
+        max_time = 7200  # 2 hours (OCR for 100 PDFs can take 30-90 min)
 
     log_step(f"Starting Test Phase {args.phase}")
     log_info(f"Publication limit: {args.limit}")
@@ -1015,11 +1050,38 @@ def main() -> None:
     cost_baseline = get_cost_baseline(config["PROJECT_ID"])
     log_info(f"Cost baseline: ${cost_baseline:.4f}")
 
+    # Determine scraper and download limits based on phase
+    if args.phase == 1:
+        # Phase 1: scraper-limit controls everything (small test)
+        if args.scraper_limit is not None:
+            effective_scraper_limit = args.scraper_limit
+        else:
+            effective_scraper_limit = args.limit
+        effective_download_limit = args.download_limit
+    else:
+        # Phase 2: scrape ALL, only download/process --limit
+        # Override with explicit --scraper-limit/--download-limit
+        effective_scraper_limit = args.scraper_limit  # None = all
+        if args.download_limit is not None:
+            effective_download_limit = args.download_limit
+        else:
+            effective_download_limit = args.limit
+
     # Create VM
     try:
-        log_info(f"Creating VM '{vm_name}' with {args.limit} publication limit.")
+        log_info(f"Creating VM '{vm_name}' for Phase {args.phase}")
         log_info(f"Zone: {config['ZONE']}, Project: {config['PROJECT_ID']}")
-        create_test_vm(config, vm_name, args.limit)
+        log_info(
+            f"Scraper limit: {effective_scraper_limit or 'unlimited'}, "
+            f"Download limit: {effective_download_limit or 'unlimited'}"
+        )
+        create_test_vm(
+            config,
+            vm_name,
+            args.limit,
+            scraper_limit=effective_scraper_limit,
+            download_limit=effective_download_limit,
+        )
     except Exception as e:
         log_error(f"Failed to create VM: {e}")
         sys.exit(1)

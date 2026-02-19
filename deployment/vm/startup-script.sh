@@ -139,10 +139,18 @@ log "=========================================="
 log "Starting ETL pipeline in container..."
 log "=========================================="
 
+# Prepare host directory for pipeline data (bind-mounted into container)
+# Container runs as nonroot (UID 999), so set ownership accordingly
+ETL_DATA_DIR="/tmp/etl-data"
+mkdir -p "$ETL_DATA_DIR"
+chown 999:999 "$ETL_DATA_DIR"
+
 # Build docker run command
+# Bind-mount host dir so pipeline output persists after container exits
 DOCKER_CMD=(
     docker run --rm
     --name etl-pipeline
+    -v "${ETL_DATA_DIR}:/app/data"
     -e GCS_BUCKET="$GCS_BUCKET"
     -e ENVIRONMENT="production"
     -e GOOGLE_CLOUD_PROJECT="$PROJECT_ID"
@@ -172,6 +180,30 @@ else
     EXIT_STATUS=$?
     log "Pipeline failed with exit code: $EXIT_STATUS"
 fi
+
+# Upload pipeline data to GCS
+log "=========================================="
+log "Uploading pipeline data to GCS..."
+log "=========================================="
+
+DATA_DIRS=("raw" "intermediate" "processed" "reports")
+for dir in "${DATA_DIRS[@]}"; do
+    SRC="${ETL_DATA_DIR}/${dir}"
+    if [[ -d "$SRC" ]]; then
+        DEST="gs://${GCS_BUCKET}/${dir}"
+        FILE_COUNT=$(find "$SRC" -type f | wc -l)
+        log "Uploading ${dir}/ to ${DEST}/ (${FILE_COUNT} files)"
+        if gcloud storage rsync -r "$SRC" "$DEST" --quiet 2>/dev/null; then
+            log "  Uploaded ${dir}/ successfully"
+        else
+            log "WARNING: Failed to upload ${dir}/"
+        fi
+    else
+        log "  Skipping ${dir}/ (not found)"
+    fi
+done
+
+log "Data upload complete"
 
 # Upload logs to GCS
 log "=========================================="

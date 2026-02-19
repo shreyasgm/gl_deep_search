@@ -5,11 +5,12 @@
 # and shut down when complete.
 #
 # Usage:
-#   ./deployment/vm/create-vm.sh [--incremental] [--scraper-limit N] [--vm-name NAME] [--on-demand|--spot] [--dry-run]
+#   ./deployment/vm/create-vm.sh [--incremental] [--scraper-limit N] [--download-limit N] [--vm-name NAME] [--on-demand|--spot] [--dry-run]
 #
 # Options:
 #   --incremental       Run incremental update instead of full batch
-#   --scraper-limit N   Limit number of publications to process
+#   --scraper-limit N   Limit number of publications to scrape
+#   --download-limit N  Limit number of publications to download/process
 #   --vm-name NAME      Custom VM name (default: etl-pipeline-vm)
 #   --on-demand         Use on-demand instance (faster startup, higher cost)
 #   --spot              Use spot instance (slower startup, 76% cost savings)
@@ -27,6 +28,7 @@ source "${SCRIPT_DIR}/../scripts/utils.sh"
 # Parse command line arguments
 INCREMENTAL=false
 SCRAPER_LIMIT=""
+DOWNLOAD_LIMIT=""
 DRY_RUN=false
 VM_NAME="etl-pipeline-vm"
 USE_SPOT=""  # Empty means use config default
@@ -39,6 +41,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --scraper-limit)
             SCRAPER_LIMIT="$2"
+            shift 2
+            ;;
+        --download-limit)
+            DOWNLOAD_LIMIT="$2"
             shift 2
             ;;
         --dry-run)
@@ -60,7 +66,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             log_error "Unknown option: $1"
-            echo "Usage: $0 [--incremental] [--scraper-limit N] [--vm-name NAME] [--on-demand|--spot] [--dry-run]"
+            echo "Usage: $0 [--incremental] [--scraper-limit N] [--download-limit N] [--vm-name NAME] [--on-demand|--spot] [--dry-run]"
             exit 1
             ;;
     esac
@@ -113,8 +119,13 @@ fi
 # Build ETL arguments
 ETL_ARGS=""
 if [[ -n "$SCRAPER_LIMIT" ]]; then
-    ETL_ARGS="--scraper-limit $SCRAPER_LIMIT"
+    ETL_ARGS+="--scraper-limit $SCRAPER_LIMIT "
 fi
+if [[ -n "$DOWNLOAD_LIMIT" ]]; then
+    ETL_ARGS+="--download-limit $DOWNLOAD_LIMIT "
+fi
+# Trim trailing whitespace
+ETL_ARGS="${ETL_ARGS% }"
 
 # Check if VM already exists
 log_step "Checking if VM already exists"
