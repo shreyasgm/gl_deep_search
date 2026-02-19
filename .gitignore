@@ -131,6 +131,10 @@ dmypy.json
 *.mo
 *.pot
 
+# Databases
+*.db
+*.db-journal
+
 # Django stuff:
 *.log
 local_settings.py
