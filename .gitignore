@@ -2,6 +2,7 @@
 .mdc
 .cursorrules
 CLAUDE.md
+data_backups/
 data/raw/
 data/intermediate/
 data/processed/
