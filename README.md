@@ -166,6 +166,22 @@ gl_deep_search/
 
 5. Add your API keys and configuration to the `.env` files
 
+### Running Locally
+
+Start the backend and frontend services directly using `uv`:
+
+```bash
+# Start the backend API server
+uv run uvicorn backend.service.main:app --host 0.0.0.0 --port 8000
+
+# Start the frontend (in a separate terminal)
+uv run streamlit run frontend/app.py --server.port 8501
+```
+
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
+- Frontend UI: http://localhost:8501
+
 ### Docker Development Environment
 
 The project uses Docker for consistent development and deployment environments:
