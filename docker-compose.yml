@@ -39,6 +39,8 @@ services:
       - ./data:/app/data:rw
       # Mount logs directory (optional)
       - ./logs:/app/logs:rw
+      # Persist ML model cache (Marker/surya/datalab) across runs
+      - ${HOME}/.cache/datalab:/home/nonroot/.cache/datalab:rw
     # Default command - can be overridden
     command: ["--config", "backend/etl/config.production.yaml", "--log-level", "INFO"]
     # Uncomment to run interactively

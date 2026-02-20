@@ -49,6 +49,13 @@ file_processing:
 
     marker:
       force_ocr: false
+      # Marker auto-detects optimal batch sizes based on device (CPU/CUDA)
+      # and available memory. Override only if needed for constrained environments:
+      #   pdftext_workers: 1         # default 4; set to 1 to avoid OOM on <8GB machines
+      #   layout_batch_size: 2       # default auto (6 CPU, 12 CUDA)
+      #   detection_batch_size: 2    # default auto (4 CPU, 10 CUDA)
+      #   recognition_batch_size: 4  # default auto (32 CPU, 48 CUDA)
+      #   extract_images: false
 
     docling:
       do_ocr: true

@@ -58,6 +58,9 @@ file_processing:
     chunk_overlap: 200
     language_detection_pages: 5
 
+    marker:
+      force_ocr: false
+
   embedding:
     model: "openai"  # Options: openai, sentence_transformer
     model_name: "text-embedding-3-small"  # Specific embedding model

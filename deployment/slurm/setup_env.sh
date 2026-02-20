@@ -59,20 +59,37 @@ export_sif() {
 }
 
 push() {
-    echo "=== Pushing .sif to cluster ==="
+    echo "=== Pushing to cluster ==="
+    DOCKER_TAR="${PROJECT_DIR}/deployment/slurm/${IMAGE_NAME}.tar"
+
     if [[ -f "$SIF_FILE" ]]; then
         scp "$SIF_FILE" "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
-        echo "Pushed to cluster."
+        echo "Pushed .sif to cluster."
+    elif [[ -f "$DOCKER_TAR" ]]; then
+        echo "Pushing Docker tar (convert to .sif on cluster)..."
+        scp "$DOCKER_TAR" "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
+        echo "Pushed .tar to cluster."
+        echo ""
+        echo "On the cluster, convert to .sif:"
+        echo "  cd ${CLUSTER_DIR}/deployment/slurm"
+        echo "  module load singularity"
+        echo "  singularity build ${IMAGE_NAME}.sif docker-archive://${IMAGE_NAME}.tar"
     else
-        echo "No .sif file found. Run 'build' and 'export_sif' first."
-        echo "Or transfer the .tar file manually (see export_sif output)."
+        echo "No .sif or .tar file found. Run 'build' first."
         exit 1
     fi
+
+    # Also push config and sbatch scripts
+    echo "=== Pushing config and sbatch scripts ==="
+    scp "${PROJECT_DIR}/backend/etl/config.yaml" "${CLUSTER_HOST}:${CLUSTER_DIR}/backend/etl/config.yaml"
+    scp "${PROJECT_DIR}/deployment/slurm/etl_pipeline.sbatch" "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
+    scp "${PROJECT_DIR}/deployment/slurm/pdf_processing.sbatch" "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
+    echo "Config and scripts pushed."
 }
 
 setup_cluster_dirs() {
     echo "=== Creating cluster directories ==="
-    ssh "$CLUSTER_HOST" "mkdir -p ${CLUSTER_DIR}/{logs,reports,data,deployment/slurm}"
+    ssh "$CLUSTER_HOST" "mkdir -p ${CLUSTER_DIR}/{logs,reports,data,deployment/slurm,backend/etl}"
     echo "Cluster directories created."
 }
 

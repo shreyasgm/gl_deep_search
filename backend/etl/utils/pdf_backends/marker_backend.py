@@ -91,6 +91,24 @@ class MarkerBackend(PDFBackend):
             metadata={"marker_metadata": metadata} if metadata else {},
         )
 
+    # Keys from our YAML config that map directly to Marker ConfigParser options.
+    _MARKER_PASSTHROUGH_KEYS = frozenset(
+        {
+            "pdftext_workers",
+            "layout_batch_size",
+            "detection_batch_size",
+            "recognition_batch_size",
+            "ocr_error_batch_size",
+            "equation_batch_size",
+            "table_rec_batch_size",
+            "extract_images",
+            "disable_ocr",
+            "lowres_image_dpi",
+            "highres_image_dpi",
+            "disable_tqdm",
+        }
+    )
+
     def _extract_v1(self, pdf_path: Path) -> ExtractionResult:
         """Extract using marker v1.x+ API."""
         from marker.config.parser import ConfigParser
@@ -101,6 +119,12 @@ class MarkerBackend(PDFBackend):
             if self.config.get("force_ocr", False):
                 marker_config["force_ocr"] = True
 
+            # Forward memory/performance settings from our YAML config
+            for key in self._MARKER_PASSTHROUGH_KEYS:
+                if key in self.config:
+                    marker_config[key] = self.config[key]
+
+            logger.debug(f"Marker config: {marker_config}")
             config_parser = ConfigParser(marker_config)
             self._converter = PdfConverter(
                 config=config_parser.generate_config_dict(),
