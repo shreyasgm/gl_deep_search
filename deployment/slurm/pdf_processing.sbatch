@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:nvidia_a100-sxm4-40gb:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=100G
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/pdf_processing_%j.out
 #SBATCH --error=logs/pdf_processing_%j.err
@@ -25,6 +25,11 @@ echo "Job ID: $SLURM_JOB_ID"
 echo "Node: $(hostname)"
 echo "GPUs: ${CUDA_VISIBLE_DEVICES:-none}"
 echo "Start: $(date)"
+echo "================"
+
+echo ""
+echo "=== GPU Info ==="
+nvidia-smi --query-gpu=name,memory.total,memory.free,driver_version --format=csv,noheader
 echo "================"
 
 PROJECT_DIR="$HOME/gl_deep_search"

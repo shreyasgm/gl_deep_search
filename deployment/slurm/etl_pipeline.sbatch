@@ -3,10 +3,15 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=100G
 #SBATCH --time=04:00:00
 #SBATCH --output=logs/etl_pipeline_%j.out
 #SBATCH --error=logs/etl_pipeline_%j.err
+# Resource notes:
+#   --mem is CPU RAM only (not GPU VRAM). GPU VRAM is determined by hardware.
+#   On the gpu partition, all nodes have A100s (40-80GB VRAM), which is 3-5x
+#   what Marker needs (~8-14GB peak). No need to constrain GPU type.
+#   Increase --time if processing >50 publications.
 
 # Growth Lab Deep Search - Full ETL Pipeline via Singularity
 #
@@ -52,6 +57,11 @@ echo "Download limit:$DOWNLOAD_LIMIT"
 echo "Skip scraping: $SKIP_SCRAPING"
 echo "Start:         $(date)"
 echo "========================"
+
+echo ""
+echo "=== GPU Info ==="
+nvidia-smi --query-gpu=name,memory.total,memory.free,driver_version --format=csv,noheader
+echo "================"
 
 # ── Validation ───────────────────────────────────────────────────────
 if [[ ! -f "$SIF_IMAGE" ]]; then
