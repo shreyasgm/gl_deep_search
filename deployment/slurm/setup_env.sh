@@ -24,11 +24,13 @@ CLUSTER_HOST="${CLUSTER_HOST:-${USER}@login.rc.fas.harvard.edu}"
 CLUSTER_DIR="${CLUSTER_DIR:-/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search}"
 
 build() {
-    echo "=== Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG} ==="
+    echo "=== Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG} (linux/amd64) ==="
     cd "$PROJECT_DIR"
-    docker build \
+    docker buildx build \
+        --platform linux/amd64 \
         -f deployment/pdf-processing/Dockerfile \
         -t "${IMAGE_NAME}:${IMAGE_TAG}" \
+        --load \
         .
     echo "Docker image built successfully."
 
