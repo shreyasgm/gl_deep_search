@@ -29,15 +29,16 @@
 #   SKIP_SCRAPING=1 sbatch deployment/slurm/etl_pipeline.sbatch
 #
 # Prerequisites:
-#   - Singularity image at $HOME/gl_deep_search/deployment/slurm/gl-pdf-processing.sif
-#   - OPENAI_API_KEY in ~/.bashrc or passed via --export
+#   - Container image (.tar or .sif) at $HOME/gl_deep_search/deployment/slurm/
+#   - OPENAI_API_KEY in $HOME/gl_deep_search/.env or shell environment
 #   - Run setup_env.sh first to build and push the image
 
 set -euo pipefail
 
 # ── Configuration (override via environment) ─────────────────────────
-PROJECT_DIR="$HOME/gl_deep_search"
+PROJECT_DIR="${PROJECT_DIR:-/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search}"
 SIF_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.sif"
+TAR_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.tar"
 CONFIG_FILE="backend/etl/config.yaml"
 
 SCRAPER_LIMIT="${SCRAPER_LIMIT:-10}"
@@ -61,18 +62,24 @@ echo "========================"
 echo ""
 echo "=== GPU Info ==="
 nvidia-smi --query-gpu=name,memory.total,memory.free,driver_version --format=csv,noheader
+echo ""
+echo "=== CUDA Compatibility Check ==="
+DRIVER_CUDA=$(nvidia-smi | grep "CUDA Version" | awk '{print $9}')
+echo "Host driver supports CUDA: $DRIVER_CUDA"
 echo "================"
 
-# ── Validation ───────────────────────────────────────────────────────
-if [[ ! -f "$SIF_IMAGE" ]]; then
-    echo "ERROR: Singularity image not found at $SIF_IMAGE"
-    echo "Run: bash deployment/slurm/setup_env.sh all"
-    exit 1
+# ── Load secrets ─────────────────────────────────────────────────────
+ENV_FILE="${PROJECT_DIR}/.env"
+if [[ -f "$ENV_FILE" ]]; then
+    echo "Loading environment from $ENV_FILE"
+    set -a
+    source "$ENV_FILE"
+    set +a
 fi
 
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
     echo "ERROR: OPENAI_API_KEY not set."
-    echo "Add to ~/.bashrc:  export OPENAI_API_KEY='sk-...'"
+    echo "Create $ENV_FILE with:  OPENAI_API_KEY=sk-..."
     exit 1
 fi
 
@@ -81,6 +88,19 @@ mkdir -p "${PROJECT_DIR}"/{data,logs,reports}
 
 # ── Load Singularity ─────────────────────────────────────────────────
 module load singularity 2>/dev/null || true
+
+# ── Container image (auto-convert tar → sif on first run) ────────────
+if [[ ! -f "$SIF_IMAGE" ]]; then
+    if [[ -f "$TAR_IMAGE" ]]; then
+        echo "Converting Docker tar to Singularity SIF (one-time)..."
+        singularity build "$SIF_IMAGE" "docker-archive://${TAR_IMAGE}"
+        echo "SIF image created at $SIF_IMAGE"
+    else
+        echo "ERROR: No container image found (.sif or .tar) at ${PROJECT_DIR}/deployment/slurm/"
+        echo "Run: bash deployment/slurm/setup_env.sh all"
+        exit 1
+    fi
+fi
 
 # ── Build command args ───────────────────────────────────────────────
 CMD_ARGS=(

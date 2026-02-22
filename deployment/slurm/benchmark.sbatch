@@ -25,17 +25,30 @@ echo "=========================="
 echo ""
 echo "=== GPU Info ==="
 nvidia-smi --query-gpu=name,memory.total,memory.free,driver_version --format=csv,noheader
+echo ""
+echo "=== CUDA Compatibility Check ==="
+DRIVER_CUDA=$(nvidia-smi | grep "CUDA Version" | awk '{print $9}')
+echo "Host driver supports CUDA: $DRIVER_CUDA"
 echo "================"
 
 PROJECT_DIR="$HOME/gl_deep_search"
 SIF_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.sif"
+TAR_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.tar"
+
+# ── Container image (auto-convert tar → sif on first run) ────────────
+module load singularity 2>/dev/null || true
 
 if [[ ! -f "$SIF_IMAGE" ]]; then
-    echo "ERROR: Singularity image not found at $SIF_IMAGE"
-    exit 1
+    if [[ -f "$TAR_IMAGE" ]]; then
+        echo "Converting Docker tar to Singularity SIF (one-time)..."
+        singularity build "$SIF_IMAGE" "docker-archive://${TAR_IMAGE}"
+        echo "SIF image created at $SIF_IMAGE"
+    else
+        echo "ERROR: No container image found (.sif or .tar) at ${PROJECT_DIR}/deployment/slurm/"
+        echo "Run: bash deployment/slurm/setup_env.sh all"
+        exit 1
+    fi
 fi
-
-module load singularity 2>/dev/null || true
 
 singularity exec --nv \
     --bind "${PROJECT_DIR}/data:/app/data" \

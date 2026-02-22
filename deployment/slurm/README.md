@@ -13,69 +13,30 @@ This guide covers deploying and running the full ETL pipeline (scrape → downlo
 ```bash
 cd "/Users/shg309/Dropbox (Personal)/Education/hks_cid_growth_lab/gl_deep_search"
 
-docker build \
-  -f deployment/pdf-processing/Dockerfile \
-  -t gl-pdf-processing:latest \
-  .
-
-# Export as a tar for transfer (~2.5 GB)
-docker save gl-pdf-processing:latest -o deployment/slurm/gl-pdf-processing.tar
-```
-
-Or use the helper script:
-
-```bash
 bash deployment/slurm/setup_env.sh build
 ```
+
+This builds the Docker image and exports it as a `.tar` file (~2.5 GB) at `deployment/slurm/gl-pdf-processing.tar`.
 
 ## Step 2: Transfer to the cluster
 
 ```bash
-# Create directories on the cluster
-ssh shg309@login.rc.fas.harvard.edu \
-  "mkdir -p ~/gl_deep_search/{logs,reports,data,deployment/slurm,backend/etl}"
-
-# Transfer the Docker tar (~2.5 GB)
-scp deployment/slurm/gl-pdf-processing.tar \
-  shg309@login.rc.fas.harvard.edu:~/gl_deep_search/deployment/slurm/
-
-# Transfer the sbatch script and config
-scp deployment/slurm/etl_pipeline.sbatch \
-  shg309@login.rc.fas.harvard.edu:~/gl_deep_search/deployment/slurm/
-
-scp backend/etl/config.yaml \
-  shg309@login.rc.fas.harvard.edu:~/gl_deep_search/backend/etl/
-```
-
-Or use the helper script (does all of the above):
-
-```bash
-bash deployment/slurm/setup_env.sh push
+# Create directories on the cluster (first time only)
 bash deployment/slurm/setup_env.sh setup
+
+# Transfer the .tar + configs + sbatch scripts
+bash deployment/slurm/setup_env.sh push
 ```
 
-## Step 3: Convert to Singularity on the cluster
-
-SSH into the cluster and convert the Docker tar to a Singularity `.sif` image. This is a one-time step.
+Or do both build + push in one step:
 
 ```bash
-ssh shg309@login.rc.fas.harvard.edu
-cd ~/gl_deep_search/deployment/slurm
-
-module load singularity
-
-# Convert Docker tar → Singularity .sif (~5-10 min)
-singularity build gl-pdf-processing.sif docker-archive://gl-pdf-processing.tar
-
-# Verify it works
-singularity exec gl-pdf-processing.sif \
-  python -c "from backend.etl.orchestrator import ETLOrchestrator; print('OK')"
-
-# Clean up the tar to save disk space
-rm gl-pdf-processing.tar
+bash deployment/slurm/setup_env.sh all
 ```
 
-## Step 4: Set your OpenAI API key
+The `.tar` is automatically converted to a Singularity `.sif` image on the first `sbatch` run — no manual `singularity build` step needed.
+
+## Step 3: Set your OpenAI API key
 
 The embeddings stage calls the OpenAI API. Add your key to `~/.bashrc` so SLURM jobs can access it:
 
@@ -84,7 +45,7 @@ echo 'export OPENAI_API_KEY="sk-..."' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-## Step 5: Submit a job
+## Step 4: Submit a job
 
 ```bash
 cd ~/gl_deep_search
@@ -108,7 +69,7 @@ SKIP_SCRAPING=1 sbatch deployment/slurm/etl_pipeline.sbatch
 | `SKIP_SCRAPING` | 0 | Set to `1` to skip scraping and use existing CSV |
 | `LOG_LEVEL` | INFO | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 
-## Step 6: Monitor the job
+## Step 5: Monitor the job
 
 ```bash
 # Check job status
@@ -133,10 +94,19 @@ The `etl_pipeline.sbatch` script requests:
 | Partition | `gpu` | A100 GPU for Marker PDF processing |
 | GPU | 1 | Marker CUDA acceleration |
 | CPUs | 8 | Parallel downloads and text extraction |
-| Memory | 64 GB | Marker models + PDF processing headroom |
+| Memory | 100 GB | Marker models + PDF processing headroom |
 | Time limit | 4 hours | Plenty for small runs; increase for full corpus |
 
 Marker auto-detects the GPU and uses optimal batch sizes for the available hardware. A 10-publication test run should complete in ~10-15 minutes.
+
+## GPU and CUDA compatibility
+
+The container uses `python:3.12-slim-bookworm` (not an NVIDIA CUDA base image). This works because:
+
+- `singularity exec --nv` mounts the host's NVIDIA drivers into the container at runtime
+- PyTorch bundles its own CUDA runtime (libcudart, cuDNN, cuBLAS)
+
+The sbatch scripts log the host driver's max supported CUDA version. If you see CUDA errors, verify that the PyTorch CUDA version in the container is <= the host driver's reported CUDA version.
 
 ## Other SLURM scripts
 
@@ -148,13 +118,9 @@ Marker auto-detects the GPU and uses optimal batch sizes for the available hardw
 When the code changes, rebuild and re-transfer:
 
 ```bash
-# Local
-bash deployment/slurm/setup_env.sh build
-bash deployment/slurm/setup_env.sh push
+# Local: rebuild + push
+bash deployment/slurm/setup_env.sh all
 
-# On cluster
-cd ~/gl_deep_search/deployment/slurm
-module load singularity
-singularity build gl-pdf-processing.sif docker-archive://gl-pdf-processing.tar
-rm gl-pdf-processing.tar
+# On cluster: delete the old .sif so next sbatch auto-rebuilds
+rm ~/gl_deep_search/deployment/slurm/gl-pdf-processing.sif
 ```
