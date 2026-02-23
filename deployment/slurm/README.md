@@ -4,51 +4,76 @@ This guide covers deploying and running the full ETL pipeline (scrape → downlo
 
 ## Prerequisites
 
-- Docker installed on your local machine
+- `gcloud` CLI installed and authenticated locally
 - SSH access to `login.rc.fas.harvard.edu`
 - An OpenAI API key (for the embeddings stage)
 
-## Step 1: Build the Docker image locally
+## One-Time Cluster Setup
+
+### 1. Create directories on the cluster
 
 ```bash
-cd "/Users/shg309/Dropbox (Personal)/Education/hks_cid_growth_lab/gl_deep_search"
+bash deployment/slurm/setup_env.sh setup
+```
 
+### 2. Set up Artifact Registry authentication
+
+The cluster needs a GCP service account key to pull container images from Artifact Registry.
+
+```bash
+# Local: create the key
+gcloud iam service-accounts keys create sa-key.json \
+  --iam-account=etl-pipeline-service-account@cid-hks-1537286359734.iam.gserviceaccount.com
+
+# Local: copy to cluster
+scp sa-key.json ${USER}@login.rc.fas.harvard.edu:/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search/.gcp-sa-key.json
+
+# On cluster: secure the key
+chmod 600 /n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search/.gcp-sa-key.json
+
+# Local: clean up
+rm sa-key.json
+```
+
+### 3. Set your OpenAI API key
+
+Add your key to the `.env` file on the cluster:
+
+```bash
+# On cluster:
+echo 'OPENAI_API_KEY=sk-...' >> /n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search/.env
+```
+
+## Deployment Workflow
+
+### Step 1: Build the container image (local)
+
+Submits to Google Cloud Build, which builds a `linux/amd64` image and pushes it to Artifact Registry.
+
+```bash
 bash deployment/slurm/setup_env.sh build
 ```
 
-This builds the Docker image and exports it as a `.tar` file (~2.5 GB) at `deployment/slurm/gl-pdf-processing.tar`.
+### Step 2: Push configs and scripts to cluster (local)
 
-## Step 2: Transfer to the cluster
+Transfers only small config files and sbatch scripts — no large image transfer.
 
 ```bash
-# Create directories on the cluster (first time only)
-bash deployment/slurm/setup_env.sh setup
-
-# Transfer the .tar + configs + sbatch scripts
 bash deployment/slurm/setup_env.sh push
 ```
 
-Or do both build + push in one step:
+### Step 3: Pull the container image (on cluster)
+
+SSH to the cluster and pull the image from Artifact Registry as a Singularity `.sif`:
 
 ```bash
-bash deployment/slurm/setup_env.sh all
+bash deployment/slurm/setup_env.sh pull
 ```
 
-The `.tar` is automatically converted to a Singularity `.sif` image on the first `sbatch` run — no manual `singularity build` step needed.
-
-## Step 3: Set your OpenAI API key
-
-The embeddings stage calls the OpenAI API. Add your key to `~/.bashrc` so SLURM jobs can access it:
+## Running Jobs
 
 ```bash
-echo 'export OPENAI_API_KEY="sk-..."' >> ~/.bashrc
-source ~/.bashrc
-```
-
-## Step 4: Submit a job
-
-```bash
-cd ~/gl_deep_search
+cd /n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search
 
 # Test run with 10 publications (default)
 sbatch deployment/slurm/etl_pipeline.sbatch
@@ -69,7 +94,7 @@ SKIP_SCRAPING=1 sbatch deployment/slurm/etl_pipeline.sbatch
 | `SKIP_SCRAPING` | 0 | Set to `1` to skip scraping and use existing CSV |
 | `LOG_LEVEL` | INFO | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 
-## Step 5: Monitor the job
+## Monitoring
 
 ```bash
 # Check job status
@@ -85,7 +110,7 @@ cat logs/etl_pipeline_<JOB_ID>.err
 cat data/reports/etl_execution_report.json
 ```
 
-## Resource allocation
+## Resource Allocation
 
 The `etl_pipeline.sbatch` script requests:
 
@@ -97,30 +122,22 @@ The `etl_pipeline.sbatch` script requests:
 | Memory | 100 GB | Marker models + PDF processing headroom |
 | Time limit | 4 hours | Plenty for small runs; increase for full corpus |
 
-Marker auto-detects the GPU and uses optimal batch sizes for the available hardware. A 10-publication test run should complete in ~10-15 minutes.
-
-## GPU and CUDA compatibility
-
-The container uses `python:3.12-slim-bookworm` (not an NVIDIA CUDA base image). This works because:
-
-- `singularity exec --nv` mounts the host's NVIDIA drivers into the container at runtime
-- PyTorch bundles its own CUDA runtime (libcudart, cuDNN, cuBLAS)
-
-The sbatch scripts log the host driver's max supported CUDA version. If you see CUDA errors, verify that the PyTorch CUDA version in the container is <= the host driver's reported CUDA version.
-
-## Other SLURM scripts
+## Other SLURM Scripts
 
 - **`pdf_processing.sbatch`** — Runs only the PDF extraction stage (useful for reprocessing)
 - **`benchmark.sbatch`** — Benchmarks Marker vs Docling backends on a sample of PDFs
 
-## Updating the image
+## Updating the Image
 
-When the code changes, rebuild and re-transfer:
+When code changes, rebuild and re-pull:
 
 ```bash
-# Local: rebuild + push
-bash deployment/slurm/setup_env.sh all
+# Local: rebuild via Cloud Build
+bash deployment/slurm/setup_env.sh build
 
-# On cluster: delete the old .sif so next sbatch auto-rebuilds
-rm ~/gl_deep_search/deployment/slurm/gl-pdf-processing.sif
+# Local: push updated configs/scripts
+bash deployment/slurm/setup_env.sh push
+
+# On cluster: pull the new image (replaces old .sif)
+bash deployment/slurm/setup_env.sh pull
 ```

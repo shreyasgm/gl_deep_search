@@ -1,62 +1,95 @@
 #!/bin/bash
-# Growth Lab Deep Search - One-time FAS-RC environment setup
+# Growth Lab Deep Search - SLURM deployment helper
 #
-# Builds the PDF processing Docker image locally and exports it as a .tar
-# for transfer to the SLURM cluster. The sbatch scripts auto-convert the
-# .tar to a Singularity .sif on first run — no manual conversion needed.
-#
-# Prerequisites:
-#   - Docker installed on your local machine
-#   - SSH/scp access to the cluster
+# Builds the Docker image via Google Cloud Build, pushes config files to the
+# FASRC cluster, and pulls the container image from Artifact Registry.
 #
 # Usage (local machine):
-#   bash deployment/slurm/setup_env.sh build   # Build Docker image + export .tar
-#   bash deployment/slurm/setup_env.sh push    # Push .tar + configs to cluster
+#   bash deployment/slurm/setup_env.sh build   # Submit Cloud Build job
+#   bash deployment/slurm/setup_env.sh push    # SCP configs + scripts to cluster
+#
+# Usage (on cluster):
+#   bash deployment/slurm/setup_env.sh pull    # Pull image from Artifact Registry
 
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-IMAGE_NAME="gl-pdf-processing"
-IMAGE_TAG="latest"
-DOCKER_TAR="${PROJECT_DIR}/deployment/slurm/${IMAGE_NAME}.tar"
-# Update this to your cluster login node
+
+# ── GCP configuration ────────────────────────────────────────────────
+GCP_CONFIG="${PROJECT_DIR}/deployment/config/gcp-config.sh"
+if [[ -f "$GCP_CONFIG" ]]; then
+    SKIP_VALIDATION=true source "$GCP_CONFIG"
+fi
+# Fallback defaults if gcp-config.sh doesn't exist or doesn't set these
+SLURM_IMAGE_NAME="${SLURM_IMAGE_NAME:-us-east4-docker.pkg.dev/cid-hks-1537286359734/etl-pipeline/gl-pdf-processing:latest}"
+
+# ── Cluster configuration ────────────────────────────────────────────
 CLUSTER_HOST="${CLUSTER_HOST:-${USER}@login.rc.fas.harvard.edu}"
 CLUSTER_DIR="${CLUSTER_DIR:-/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search}"
 
-build() {
-    echo "=== Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG} (linux/amd64) ==="
-    cd "$PROJECT_DIR"
-    docker buildx build \
-        --platform linux/amd64 \
-        -f deployment/pdf-processing/Dockerfile \
-        -t "${IMAGE_NAME}:${IMAGE_TAG}" \
-        --load \
-        .
-    echo "Docker image built successfully."
+# ── Commands ─────────────────────────────────────────────────────────
 
-    echo "=== Exporting Docker image as tar ==="
-    docker save "${IMAGE_NAME}:${IMAGE_TAG}" -o "$DOCKER_TAR"
-    echo "Docker image saved to: $DOCKER_TAR"
+build() {
+    echo "=== Submitting Cloud Build job ==="
+    cd "$PROJECT_DIR"
+    gcloud builds submit \
+        --config deployment/cloudbuild-slurm.yaml \
+        .
+    echo ""
+    echo "Build complete. Image pushed to: ${SLURM_IMAGE_NAME}"
 }
 
 push() {
-    echo "=== Pushing to cluster ==="
+    echo "=== Pushing config and scripts to cluster ==="
 
-    if [[ ! -f "$DOCKER_TAR" ]]; then
-        echo "No .tar file found. Run 'build' first."
+    # Config file
+    scp "${PROJECT_DIR}/backend/etl/config.yaml" \
+        "${CLUSTER_HOST}:${CLUSTER_DIR}/backend/etl/config.yaml"
+
+    # SLURM scripts
+    scp "${PROJECT_DIR}/deployment/slurm/etl_pipeline.sbatch" \
+        "${PROJECT_DIR}/deployment/slurm/pdf_processing.sbatch" \
+        "${PROJECT_DIR}/deployment/slurm/benchmark.sbatch" \
+        "${PROJECT_DIR}/deployment/slurm/setup_env.sh" \
+        "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
+
+    echo "Configs and scripts pushed to cluster."
+}
+
+pull() {
+    echo "=== Pulling container image from Artifact Registry ==="
+
+    # This command runs ON the cluster
+    local sif_path="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.sif"
+    local sa_key="${PROJECT_DIR}/.gcp-sa-key.json"
+
+    if [[ ! -f "$sa_key" ]]; then
+        echo "ERROR: Service account key not found at $sa_key"
+        echo "Copy your GCP service account key to the cluster:"
+        echo "  scp sa-key.json <user>@login.rc.fas.harvard.edu:${CLUSTER_DIR}/.gcp-sa-key.json"
         exit 1
     fi
 
-    scp "$DOCKER_TAR" "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
-    echo "Pushed .tar to cluster (auto-converts to .sif on first sbatch run)."
+    module load singularity 2>/dev/null || true
 
-    # Also push config and sbatch scripts
-    echo "=== Pushing config and sbatch scripts ==="
-    scp "${PROJECT_DIR}/backend/etl/config.yaml" "${CLUSTER_HOST}:${CLUSTER_DIR}/backend/etl/config.yaml"
-    scp "${PROJECT_DIR}/deployment/slurm/etl_pipeline.sbatch" "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
-    scp "${PROJECT_DIR}/deployment/slurm/pdf_processing.sbatch" "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
-    scp "${PROJECT_DIR}/deployment/slurm/benchmark.sbatch" "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
-    echo "Config and scripts pushed."
+    # Keep Singularity cache out of $HOME (100 GB quota)
+    export SINGULARITY_CACHEDIR="${PROJECT_DIR}/.singularity_cache"
+    mkdir -p "$SINGULARITY_CACHEDIR"
+
+    # Remove stale image so we always get the latest
+    if [[ -f "$sif_path" ]]; then
+        echo "Removing old .sif image..."
+        rm -f "$sif_path"
+    fi
+
+    # Authenticate with Artifact Registry via service account key
+    export SINGULARITY_DOCKER_USERNAME="_json_key"
+    export SINGULARITY_DOCKER_PASSWORD="$(cat "$sa_key")"
+
+    echo "Pulling: docker://${SLURM_IMAGE_NAME}"
+    singularity pull "$sif_path" "docker://${SLURM_IMAGE_NAME}"
+
+    echo "Image saved to: $sif_path"
 }
 
 setup_cluster_dirs() {
@@ -65,23 +98,26 @@ setup_cluster_dirs() {
     echo "Cluster directories created."
 }
 
-case "${1:-build}" in
+case "${1:-}" in
     build)
         build
         ;;
     push)
         push
         ;;
+    pull)
+        pull
+        ;;
     setup)
         setup_cluster_dirs
         ;;
-    all)
-        build
-        push
-        setup_cluster_dirs
-        ;;
     *)
-        echo "Usage: $0 {build|push|setup|all}"
+        echo "Usage: $0 {build|push|pull|setup}"
+        echo ""
+        echo "  build  - Submit Cloud Build job (run locally)"
+        echo "  push   - SCP configs and scripts to cluster (run locally)"
+        echo "  pull   - Pull container image from Artifact Registry (run on cluster)"
+        echo "  setup  - Create directory structure on cluster (run locally)"
         exit 1
         ;;
 esac

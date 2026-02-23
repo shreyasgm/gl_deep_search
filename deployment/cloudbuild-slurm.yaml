@@ -1,0 +1,17 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    env:
+      - 'DOCKER_BUILDKIT=1'
+    args:
+      - 'build'
+      - '-f'
+      - 'deployment/pdf-processing/Dockerfile'
+      - '-t'
+      - 'us-east4-docker.pkg.dev/cid-hks-1537286359734/etl-pipeline/gl-pdf-processing:latest'
+      - '.'
+images:
+  - 'us-east4-docker.pkg.dev/cid-hks-1537286359734/etl-pipeline/gl-pdf-processing:latest'
+timeout: '1800s'  # 30 minutes
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

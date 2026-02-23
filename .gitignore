@@ -80,6 +80,10 @@ MANIFEST
 # Docker
 .docker/
 
+# Container artifacts
+*.tar
+*.sif
+
 # System files
 .DS_Store
 Thumbs.db
@@ -233,6 +237,7 @@ poetry.toml
 pyrightconfig.json
 
 # GCP deployment
+.gcp-sa-key.json
 deployment/config/gcp-config.sh
 deployment/**/*.key
 deployment/**/*.json
