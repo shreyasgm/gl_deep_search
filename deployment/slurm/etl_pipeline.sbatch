@@ -29,16 +29,15 @@
 #   SKIP_SCRAPING=1 sbatch deployment/slurm/etl_pipeline.sbatch
 #
 # Prerequisites:
-#   - Container image (.tar or .sif) at $HOME/gl_deep_search/deployment/slurm/
-#   - OPENAI_API_KEY in $HOME/gl_deep_search/.env or shell environment
-#   - Run setup_env.sh first to build and push the image
+#   - Container image (.sif) at $PROJECT_DIR/deployment/slurm/
+#     (run: bash deployment/slurm/setup_env.sh pull)
+#   - OPENAI_API_KEY in $PROJECT_DIR/.env or shell environment
 
 set -euo pipefail
 
 # ── Configuration (override via environment) ─────────────────────────
 PROJECT_DIR="${PROJECT_DIR:-/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search}"
 SIF_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.sif"
-TAR_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.tar"
 CONFIG_FILE="backend/etl/config.yaml"
 
 SCRAPER_LIMIT="${SCRAPER_LIMIT:-10}"
@@ -89,18 +88,37 @@ mkdir -p "${PROJECT_DIR}"/{data,logs,reports}
 # ── Load Singularity ─────────────────────────────────────────────────
 module load singularity 2>/dev/null || true
 
-# ── Container image (auto-convert tar → sif on first run) ────────────
+# ── Container image ──────────────────────────────────────────────────
 if [[ ! -f "$SIF_IMAGE" ]]; then
-    if [[ -f "$TAR_IMAGE" ]]; then
-        echo "Converting Docker tar to Singularity SIF (one-time)..."
-        singularity build "$SIF_IMAGE" "docker-archive://${TAR_IMAGE}"
-        echo "SIF image created at $SIF_IMAGE"
-    else
-        echo "ERROR: No container image found (.sif or .tar) at ${PROJECT_DIR}/deployment/slurm/"
-        echo "Run: bash deployment/slurm/setup_env.sh all"
-        exit 1
-    fi
+    echo "ERROR: Container image not found at $SIF_IMAGE"
+    echo "Run on the cluster: bash deployment/slurm/setup_env.sh pull"
+    exit 1
 fi
+
+# ── Stage to local scratch (avoids slow network filesystem I/O) ──────
+# GPU nodes have ~396 GB of local scratch — much faster than holystore NFS.
+LOCAL_WORK="/scratch/gl_${SLURM_JOB_ID}"
+mkdir -p "$LOCAL_WORK"/{data,logs,reports}
+
+echo "Staging container image to local scratch..."
+cp "$SIF_IMAGE" "$LOCAL_WORK/gl-pdf-processing.sif"
+LOCAL_SIF="$LOCAL_WORK/gl-pdf-processing.sif"
+
+echo "Staging data to local scratch..."
+rsync -a "${PROJECT_DIR}/data/" "$LOCAL_WORK/data/"
+echo "Staging complete. Local scratch usage: $(du -sh "$LOCAL_WORK" | cut -f1)"
+
+# Copy results back to persistent storage on exit (success or failure)
+cleanup() {
+    echo ""
+    echo "=== Syncing results back to persistent storage ==="
+    rsync -a "$LOCAL_WORK/data/" "${PROJECT_DIR}/data/"
+    rsync -a "$LOCAL_WORK/logs/" "${PROJECT_DIR}/logs/"
+    rsync -a "$LOCAL_WORK/reports/" "${PROJECT_DIR}/reports/"
+    rm -rf "$LOCAL_WORK"
+    echo "Scratch cleanup complete."
+}
+trap cleanup EXIT
 
 # ── Build command args ───────────────────────────────────────────────
 CMD_ARGS=(
@@ -121,15 +139,15 @@ echo ""
 
 # ── Run pipeline ─────────────────────────────────────────────────────
 singularity exec --nv \
-    --bind "${PROJECT_DIR}/data:/app/data" \
-    --bind "${PROJECT_DIR}/logs:/app/logs" \
-    --bind "${PROJECT_DIR}/reports:/app/reports" \
+    --bind "$LOCAL_WORK/data:/app/data" \
+    --bind "$LOCAL_WORK/logs:/app/logs" \
+    --bind "$LOCAL_WORK/reports:/app/reports" \
     --env OPENAI_API_KEY="$OPENAI_API_KEY" \
     --env PDF_DEVICE=cuda \
     --env OMP_NUM_THREADS=2 \
     --env MKL_NUM_THREADS=2 \
     --env OPENBLAS_NUM_THREADS=2 \
-    "$SIF_IMAGE" \
+    "$LOCAL_SIF" \
     "${CMD_ARGS[@]}"
 
 echo ""

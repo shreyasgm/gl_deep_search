@@ -31,31 +31,49 @@ DRIVER_CUDA=$(nvidia-smi | grep "CUDA Version" | awk '{print $9}')
 echo "Host driver supports CUDA: $DRIVER_CUDA"
 echo "================"
 
-PROJECT_DIR="$HOME/gl_deep_search"
+PROJECT_DIR="${PROJECT_DIR:-/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search}"
 SIF_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.sif"
-TAR_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.tar"
 
-# ── Container image (auto-convert tar → sif on first run) ────────────
+# ── Container image ──────────────────────────────────────────────────
 module load singularity 2>/dev/null || true
 
 if [[ ! -f "$SIF_IMAGE" ]]; then
-    if [[ -f "$TAR_IMAGE" ]]; then
-        echo "Converting Docker tar to Singularity SIF (one-time)..."
-        singularity build "$SIF_IMAGE" "docker-archive://${TAR_IMAGE}"
-        echo "SIF image created at $SIF_IMAGE"
-    else
-        echo "ERROR: No container image found (.sif or .tar) at ${PROJECT_DIR}/deployment/slurm/"
-        echo "Run: bash deployment/slurm/setup_env.sh all"
-        exit 1
-    fi
+    echo "ERROR: Container image not found at $SIF_IMAGE"
+    echo "Run on the cluster: bash deployment/slurm/setup_env.sh pull"
+    exit 1
 fi
 
+# ── Stage to local scratch (avoids slow network filesystem I/O) ──────
+# GPU nodes have ~396 GB of local scratch — much faster than holystore NFS.
+LOCAL_WORK="/scratch/gl_${SLURM_JOB_ID}"
+mkdir -p "$LOCAL_WORK"/{data,logs,reports}
+
+echo "Staging container image to local scratch..."
+cp "$SIF_IMAGE" "$LOCAL_WORK/gl-pdf-processing.sif"
+LOCAL_SIF="$LOCAL_WORK/gl-pdf-processing.sif"
+
+echo "Staging data to local scratch..."
+rsync -a "${PROJECT_DIR}/data/" "$LOCAL_WORK/data/"
+echo "Staging complete. Local scratch usage: $(du -sh "$LOCAL_WORK" | cut -f1)"
+
+# Copy results back to persistent storage on exit (success or failure)
+cleanup() {
+    echo ""
+    echo "=== Syncing results back to persistent storage ==="
+    rsync -a "$LOCAL_WORK/data/" "${PROJECT_DIR}/data/"
+    rsync -a "$LOCAL_WORK/logs/" "${PROJECT_DIR}/logs/"
+    rsync -a "$LOCAL_WORK/reports/" "${PROJECT_DIR}/reports/"
+    rm -rf "$LOCAL_WORK"
+    echo "Scratch cleanup complete."
+}
+trap cleanup EXIT
+
 singularity exec --nv \
-    --bind "${PROJECT_DIR}/data:/app/data" \
-    --bind "${PROJECT_DIR}/logs:/app/logs" \
-    --bind "${PROJECT_DIR}/reports:/app/reports" \
+    --bind "$LOCAL_WORK/data:/app/data" \
+    --bind "$LOCAL_WORK/logs:/app/logs" \
+    --bind "$LOCAL_WORK/reports:/app/reports" \
     --env PDF_DEVICE=cuda \
-    "$SIF_IMAGE" \
+    "$LOCAL_SIF" \
     python -m backend.etl.scripts.benchmark_pdf_backends \
         --pdf-dir /app/data/raw/documents/growthlab \
         --sample-size 20 \
