@@ -10,6 +10,7 @@ import asyncio
 import json
 import sys
 import time
+import traceback
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
@@ -199,6 +200,7 @@ class ETLOrchestrator:
             result.status = ComponentStatus.FAILED
             result.error = str(e)
             logger.error(f"Component {name} failed: {e}")
+            logger.error(f"Traceback:\n{traceback.format_exc()}")
 
         finally:
             result.end_time = time.time()
