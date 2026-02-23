@@ -23,8 +23,10 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Get database connection string from environment variable or use default SQLite
+# Default path: <project_root>/data/etl_tracking.db (consistent with StorageFactory)
+_project_root = Path(__file__).parent.parent.parent
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", f"sqlite:///{Path(__file__).parent}/data/etl_tracking.db"
+    "DATABASE_URL", f"sqlite:///{_project_root / 'data' / 'etl_tracking.db'}"
 )
 
 # Create engine
