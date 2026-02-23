@@ -59,19 +59,21 @@ pull() {
     export SINGULARITY_CACHEDIR="${PROJECT_DIR}/.singularity_cache"
     mkdir -p "$SINGULARITY_CACHEDIR"
 
-    # Remove stale image so we always get the latest
-    if [[ -f "$sif_path" ]]; then
-        echo "Removing old .sif image..."
-        rm -f "$sif_path"
-    fi
+    # Build to /tmp first (faster I/O than NFS), then move to final location.
+    # Singularity writes to a temp file internally, but /tmp ensures the heavy
+    # build I/O hits fast local disk instead of slow network filesystem.
+    local tmp_sif="/tmp/gl-pdf-processing-$$.sif"
+    export SINGULARITY_TMPDIR="/tmp"
 
     # Authenticate with Artifact Registry via service account key
     export SINGULARITY_DOCKER_USERNAME="_json_key"
     export SINGULARITY_DOCKER_PASSWORD="$(cat "$sa_key")"
 
     echo "Pulling: docker://${SLURM_IMAGE_NAME}"
-    singularity pull "$sif_path" "docker://${SLURM_IMAGE_NAME}"
+    singularity pull "$tmp_sif" "docker://${SLURM_IMAGE_NAME}"
 
+    # Move to final location (replaces any old .sif)
+    mv -f "$tmp_sif" "$sif_path"
     echo "Image saved to: $sif_path"
 }
 
