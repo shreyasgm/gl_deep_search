@@ -51,7 +51,8 @@ fi
 # ── Stage to local scratch (avoids slow network filesystem I/O) ──────
 # GPU nodes have ~396 GB of local scratch — much faster than holystore NFS.
 LOCAL_WORK="/scratch/gl_${SLURM_JOB_ID}"
-mkdir -p "$LOCAL_WORK"/{data,logs,reports}
+MODEL_CACHE="${PROJECT_DIR}/.model_cache"
+mkdir -p "$LOCAL_WORK"/{data,logs,reports} "$MODEL_CACHE"
 
 echo "Staging container image to local scratch..."
 cp "$SIF_IMAGE" "$LOCAL_WORK/gl-pdf-processing.sif"
@@ -59,6 +60,14 @@ LOCAL_SIF="$LOCAL_WORK/gl-pdf-processing.sif"
 
 echo "Staging data to local scratch..."
 rsync -a "${PROJECT_DIR}/data/" "$LOCAL_WORK/data/"
+
+# Stage model cache if it exists (avoids re-downloading 4.6 GB of models)
+if [[ -d "$MODEL_CACHE" && "$(ls -A "$MODEL_CACHE" 2>/dev/null)" ]]; then
+    echo "Staging model cache to local scratch..."
+    rsync -a "$MODEL_CACHE/" "$LOCAL_WORK/.model_cache/"
+else
+    mkdir -p "$LOCAL_WORK/.model_cache"
+fi
 echo "Staging complete. Local scratch usage: $(du -sh "$LOCAL_WORK" | cut -f1)"
 
 # Copy results back to persistent storage on exit (success or failure)
@@ -68,16 +77,18 @@ cleanup() {
     rsync -a "$LOCAL_WORK/data/" "${PROJECT_DIR}/data/"
     rsync -a "$LOCAL_WORK/logs/" "${PROJECT_DIR}/logs/"
     rsync -a "$LOCAL_WORK/reports/" "${PROJECT_DIR}/reports/"
+    rsync -a "$LOCAL_WORK/.model_cache/" "$MODEL_CACHE/"
     rm -rf "$LOCAL_WORK"
     echo "Scratch cleanup complete."
 }
 trap cleanup EXIT
 
-singularity exec --nv \
+singularity exec --nv --writable-tmpfs --pwd /app \
     --bind "$LOCAL_WORK/data:/app/data" \
     --bind "$LOCAL_WORK/logs:/app/logs" \
     --bind "$LOCAL_WORK/reports:/app/reports" \
     --env PDF_DEVICE=cuda \
+    --env MODEL_CACHE_DIR="$LOCAL_WORK/.model_cache" \
     "$LOCAL_SIF" \
     python -m backend.etl.scripts.run_pdf_processor --force-reprocess
 
