@@ -64,7 +64,8 @@ COPY --from=builder /app /app
 ENV PATH="/app/.venv/bin:$PATH" \
     VIRTUAL_ENV=/app/.venv \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 WORKDIR /app
 
