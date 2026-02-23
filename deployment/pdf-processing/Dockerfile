@@ -72,6 +72,13 @@ WORKDIR /app
 # Create data and logs dirs
 RUN mkdir -p /app/data /app/logs /app/reports
 
+# Pre-download Marker/surya font files so they exist in the image.
+# Singularity .sif images are read-only — without this, Marker fails with
+# "[Errno 30] Read-only file system: .../site-packages/static"
+RUN mkdir -p /app/.venv/lib/python3.12/site-packages/static/fonts && \
+    curl -sL https://models.datalab.to/artifacts/GoNotoCurrent-Regular.ttf \
+        -o /app/.venv/lib/python3.12/site-packages/static/fonts/GoNotoCurrent-Regular.ttf
+
 # Default: run the PDF processor script
 ENTRYPOINT ["python", "-m"]
 CMD ["backend.etl.scripts.run_pdf_processor"]
