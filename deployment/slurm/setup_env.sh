@@ -1,14 +1,14 @@
 #!/bin/bash
 # Growth Lab Deep Search - SLURM deployment helper
 #
-# Builds the Docker image via Google Cloud Build, pushes config files to the
-# FASRC cluster, and pulls the container image from Artifact Registry.
+# Builds the Docker image via Google Cloud Build and pulls the container
+# image from Artifact Registry on the cluster.
 #
 # Usage (local machine):
 #   bash deployment/slurm/setup_env.sh build   # Submit Cloud Build job
-#   bash deployment/slurm/setup_env.sh push    # SCP configs + scripts to cluster
 #
 # Usage (on cluster):
+#   git pull                                   # Get latest code + configs
 #   bash deployment/slurm/setup_env.sh pull    # Pull image from Artifact Registry
 
 set -euo pipefail
@@ -37,23 +37,6 @@ build() {
         .
     echo ""
     echo "Build complete. Image pushed to: ${SLURM_IMAGE_NAME}"
-}
-
-push() {
-    echo "=== Pushing config and scripts to cluster ==="
-
-    # Config file
-    scp "${PROJECT_DIR}/backend/etl/config.yaml" \
-        "${CLUSTER_HOST}:${CLUSTER_DIR}/backend/etl/config.yaml"
-
-    # SLURM scripts
-    scp "${PROJECT_DIR}/deployment/slurm/etl_pipeline.sbatch" \
-        "${PROJECT_DIR}/deployment/slurm/pdf_processing.sbatch" \
-        "${PROJECT_DIR}/deployment/slurm/benchmark.sbatch" \
-        "${PROJECT_DIR}/deployment/slurm/setup_env.sh" \
-        "${CLUSTER_HOST}:${CLUSTER_DIR}/deployment/slurm/"
-
-    echo "Configs and scripts pushed to cluster."
 }
 
 pull() {
@@ -102,9 +85,6 @@ case "${1:-}" in
     build)
         build
         ;;
-    push)
-        push
-        ;;
     pull)
         pull
         ;;
@@ -112,10 +92,9 @@ case "${1:-}" in
         setup_cluster_dirs
         ;;
     *)
-        echo "Usage: $0 {build|push|pull|setup}"
+        echo "Usage: $0 {build|pull|setup}"
         echo ""
         echo "  build  - Submit Cloud Build job (run locally)"
-        echo "  push   - SCP configs and scripts to cluster (run locally)"
         echo "  pull   - Pull container image from Artifact Registry (run on cluster)"
         echo "  setup  - Create directory structure on cluster (run locally)"
         exit 1

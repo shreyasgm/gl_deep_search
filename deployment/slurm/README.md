@@ -54,17 +54,18 @@ Submits to Google Cloud Build, which builds a `linux/amd64` image and pushes it 
 bash deployment/slurm/setup_env.sh build
 ```
 
-### Step 2: Push configs and scripts to cluster (local)
+### Step 2: Update code on cluster (on cluster)
 
-Transfers only small config files and sbatch scripts — no large image transfer.
+The cluster has a git clone of the repo. Pull to get the latest configs and scripts:
 
 ```bash
-bash deployment/slurm/setup_env.sh push
+cd /n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search
+git pull
 ```
 
 ### Step 3: Pull the container image (on cluster)
 
-SSH to the cluster and pull the image from Artifact Registry as a Singularity `.sif`:
+Pull the image from Artifact Registry as a Singularity `.sif`:
 
 ```bash
 bash deployment/slurm/setup_env.sh pull
@@ -135,9 +136,7 @@ When code changes, rebuild and re-pull:
 # Local: rebuild via Cloud Build
 bash deployment/slurm/setup_env.sh build
 
-# Local: push updated configs/scripts
-bash deployment/slurm/setup_env.sh push
-
-# On cluster: pull the new image (replaces old .sif)
+# On cluster: get latest code + pull new image
+git pull
 bash deployment/slurm/setup_env.sh pull
 ```
