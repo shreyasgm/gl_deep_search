@@ -49,7 +49,7 @@ file_processing:
     max_pages: 250            # Skip PDFs longer than this (0 = no limit)
 
     marker:
-      force_ocr: false
+      force_ocr: true
       # Marker auto-detects optimal batch sizes based on device (CPU/CUDA)
       # and available memory. Override only if needed for constrained environments:
       #   pdftext_workers: 1         # default 4; set to 1 to avoid OOM on <8GB machines
