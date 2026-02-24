@@ -22,6 +22,7 @@ BACKEND_REGISTRY: dict[str, type["PDFBackend"]] = {}
 _BACKEND_MODULES: dict[str, str] = {
     "marker": "backend.etl.utils.pdf_backends.marker_backend",
     "docling": "backend.etl.utils.pdf_backends.docling_backend",
+    "unstructured": "backend.etl.utils.pdf_backends.unstructured_backend",
 }
 
 
