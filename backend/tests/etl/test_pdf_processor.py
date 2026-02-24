@@ -1,14 +1,11 @@
 """
 Tests for the PDF processor functionality.
 
-The integration tests that invoke real PDF backends (Marker/docling) are
-marked ``@pytest.mark.slow`` so they are **skipped by default** in CI and
-local dev loops.  Run them explicitly with::
+The integration tests use the dev config (unstructured backend, fast strategy)
+so they run without heavy model downloads.
 
-    uv run pytest -m slow backend/tests/etl/test_pdf_processor.py
-
-The unit tests below exercise the storage-abstraction logic (skip checks,
-page cap, upload calls) without touching any heavy backend.
+The unit tests exercise the storage-abstraction logic (skip checks,
+page cap, upload calls) without touching any real backend.
 """
 
 import shutil
@@ -179,16 +176,15 @@ class TestFindGrowthLabPdfs:
 
 
 # ---------------------------------------------------------------------------
-# Integration tests — require model weights, marked slow
+# Integration tests — use dev config (unstructured backend, fast)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.slow
 class TestPDFProcessorIntegration:
-    """Integration tests that run real PDF extraction backends.
+    """Integration tests that run real PDF extraction via the dev config.
 
-    These download model weights on first run (~1-2 GB for Marker) and
-    are NOT suitable for CI.  Run with ``pytest -m slow``.
+    Uses the unstructured backend (fast strategy) so no heavy model
+    downloads are needed.
     """
 
     @pytest.fixture
@@ -208,13 +204,13 @@ class TestPDFProcessorIntegration:
         yield storage
         shutil.rmtree(temp_dir)
 
-    def test_process_single_pdf(self, sample_pdfs, test_storage):
-        """Test processing a single PDF file with a real backend."""
+    def test_process_single_pdf(self, sample_pdfs, test_storage, dev_config_path):
+        """Test processing a single PDF file with the dev backend."""
         pdf_path = sample_pdfs[0]
         dest_path = test_storage.get_path("raw/documents/growthlab/test_pub/sample.pdf")
         shutil.copy(pdf_path, dest_path)
 
-        processor = PDFProcessor(storage=test_storage)
+        processor = PDFProcessor(storage=test_storage, config_path=dev_config_path)
         result_path = processor.process_pdf(dest_path)
 
         assert result_path is not None, "PDF processing failed"

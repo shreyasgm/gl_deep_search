@@ -1,14 +1,16 @@
 """
 End-to-end integration tests for the complete ETL pipeline with publication tracking.
 
-These tests verify that the entire pipeline works correctly with publication tracker
+These tests use the dev config (unstructured PDF backend + all-MiniLM-L6-v2
+embeddings) so they run without heavy model downloads.
+
+They verify that the entire pipeline works correctly with publication tracker
 integration, ensuring status transitions flow properly through all stages.
 """
 
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -131,15 +133,24 @@ def test_publication():
     return pub
 
 
-@pytest.mark.slow
 class TestETLPipelineIntegration:
     """End-to-end integration tests for complete ETL pipeline."""
 
     def test_complete_pipeline_flow_with_real_files(
-        self, test_storage, test_tracker, test_db, sample_pdf, test_publication
+        self,
+        test_storage,
+        test_tracker,
+        test_db,
+        sample_pdf,
+        test_publication,
+        dev_config_path,
     ):
         """
-        Test complete pipeline flow with real files.
+        Test complete pipeline flow with real files using dev config.
+
+        Uses the unstructured PDF backend and all-MiniLM-L6-v2 embeddings
+        (both lightweight, no heavy model downloads) for a true end-to-end
+        test.
 
         Verifies:
         1. Publication registered in tracker
@@ -162,8 +173,12 @@ class TestETLPipelineIntegration:
         pdf_path = storage.get_path("raw/documents/growthlab/test_pub_123/sample.pdf")
         shutil.copy(sample_pdf, pdf_path)
 
-        # Step 3: Process PDF
-        processor = PDFProcessor(storage=storage, tracker=test_tracker)
+        # Step 3: Process PDF (dev config uses unstructured backend)
+        processor = PDFProcessor(
+            storage=storage,
+            config_path=dev_config_path,
+            tracker=test_tracker,
+        )
         processed_path = processor.process_pdf(pdf_path)
 
         assert processed_path is not None
@@ -182,7 +197,7 @@ class TestETLPipelineIntegration:
 
         # Step 4: Chunk the processed text
         chunker = TextChunker(
-            config_path=Path(__file__).parent.parent.parent / "etl" / "config.yaml",
+            config_path=dev_config_path,
             tracker=test_tracker,
         )
         chunking_results = chunker.process_all_documents(storage=storage)
@@ -200,7 +215,7 @@ class TestETLPipelineIntegration:
             assert updated is not None
             assert updated.processing_status == ProcessingStatus.PROCESSED
 
-        # Step 5: Generate embeddings
+        # Step 5: Generate embeddings (dev config uses all-MiniLM-L6-v2)
         # First, mark download as complete (embeddings generator expects this)
         with Session(test_db) as session:
             test_tracker.update_download_status(
@@ -209,37 +224,15 @@ class TestETLPipelineIntegration:
                 session=session,
             )
 
-        generator = EmbeddingsGenerator(
-            config_path=Path(__file__).parent.parent.parent / "etl" / "config.yaml"
+        generator = EmbeddingsGenerator(config_path=dev_config_path)
+
+        import asyncio
+
+        embedding_results = asyncio.run(
+            generator.process_all_documents(storage=storage, tracker=test_tracker)
         )
 
-        # Mock OpenAI API to avoid actual API calls
-        from unittest.mock import AsyncMock
-
-        with patch("backend.etl.utils.embeddings_generator.AsyncOpenAI") as mock_openai:
-            mock_client = MagicMock()
-            mock_openai.return_value = mock_client
-
-            # Create mock embedding response
-            mock_embedding = MagicMock()
-            mock_embedding.embedding = [0.1] * 1536  # 1536 dimensions
-
-            mock_response = MagicMock()
-            mock_response.data = [mock_embedding]
-
-            # Use AsyncMock for async method
-            async_create = AsyncMock(return_value=mock_response)
-            mock_client.embeddings.create = async_create
-
-            # Generate embeddings
-            import asyncio
-
-            embedding_results = asyncio.run(
-                generator.process_all_documents(storage=storage, tracker=test_tracker)
-            )
-
-            # Verify embeddings were generated
-            assert len(embedding_results) > 0
+        assert len(embedding_results) > 0
 
         # Verify embedding status updated
         with Session(test_db) as session:
@@ -291,7 +284,7 @@ class TestETLPipelineIntegration:
             assert publications[0].publication_id == test_publication.paper_id
 
     def test_component_with_tracker(
-        self, test_storage, test_tracker, test_db, sample_pdf
+        self, test_storage, test_tracker, test_db, sample_pdf, dev_config_path
     ):
         """
         Test that components work correctly with tracker when provided.
@@ -316,11 +309,15 @@ class TestETLPipelineIntegration:
         with Session(test_db) as session:
             test_tracker.add_publication(pub, session=session)
 
-        # Test PDF processor with tracker
+        # Test PDF processor with tracker (dev config: unstructured backend)
         pdf_path = storage.get_path("raw/documents/growthlab/test_pub_123/sample.pdf")
         shutil.copy(sample_pdf, pdf_path)
 
-        processor = PDFProcessor(storage=storage, tracker=test_tracker)
+        processor = PDFProcessor(
+            storage=storage,
+            config_path=dev_config_path,
+            tracker=test_tracker,
+        )
         processed_path = processor.process_pdf(pdf_path)
 
         assert processed_path is not None
@@ -337,7 +334,7 @@ class TestETLPipelineIntegration:
 
         # Test text chunker with tracker
         chunker = TextChunker(
-            config_path=Path(__file__).parent.parent.parent / "etl" / "config.yaml",
+            config_path=dev_config_path,
             tracker=test_tracker,
         )
         chunking_results = chunker.process_all_documents(storage=storage)

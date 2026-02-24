@@ -1,11 +1,10 @@
 """
 Integration tests for PDF extraction backends.
 
-These tests hit the actual backend libraries against real sample PDFs.
-Each backend gets a 2-minute timeout per PDF — if it hasn't finished by then,
-the test is skipped (not failed) since model download times vary.
+The unstructured backend test runs by default (lightweight, no model downloads).
+The Docling and Marker backend tests require heavy model weights and are behind
+``@pytest.mark.integration``.  Run them explicitly with::
 
-Run with:
   uv run pytest backend/tests/etl/test_pdf_backends_integration.py \
       -v -m integration
 """
@@ -43,7 +42,6 @@ def sample_pdf() -> Path:
     return SAMPLE_PDF
 
 
-@pytest.mark.slow
 @pytest.mark.integration
 class TestDoclingBackendIntegration:
     """Integration tests for Docling backend."""
@@ -70,7 +68,6 @@ class TestDoclingBackendIntegration:
         assert result.backend_name == "docling"
 
 
-@pytest.mark.slow
 @pytest.mark.integration
 class TestMarkerBackendIntegration:
     """Integration tests for Marker backend."""
@@ -95,3 +92,25 @@ class TestMarkerBackendIntegration:
             f"Marker output too short: {len(result.text)} chars"
         )
         assert result.backend_name == "marker"
+
+
+class TestUnstructuredBackendIntegration:
+    """Integration tests for the unstructured backend (fast strategy).
+
+    These run by default — no heavy model downloads required.
+    """
+
+    def test_extract_produces_output(self, sample_pdf: Path) -> None:
+        from backend.etl.utils.pdf_backends.unstructured_backend import (
+            UnstructuredBackend,
+        )
+
+        backend = UnstructuredBackend(config={"strategy": "fast"})
+        result = backend.extract(sample_pdf)
+
+        assert result.success, f"Unstructured extraction failed: {result.error}"
+        assert len(result.text) > MIN_CHARS, (
+            f"Unstructured output too short: {len(result.text)} chars"
+        )
+        assert result.backend_name == "unstructured"
+        assert result.pages > 0

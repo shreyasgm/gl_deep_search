@@ -227,11 +227,10 @@ exclude = [
 [tool.pytest.ini_options]
 # Register custom marks
 markers = [
-    "integration: mark tests as integration tests that may require real data",
+    "integration: mark tests that require heavy model weights (Marker, Docling, Qwen3-8B). Run with: pytest -m integration",
     "asyncio: mark a test as an asyncio coroutine",
-    "slow: mark tests that require heavy resources (model downloads, GPUs). Run with: pytest -m slow",
 ]
-addopts = "-m 'not slow'"
+addopts = "-m 'not integration'"
 # Configure pytest-asyncio plugin
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
