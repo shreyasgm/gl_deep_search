@@ -4,7 +4,8 @@
 # This script runs inside the container and handles:
 # 1. Fetching secrets from Google Secret Manager
 # 2. Setting up environment variables
-# 3. Launching the ETL pipeline with provided arguments
+# 3. Syncing the tracking DB from/to GCS
+# 4. Launching the ETL pipeline with provided arguments
 #
 # Environment variables expected:
 #   - GOOGLE_CLOUD_PROJECT: GCP project ID (required)
@@ -63,17 +64,42 @@ export GCS_BUCKET="${GCS_BUCKET}"
 export ENVIRONMENT="${ENVIRONMENT:-production}"
 export GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}"
 
+# Tell StorageFactory to use CloudStorage
+export CLOUD_ENVIRONMENT="gcp"
+
 # Additional environment setup
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
+
+# ------------------------------------------------------------------
+# Sync tracking DB from GCS (lightweight — only the manifest DB)
+# Raw/processed data is downloaded on-demand by each ETL component.
+# ------------------------------------------------------------------
+log "Syncing tracking DB from GCS..."
+mkdir -p /app/data
+gcloud storage cp "gs://${GCS_BUCKET}/etl_tracking.db" "/app/data/etl_tracking.db" 2>/dev/null \
+    && log "  Tracking DB restored from GCS" \
+    || log "  No existing tracking DB in GCS (starting fresh)"
 
 log "=========================================="
 log "Starting ETL Pipeline"
 log "=========================================="
 log "Command: python -m backend.etl.orchestrator $*"
 
-# Execute the ETL pipeline with all provided arguments
-# The exec replaces the shell process with the Python process,
-# ensuring proper signal handling and exit codes
-# Using direct Python invocation since VIRTUAL_ENV is already set
-exec python -m backend.etl.orchestrator "$@"
+# Execute the ETL pipeline — capture exit code instead of exec so we
+# can upload the tracking DB afterwards.
+EXIT_CODE=0
+python -m backend.etl.orchestrator "$@" || EXIT_CODE=$?
+
+# ------------------------------------------------------------------
+# Upload tracking DB back to GCS
+# ------------------------------------------------------------------
+log "Uploading tracking DB to GCS..."
+if [[ -f "/app/data/etl_tracking.db" ]]; then
+    gcloud storage cp "/app/data/etl_tracking.db" "gs://${GCS_BUCKET}/etl_tracking.db" \
+        && log "  Tracking DB uploaded to GCS" \
+        || log "WARNING: Failed to upload tracking DB"
+fi
+
+log "Pipeline exited with code: $EXIT_CODE"
+exit $EXIT_CODE

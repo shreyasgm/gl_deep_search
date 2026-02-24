@@ -136,8 +136,9 @@ class ETLOrchestrator:
             raise
 
     def _path_exists(self, path: Path) -> bool:
-        """
-        Check if a path exists (helper method since storage base doesn't have exists).
+        """Check if a path exists via the local filesystem.
+
+        Prefer ``self.storage.exists(relative_path)`` for new code.
         """
         return path.exists()
 
@@ -313,11 +314,11 @@ class ETLOrchestrator:
             )
 
         # Get publications from scraper output
-        publications_path = self.storage.get_path(
-            "intermediate/growth_lab_publications.csv"
-        )
-        if not self._path_exists(publications_path):
-            raise FileNotFoundError(f"Publications file not found: {publications_path}")
+        pub_relative = "intermediate/growth_lab_publications.csv"
+        if not self.storage.exists(pub_relative):
+            raise FileNotFoundError(f"Publications file not found: {pub_relative}")
+        # Ensure it's available locally for CSV loading
+        publications_path = self.storage.download(pub_relative)
 
         # Load publications from CSV
         with profile_operation("Load publications from CSV"):
@@ -447,7 +448,7 @@ class ETLOrchestrator:
             "raw/lecture_transcripts"
         )
 
-        if not self._path_exists(transcripts_input):
+        if not self.storage.exists("raw/lecture_transcripts"):
             logger.warning(
                 "No lecture transcripts found, skipping transcript processing"
             )
@@ -473,17 +474,16 @@ class ETLOrchestrator:
             return
 
         # Check if we have processed text files to chunk
-        processed_docs_path = self.storage.get_path("processed/documents")
-        if not self._path_exists(processed_docs_path):
+        if not self.storage.exists("processed/documents"):
             logger.warning("No processed documents found, skipping text chunking")
             result.status = ComponentStatus.SKIPPED
             return
 
-        # Find processed text files
+        # Find processed text files via storage glob
         with profile_operation("Find text files"):
-            text_files = list(processed_docs_path.rglob("*.txt"))
+            text_relatives = self.storage.glob("processed/documents/**/*.txt")
 
-        if not text_files:
+        if not text_relatives:
             logger.warning("No processed text files found, skipping text chunking")
             result.status = ComponentStatus.SKIPPED
             return
@@ -519,9 +519,8 @@ class ETLOrchestrator:
             }
 
             # Set output files - the chunks.json files created
-            chunks_dir = self.storage.get_path("processed/chunks")
-            if self._path_exists(chunks_dir):
-                result.output_files = list(chunks_dir.rglob("chunks.json"))
+            chunk_relatives = self.storage.glob("processed/chunks/**/chunks.json")
+            result.output_files = [self.storage.get_path(r) for r in chunk_relatives]
 
             logger.info(
                 f"Text chunking completed: {successful_chunks} chunks created from "
@@ -552,17 +551,16 @@ class ETLOrchestrator:
             return
 
         # Check if we have chunks to embed
-        chunks_path = self.storage.get_path("processed/chunks")
-        if not self._path_exists(chunks_path):
+        if not self.storage.exists("processed/chunks"):
             logger.warning("No chunks found, skipping embeddings generation")
             result.status = ComponentStatus.SKIPPED
             return
 
-        # Find chunk files
+        # Find chunk files via storage glob
         with profile_operation("Find chunk files"):
-            chunk_files = list(chunks_path.rglob("chunks.json"))
+            chunk_relatives = self.storage.glob("processed/chunks/**/chunks.json")
 
-        if not chunk_files:
+        if not chunk_relatives:
             logger.warning("No chunk files found, skipping embeddings generation")
             result.status = ComponentStatus.SKIPPED
             return
@@ -612,9 +610,10 @@ class ETLOrchestrator:
             }
 
             # Set output files - the embeddings.parquet files created
-            embeddings_dir = self.storage.get_path("processed/embeddings")
-            if self._path_exists(embeddings_dir):
-                result.output_files = list(embeddings_dir.rglob("embeddings.parquet"))
+            emb_relatives = self.storage.glob(
+                "processed/embeddings/**/embeddings.parquet"
+            )
+            result.output_files = [self.storage.get_path(r) for r in emb_relatives]
 
             logger.info(
                 f"Embeddings generation completed: {successful_embeddings} embeddings "

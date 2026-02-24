@@ -162,6 +162,11 @@ for dir in raw intermediate processed; do
     fi
 done
 
+# Restore tracking DB (lightweight manifest for incremental processing)
+gcloud storage cp "gs://${GCS_BUCKET}/etl_tracking.db" "${ETL_DATA_DIR}/etl_tracking.db" 2>/dev/null \
+    && log "  Restored tracking DB from GCS" \
+    || log "  No existing tracking DB in GCS (starting fresh)"
+
 log "Data restore complete"
 
 # Container runs as nonroot (UID 999), so set ownership accordingly
@@ -224,6 +229,13 @@ for dir in "${DATA_DIRS[@]}"; do
         log "  Skipping ${dir}/ (not found)"
     fi
 done
+
+# Upload tracking DB
+if [[ -f "${ETL_DATA_DIR}/etl_tracking.db" ]]; then
+    gcloud storage cp "${ETL_DATA_DIR}/etl_tracking.db" "gs://${GCS_BUCKET}/etl_tracking.db" \
+        && log "  Uploaded tracking DB to GCS" \
+        || log "WARNING: Failed to upload tracking DB"
+fi
 
 log "Data upload complete"
 

@@ -389,6 +389,17 @@ class EmbeddingsGenerator:
             embeddings_file = output_dir / "embeddings.parquet"
             metadata_file = output_dir / "metadata.json"
 
+            # Also check remote storage for existence
+            output_rel = self._resolve_output_relative(document_id, storage)
+            if output_rel and storage and hasattr(storage, "exists"):
+                emb_rel = f"{output_rel}/embeddings.parquet"
+                meta_rel = f"{output_rel}/metadata.json"
+                if storage.exists(emb_rel) and storage.exists(meta_rel):
+                    logger.info(
+                        f"Embeddings already exist for {document_id}. Skipping save."
+                    )
+                    return
+
             if embeddings_file.exists() and metadata_file.exists():
                 logger.info(
                     f"Embeddings already exist for {document_id} at {output_dir}. "
@@ -427,27 +438,56 @@ class EmbeddingsGenerator:
 
             logger.info(f"Saved metadata to {metadata_file}")
 
+            # Upload to remote storage (no-op for local)
+            if output_rel and storage and hasattr(storage, "upload"):
+                storage.upload(output_rel)
+
         except Exception as e:
             logger.error(f"Failed to save embeddings for {document_id}: {e}")
             raise
 
-    def _resolve_chunks_path(self, document_id: str, storage) -> Path | None:
-        """Resolve path to chunks.json for a document."""
-        if storage and hasattr(storage, "get_path") and callable(storage.get_path):
-            try:
-                chunks_base = storage.get_path("processed/chunks")
-                if isinstance(chunks_base, Path) and chunks_base.exists():
-                    # Use recursive glob to find chunks.json anywhere in tree
-                    pattern = f"**/{document_id}/chunks.json"
-                    matches = list(chunks_base.glob(pattern))
+    def _resolve_output_relative(self, document_id: str, storage) -> str | None:
+        """Resolve the storage-relative output directory for embeddings."""
+        if not storage or not hasattr(storage, "glob"):
+            return None
+        try:
+            pattern = f"processed/chunks/**/{document_id}/chunks.json"
+            matches = storage.glob(pattern)
+            if matches:
+                chunks_rel = matches[0]
+                # Replace "chunks" segment with "embeddings" and drop "chunks.json"
+                parts = Path(chunks_rel).parts
+                try:
+                    idx = list(parts).index("chunks")
+                    new_parts = (
+                        list(parts[:idx]) + ["embeddings"] + list(parts[idx + 1 : -1])
+                    )
+                    return str(Path(*new_parts))
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+        return f"processed/embeddings/{document_id}"
 
-                    if matches:
-                        if len(matches) > 1:
-                            logger.warning(
-                                f"Multiple chunks found for {document_id}, "
-                                f"using: {matches[0]}"
-                            )
-                        return matches[0]
+    def _resolve_chunks_path(self, document_id: str, storage) -> Path | None:
+        """Resolve path to chunks.json for a document.
+
+        Uses ``storage.glob()`` to find the file in both local and cloud
+        storage, then ``storage.download()`` to ensure it's available
+        locally.
+        """
+        if storage and hasattr(storage, "glob") and callable(storage.glob):
+            try:
+                pattern = f"processed/chunks/**/{document_id}/chunks.json"
+                matches = storage.glob(pattern)
+                if matches:
+                    if len(matches) > 1:
+                        logger.warning(
+                            f"Multiple chunks found for {document_id}, "
+                            f"using: {matches[0]}"
+                        )
+                    # Download to local cache and return local path
+                    return storage.download(matches[0])
             except Exception as e:
                 logger.debug(f"Error resolving chunks path via storage: {e}")
 

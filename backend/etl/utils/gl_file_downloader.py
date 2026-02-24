@@ -415,6 +415,13 @@ class FileDownloader:
                     validation_info=validation_result,
                 )
 
+            # Upload to remote storage (no-op for local)
+            try:
+                rel = str(destination.relative_to(self.storage.get_path("")))
+                self.storage.upload(rel)
+            except (ValueError, TypeError, Exception) as upload_err:
+                logger.debug(f"Could not upload after download: {upload_err}")
+
             return DownloadResult(
                 url=url,
                 success=True,
@@ -479,8 +486,21 @@ class FileDownloader:
         if not isinstance(url, str):
             url = str(url)
 
-        # Check if file already exists and skip if not overwriting
-        if destination.exists() and not overwrite and not resume:
+        # Check if file already exists (use storage for cloud-aware check)
+        # Compute storage-relative path for exists() check
+        try:
+            relative_path = str(destination.relative_to(self.storage.get_path("")))
+            file_exists_in_storage = self.storage.exists(relative_path)
+        except (ValueError, TypeError):
+            file_exists_in_storage = destination.exists()
+
+        if file_exists_in_storage and not overwrite and not resume:
+            # Download locally if needed (for validation)
+            if not destination.exists():
+                try:
+                    self.storage.download(relative_path)
+                except Exception:
+                    pass
             logger.info(f"File {destination} already exists, skipping download")
 
             # Still validate the existing file

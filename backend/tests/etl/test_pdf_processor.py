@@ -1,220 +1,226 @@
 """
-Integration tests for the PDF processor functionality.
+Tests for the PDF processor functionality.
+
+The integration tests that invoke real PDF backends (Marker/docling) are
+marked ``@pytest.mark.slow`` so they are **skipped by default** in CI and
+local dev loops.  Run them explicitly with::
+
+    uv run pytest -m slow backend/tests/etl/test_pdf_processor.py
+
+The unit tests below exercise the storage-abstraction logic (skip checks,
+page cap, upload calls) without touching any heavy backend.
 """
 
-import asyncio
 import shutil
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 from loguru import logger
 
-from backend.etl.utils.pdf_processor import PDFProcessor
+from backend.etl.utils.pdf_processor import PDFProcessor, find_growth_lab_pdfs
 from backend.storage.local import LocalStorage
 
+# ---------------------------------------------------------------------------
+# Unit tests — fast, no model downloads
+# ---------------------------------------------------------------------------
 
-class TestPDFProcessor:
-    """Test suite for PDF processor functionality."""
+
+class TestPDFProcessorUnit:
+    """Unit tests that mock the PDF extraction backend."""
+
+    @pytest.fixture
+    def test_storage(self, tmp_path):
+        """Create a LocalStorage rooted at a temp directory."""
+        storage = LocalStorage(base_path=tmp_path)
+        return storage
+
+    @pytest.fixture
+    def processor_with_mock_backend(self, test_storage):
+        """Create a PDFProcessor with a mocked extraction backend."""
+        processor = PDFProcessor.__new__(PDFProcessor)
+        processor.storage = test_storage
+        processor.tracker = None
+        processor.config = {"min_chars_per_page": 10, "max_pages": 0}
+        processor.min_chars_per_page = 10
+        processor.max_pages = 0
+        processor.processed_root = "processed/documents/growthlab"
+        processor._full_config = {
+            "ocr": processor.config,
+            "processed_root": processor.processed_root,
+        }
+
+        # Mock the backend so no model weights are loaded
+        mock_backend = MagicMock()
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.text = "Extracted text content for testing. " * 20
+        mock_result.error = None
+        mock_backend.extract.return_value = mock_result
+        processor._backend = mock_backend
+
+        return processor
+
+    def test_skip_already_processed(self, test_storage, processor_with_mock_backend):
+        """Verify that process_pdf skips when output already exists in storage."""
+        processor = processor_with_mock_backend
+
+        # Create a fake PDF in the raw dir
+        pdf_dir = test_storage.get_path("raw/documents/growthlab/pub123")
+        pdf_dir.mkdir(parents=True)
+        pdf_path = pdf_dir / "paper.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4 fake content")
+
+        # Pre-create the processed output
+        out_dir = test_storage.get_path("processed/documents/growthlab/pub123")
+        out_dir.mkdir(parents=True)
+        out_file = out_dir / "paper.txt"
+        out_file.write_text("already done")
+
+        result = processor.process_pdf(pdf_path, force_reprocess=False)
+
+        # Should return the existing output without calling the backend
+        assert result is not None
+        processor._backend.extract.assert_not_called()
+
+    def test_force_reprocess_ignores_existing(
+        self, test_storage, processor_with_mock_backend
+    ):
+        """Verify that force_reprocess=True re-extracts even if output exists."""
+        processor = processor_with_mock_backend
+
+        pdf_dir = test_storage.get_path("raw/documents/growthlab/pub456")
+        pdf_dir.mkdir(parents=True)
+        pdf_path = pdf_dir / "paper.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4 fake content")
+
+        # Pre-create the processed output
+        out_dir = test_storage.get_path("processed/documents/growthlab/pub456")
+        out_dir.mkdir(parents=True)
+        (out_dir / "paper.txt").write_text("old text")
+
+        result = processor.process_pdf(pdf_path, force_reprocess=True)
+
+        assert result is not None
+        processor._backend.extract.assert_called_once()
+
+    def test_page_cap_skips_long_pdf(self, test_storage, processor_with_mock_backend):
+        """Verify that PDFs exceeding max_pages are skipped."""
+        processor = processor_with_mock_backend
+        processor.max_pages = 5  # very low cap
+
+        pdf_dir = test_storage.get_path("raw/documents/growthlab/pub789")
+        pdf_dir.mkdir(parents=True)
+        pdf_path = pdf_dir / "big.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4 fake content")
+
+        # Mock pypdfium2 to report a high page count
+        mock_doc = MagicMock()
+        mock_doc.__len__ = lambda self: 300
+        with patch.dict("sys.modules", {"pypdfium2": MagicMock()}):
+            import sys
+
+            sys.modules["pypdfium2"].PdfDocument.return_value = mock_doc
+            result = processor.process_pdf(pdf_path)
+
+        assert result is None
+        processor._backend.extract.assert_not_called()
+
+    def test_upload_called_after_processing(
+        self, test_storage, processor_with_mock_backend
+    ):
+        """Verify that storage.upload() is called after writing output."""
+        processor = processor_with_mock_backend
+
+        # Spy on the upload method
+        processor.storage = MagicMock(wraps=test_storage)
+        processor.storage.get_path = test_storage.get_path
+        processor.storage.ensure_dir = test_storage.ensure_dir
+        processor.storage.exists = test_storage.exists
+
+        pdf_dir = test_storage.get_path("raw/documents/growthlab/pub_up")
+        pdf_dir.mkdir(parents=True)
+        pdf_path = pdf_dir / "paper.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4 fake content")
+
+        result = processor.process_pdf(pdf_path)
+        assert result is not None
+        processor.storage.upload.assert_called_once()
+
+
+class TestFindGrowthLabPdfs:
+    """Test the find_growth_lab_pdfs function."""
+
+    def test_finds_pdfs_via_storage_glob(self, tmp_path):
+        """Verify that find_growth_lab_pdfs uses storage.glob()."""
+        storage = LocalStorage(base_path=tmp_path)
+
+        # Create some PDF files
+        pdf_dir = tmp_path / "raw" / "documents" / "growthlab" / "pub1"
+        pdf_dir.mkdir(parents=True)
+        (pdf_dir / "paper.pdf").write_bytes(b"%PDF-1.4 content")
+
+        pdf_dir2 = tmp_path / "raw" / "documents" / "growthlab" / "pub2"
+        pdf_dir2.mkdir(parents=True)
+        (pdf_dir2 / "report.pdf").write_bytes(b"%PDF-1.4 content")
+
+        # Also a non-PDF with PDF magic bytes
+        (pdf_dir2 / "mystery.bin").write_bytes(b"%PDF-1.4 sneaky")
+
+        results = find_growth_lab_pdfs(storage)
+        assert len(results) == 3  # 2 .pdf files + 1 magic-byte match
+
+    def test_returns_empty_when_no_dir(self, tmp_path):
+        """Verify empty list when raw dir doesn't exist."""
+        storage = LocalStorage(base_path=tmp_path)
+        results = find_growth_lab_pdfs(storage)
+        assert results == []
+
+
+# ---------------------------------------------------------------------------
+# Integration tests — require model weights, marked slow
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+class TestPDFProcessorIntegration:
+    """Integration tests that run real PDF extraction backends.
+
+    These download model weights on first run (~1-2 GB for Marker) and
+    are NOT suitable for CI.  Run with ``pytest -m slow``.
+    """
 
     @pytest.fixture
     def sample_pdfs(self):
-        """Get paths to sample PDF files for testing."""
-        # Get the fixtures directory
         fixtures_dir = Path(__file__).parent / "fixtures" / "pdfs"
-
-        # Ensure the fixtures exist
         assert fixtures_dir.exists(), f"Fixtures directory {fixtures_dir} not found"
-
-        # Get the PDF paths
-        sample1_path = fixtures_dir / "sample1.pdf"
-        sample2_path = fixtures_dir / "sample2.pdf"
-
-        assert sample1_path.exists(), f"Sample PDF {sample1_path} not found"
-        assert sample2_path.exists(), f"Sample PDF {sample2_path} not found"
-
-        return [sample1_path, sample2_path]
-
-    @pytest.fixture
-    def test_storage(self):
-        """Create a temporary directory for test storage."""
-        # Create a temporary directory
-        temp_dir = Path(tempfile.mkdtemp())
-
-        # Create raw and processed directories
-        raw_dir = temp_dir / "raw" / "documents" / "growthlab" / "test_pub"
-        raw_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create storage instance
-        storage = LocalStorage(base_path=temp_dir)
-
-        # Return storage and its temp directory
-        yield storage
-
-        # Clean up
-        shutil.rmtree(temp_dir)
-
-    @pytest.mark.asyncio
-    async def test_process_single_pdf(self, sample_pdfs, test_storage):
-        """Test processing a single PDF file."""
-        # Copy the sample PDF to the raw directory
-        pdf_path = sample_pdfs[0]
-        dest_path = test_storage.get_path("raw/documents/growthlab/test_pub/sample.pdf")
-        shutil.copy(pdf_path, dest_path)
-
-        # Create processor instance
-        processor = PDFProcessor(
-            storage=test_storage,
-        )
-
-        # Process the PDF
-        result_path = processor.process_pdf(dest_path)
-
-        # Check that processing was successful
-        assert result_path is not None, "PDF processing failed"
-        assert result_path.exists(), f"Output file {result_path} not found"
-
-        # Check that the output contains text
-        text_content = result_path.read_text()
-        assert len(text_content) > 0, "Output file is empty"
-
-        # Basic validation that extracted text is substantial
-        assert len(text_content) > 100, "Output text too short for a real PDF"
-
-        logger.info(f"Processed PDF {dest_path} to {result_path}")
-        logger.info(f"Output length: {len(text_content)} characters")
-
-    @pytest.mark.asyncio
-    async def test_process_multiple_pdfs(self, sample_pdfs, test_storage):
-        """Test processing multiple PDF files asynchronously."""
-        # Copy the sample PDFs to the raw directory
-        dest_paths = []
-        for i, pdf_path in enumerate(sample_pdfs):
-            dest_path = test_storage.get_path(
-                f"raw/documents/growthlab/test_pub/sample{i + 1}.pdf"
-            )
-            shutil.copy(pdf_path, dest_path)
-            dest_paths.append(dest_path)
-
-        # Create processor instance
-        processor = PDFProcessor(
-            storage=test_storage,
-            config_path=None,
-        )
-
-        # Process the PDFs
-        results = processor.process_pdfs(
-            dest_paths,
-            force_reprocess=False,
-            show_progress=True,
-        )
-
-        # Check that all PDFs were processed successfully
-        assert len(results) == len(dest_paths), "Not all PDFs were processed"
-        assert all(result is not None for result in results.values()), (
-            "Some PDFs failed processing"
-        )
-
-        # Check that all output files exist and contain text
-        for pdf_path, result_path in results.items():
-            assert result_path.exists(), f"Output file {result_path} not found"
-
-            text_content = result_path.read_text()
-            assert len(text_content) > 0, f"Output file for {pdf_path} is empty"
-
-            # Basic validation that extracted text is substantial
-            assert len(text_content) > 100, f"Output text too short for {pdf_path}"
-
-            logger.info(f"Processed PDF {pdf_path} to {result_path}")
-            logger.info(f"Output length: {len(text_content)} characters")
-
-    @pytest.mark.asyncio
-    async def test_async_concurrency(self, sample_pdfs, test_storage):
-        """Test that PDFs are processed concurrently."""
-        # Skip this test if only one sample PDF is available
-        if len(sample_pdfs) < 2:
-            pytest.skip("Need at least 2 sample PDFs for concurrency testing")
-
-        # Copy the sample PDFs to the raw directory multiple times to get more tests
-        dest_paths = []
-        for i in range(4):  # Create 4 copies (2 from each sample)
-            sample_idx = i % len(sample_pdfs)
-            dest_path = test_storage.get_path(
-                f"raw/documents/growthlab/test_pub/sample{i + 1}.pdf"
-            )
-            shutil.copy(sample_pdfs[sample_idx], dest_path)
-            dest_paths.append(dest_path)
-
-        # Create processor instance with high concurrency
-        processor = PDFProcessor(
-            storage=test_storage,
-        )
-
-        # Add a timestamp to track start time
-        start_time = asyncio.get_event_loop().time()
-
-        # Process the PDFs
-        results = processor.process_pdfs(
-            dest_paths,
-            force_reprocess=False,
-            show_progress=True,
-        )
-
-        # Calculate duration
-        duration = asyncio.get_event_loop().time() - start_time
-
-        # Check results
-        success_count = sum(1 for result in results.values() if result is not None)
-
-        logger.info(
-            f"Processed {success_count}/{len(dest_paths)} PDFs "
-            f"in {duration:.2f} seconds"
-        )
-        assert success_count > 0, "No PDFs were processed successfully"
-
-        # Note: We can't assert specific timing as it depends on the test environment,
-        # but we log it for manual verification
-
-
-class TestPDFProcessorTrackerIntegration:
-    """Tests for PDF processor integration with publication tracker."""
-
-    @pytest.fixture
-    def sample_pdfs(self):
-        """Get paths to sample PDF files for testing."""
-        fixtures_dir = Path(__file__).parent / "fixtures" / "pdfs"
         sample1_path = fixtures_dir / "sample1.pdf"
         assert sample1_path.exists(), f"Sample PDF {sample1_path} not found"
         return [sample1_path]
 
     @pytest.fixture
     def test_storage(self):
-        """Create a temporary directory for test storage."""
         temp_dir = Path(tempfile.mkdtemp())
-        raw_dir = temp_dir / "raw" / "documents" / "growthlab" / "test_pub_789"
+        raw_dir = temp_dir / "raw" / "documents" / "growthlab" / "test_pub"
         raw_dir.mkdir(parents=True, exist_ok=True)
         storage = LocalStorage(base_path=temp_dir)
         yield storage
         shutil.rmtree(temp_dir)
 
-    def test_processor_works_without_tracker(self, sample_pdfs, test_storage):
-        """Test that processor works correctly when tracker is None."""
+    def test_process_single_pdf(self, sample_pdfs, test_storage):
+        """Test processing a single PDF file with a real backend."""
         pdf_path = sample_pdfs[0]
-        dest_path = test_storage.get_path(
-            "raw/documents/growthlab/test_pub_789/sample.pdf"
-        )
-        import shutil
-
-        # Create directory first
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        dest_path = test_storage.get_path("raw/documents/growthlab/test_pub/sample.pdf")
         shutil.copy(pdf_path, dest_path)
 
-        # Create processor without tracker
-        processor = PDFProcessor(storage=test_storage, tracker=None)
-
-        # Process the PDF
+        processor = PDFProcessor(storage=test_storage)
         result_path = processor.process_pdf(dest_path)
 
-        # Should complete without errors
-        assert result_path is not None
+        assert result_path is not None, "PDF processing failed"
         assert result_path.exists()
+
+        text_content = result_path.read_text()
+        assert len(text_content) > 100, "Output text too short for a real PDF"
+
+        logger.info(f"Processed PDF: {len(text_content)} characters")

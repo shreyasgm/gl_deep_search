@@ -46,6 +46,7 @@ file_processing:
     default_model: "marker"  # Options: marker, docling
     max_concurrent: 4
     min_chars_per_page: 100
+    max_pages: 250            # Skip PDFs longer than this (0 = no limit)
 
     marker:
       force_ocr: false

@@ -57,6 +57,9 @@ class PDFProcessor:
             "processed_root", "processed/documents/growthlab"
         )
 
+        # Page cap — skip extremely long PDFs that would OOM the backend
+        self.max_pages = self.config.get("max_pages", 0)  # 0 = no limit
+
         # Initialize the extraction backend
         self._backend = self._init_backend()
 
@@ -101,6 +104,22 @@ class PDFProcessor:
             fallback_config = self.config.get(fallback_name, {})
             return get_backend(fallback_name, config=fallback_config)
 
+    def _get_processed_relative(self, raw_file_path: Path) -> str:
+        """Return the storage-relative path for the processed output.
+
+        E.g. ``"processed/documents/growthlab/<pub_id>/<stem>.txt"``.
+        """
+        try:
+            relative_path = raw_file_path.relative_to(
+                self.storage.get_path("raw/documents")
+            )
+            pub_id = relative_path.parts[1]  # growthlab, <publication_id>, <filename>
+            base_name = raw_file_path.stem
+            return f"{self.processed_root}/{pub_id}/{base_name}.txt"
+        except ValueError:
+            file_hash = hashlib.md5(str(raw_file_path).encode()).hexdigest()[:8]
+            return f"{self.processed_root}/unknown/{file_hash}.txt"
+
     def _get_processed_path(self, raw_file_path: Path) -> Path:
         """
         Determine the path where processed text should be saved.
@@ -111,27 +130,7 @@ class PDFProcessor:
         Returns:
             Path where processed text file should be saved
         """
-        # Extract relevant parts from the raw path
-        # Expected path: data/raw/documents/growthlab/<publication_id>/<filename>.pdf
-        try:
-            relative_path = raw_file_path.relative_to(
-                self.storage.get_path("raw/documents")
-            )
-            pub_id = relative_path.parts[1]  # growthlab, <publication_id>, <filename>
-
-            # Create processed path:
-            # processed/documents/growthlab/<publication_id>/<filename>.txt
-            base_name = raw_file_path.stem
-            processed_path = self.storage.get_path(
-                f"{self.processed_root}/{pub_id}/{base_name}.txt"
-            )
-            return processed_path
-        except ValueError:
-            # If we can't determine the proper path, use a hash-based path
-            file_hash = hashlib.md5(str(raw_file_path).encode()).hexdigest()[:8]
-            return self.storage.get_path(
-                f"{self.processed_root}/unknown/{file_hash}.txt"
-            )
+        return self.storage.get_path(self._get_processed_relative(raw_file_path))
 
     def _extract_publication_id(self, pdf_path: Path) -> str | None:
         """
@@ -183,12 +182,13 @@ class PDFProcessor:
                     f"{publication_id}: {e}"
                 )
 
-        # Get output path
-        output_path = self._get_processed_path(pdf_path)
+        # Get output paths
+        output_relative = self._get_processed_relative(pdf_path)
+        output_path = self.storage.get_path(output_relative)
 
-        # Check if already processed
-        if output_path.exists() and not force_reprocess:
-            logger.info(f"PDF already processed: {pdf_path} -> {output_path}")
+        # Check if already processed (uses GCS existence check for cloud)
+        if self.storage.exists(output_relative) and not force_reprocess:
+            logger.info(f"PDF already processed: {pdf_path} -> {output_relative}")
             # Still update status if tracker is available
             if self.tracker and publication_id:
                 try:
@@ -200,6 +200,35 @@ class PDFProcessor:
                         f"Failed to update processing status for {publication_id}: {e}"
                     )
             return output_path
+
+        # Page cap — skip extremely long PDFs
+        if self.max_pages > 0:
+            try:
+                import pypdfium2 as pdfium
+
+                pdf_doc = pdfium.PdfDocument(pdf_path)
+                num_pages = len(pdf_doc)
+                pdf_doc.close()
+                if num_pages > self.max_pages:
+                    error_msg = (
+                        f"PDF has {num_pages} pages, exceeds max_pages={self.max_pages}"
+                    )
+                    logger.warning(f"Skipping {pdf_path}: {error_msg}")
+                    if self.tracker and publication_id:
+                        try:
+                            self.tracker.update_processing_status(
+                                publication_id,
+                                ProcessingStatus.FAILED,
+                                error=error_msg,
+                            )
+                        except Exception as tracker_error:
+                            logger.warning(
+                                f"Failed to update processing status for "
+                                f"{publication_id}: {tracker_error}"
+                            )
+                    return None
+            except Exception as e:
+                logger.debug(f"Could not count pages for {pdf_path}: {e}")
 
         # Ensure output directory exists
         self.storage.ensure_dir(output_path.parent)
@@ -239,6 +268,9 @@ class PDFProcessor:
             # Write extracted text to file
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(full_text)
+
+            # Upload to remote storage (no-op for local)
+            self.storage.upload(output_relative)
 
             logger.info(f"Successfully processed PDF: {pdf_path} -> {output_path}")
 
@@ -328,34 +360,43 @@ def find_growth_lab_pdfs(storage: StorageBase | None = None) -> list[Path]:
     """
     Find all Growth Lab PDF files in the raw storage.
 
+    Uses ``storage.glob()`` so that cloud deployments can discover files
+    in GCS without relying on local filesystem state, then downloads
+    each PDF to the local cache so backends can open them.
+
     Args:
         storage: Storage backend to use
 
     Returns:
-        List of PDF file paths
+        List of local PDF file paths ready for processing
     """
     storage = storage or get_storage()
-    raw_path = storage.get_path("raw/documents/growthlab")
 
-    # Ensure the path exists
-    if not raw_path.exists():
-        logger.warning(f"Growth Lab documents directory not found: {raw_path}")
+    # Check if the raw documents directory exists in storage
+    if not storage.exists("raw/documents/growthlab"):
+        logger.warning("Growth Lab documents directory not found in storage")
         return []
 
-    # Find all PDF files recursively
-    pdf_files = list(raw_path.glob("**/*.pdf"))
+    # Find all PDF files via storage glob
+    pdf_relatives = storage.glob("raw/documents/growthlab/**/*.pdf")
+    pdf_files: list[Path] = []
+    for rel in pdf_relatives:
+        local_path = storage.download(rel)
+        pdf_files.append(local_path)
 
-    # Also check files without .pdf extension for PDF magic bytes.
-    # This catches files that were downloaded before the Content-Type
-    # rename fix, or where the server didn't return a Content-Type header.
-    pdf_file_set = set(pdf_files)
-    for f in raw_path.glob("**/*"):
-        if f.is_file() and f.suffix.lower() != ".pdf" and f not in pdf_file_set:
+    # Also check files without .pdf extension for PDF magic bytes
+    all_relatives = storage.glob("raw/documents/growthlab/**/*")
+    pdf_rel_set = set(pdf_relatives)
+    for rel in all_relatives:
+        if rel in pdf_rel_set or rel.lower().endswith(".pdf"):
+            continue
+        local_path = storage.download(rel)
+        if local_path.is_file():
             try:
-                with open(f, "rb") as fh:
+                with open(local_path, "rb") as fh:
                     if fh.read(5) == b"%PDF-":
-                        pdf_files.append(f)
-                        logger.info(f"Found PDF with wrong extension: {f}")
+                        pdf_files.append(local_path)
+                        logger.info(f"Found PDF with wrong extension: {rel}")
             except (OSError, PermissionError):
                 pass
 

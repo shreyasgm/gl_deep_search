@@ -43,6 +43,7 @@ def sample_pdf() -> Path:
     return SAMPLE_PDF
 
 
+@pytest.mark.slow
 @pytest.mark.integration
 class TestDoclingBackendIntegration:
     """Integration tests for Docling backend."""
@@ -69,6 +70,7 @@ class TestDoclingBackendIntegration:
         assert result.backend_name == "docling"
 
 
+@pytest.mark.slow
 @pytest.mark.integration
 class TestMarkerBackendIntegration:
     """Integration tests for Marker backend."""

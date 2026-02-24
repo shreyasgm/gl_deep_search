@@ -229,7 +229,9 @@ exclude = [
 markers = [
     "integration: mark tests as integration tests that may require real data",
     "asyncio: mark a test as an asyncio coroutine",
+    "slow: mark tests that require heavy resources (model downloads, GPUs). Run with: pytest -m slow",
 ]
+addopts = "-m 'not slow'"
 # Configure pytest-asyncio plugin
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

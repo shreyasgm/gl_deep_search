@@ -279,25 +279,45 @@ class TextChunker:
             raise
 
     def process_all_documents(self, storage) -> list[ChunkingResult]:
-        """Process all documents in the processed directory."""
-        processed_dir = self._resolve_processed_documents_dir(storage)
+        """Process all documents in the processed directory.
+
+        Uses ``storage.glob()`` to discover text files and
+        ``storage.download()`` to materialise them locally before
+        chunking, so this works transparently with both local and
+        cloud storage.
+        """
         results: list[ChunkingResult] = []
 
-        if not processed_dir.exists():
+        if not storage.exists("processed/documents"):
             logger.warning("No processed documents directory found")
             return results
 
-        # Find all processed text files
-        text_files = list(processed_dir.rglob("*.txt"))
-        logger.info(f"Found {len(text_files)} text files to process")
+        # Discover text files via storage glob
+        text_relatives = storage.glob("processed/documents/**/*.txt")
+        logger.info(f"Found {len(text_relatives)} text files to process")
 
-        for text_file in text_files:
+        for rel in text_relatives:
             try:
+                # Download to local cache so we can open() the file
+                text_file = storage.download(rel)
+
+                # Skip if chunks already exist for this document
+                # Derive the expected chunks output relative path
+                chunks_rel = self._chunks_relative_for(rel)
+                if storage.exists(chunks_rel):
+                    logger.info(f"Chunks already exist for {rel}, skipping")
+                    continue
+
                 result = self.process_single_document(text_file)
                 results.append(result)
 
                 # Save chunks to JSON file
                 self._save_chunks(result, storage)
+
+                # Upload chunks to remote storage (no-op for local)
+                if result.status == ChunkingStatus.SUCCESS:
+                    chunks_output_rel = self._chunks_relative_for(rel)
+                    storage.upload(chunks_output_rel)
 
                 # Update tracker status based on result
                 if self.tracker:
@@ -327,10 +347,11 @@ class TextChunker:
                         )
 
             except Exception as e:
-                logger.error(f"Failed to process {text_file}: {e}")
+                logger.error(f"Failed to process {rel}: {e}")
+                doc_id = Path(rel).parent.name or Path(rel).stem
                 error_result = ChunkingResult(
-                    document_id=text_file.stem,
-                    source_path=text_file,
+                    document_id=doc_id,
+                    source_path=Path(rel),
                     chunks=[],
                     total_chunks=0,
                     processing_time=0.0,
@@ -354,6 +375,24 @@ class TextChunker:
                         )
 
         return results
+
+    @staticmethod
+    def _chunks_relative_for(text_relative: str) -> str:
+        """Derive the chunks.json storage-relative path for a text file.
+
+        ``processed/documents/growthlab/<pub_id>/file.txt``
+        → ``processed/chunks/documents/growthlab/<pub_id>/chunks.json``
+        """
+        p = Path(text_relative)
+        # Replace leading "processed/documents" with "processed/chunks/documents"
+        parts = list(p.parts)
+        if len(parts) >= 2 and parts[0] == "processed" and parts[1] == "documents":
+            new_parts = (
+                ["processed", "chunks", "documents"] + parts[2:-1] + ["chunks.json"]
+            )
+        else:
+            new_parts = ["processed", "chunks"] + parts[:-1] + ["chunks.json"]
+        return str(Path(*new_parts))
 
     def process_single_document(self, text_file_path: Path) -> ChunkingResult:
         """Process a single document and return chunking result."""
@@ -1245,7 +1284,7 @@ class TextChunker:
         # Save chunks as JSON (array of DocumentChunk dicts per requirements)
         output_file = output_dir / "chunks.json"
 
-        # Resume capability: if chunks already exist, skip writing
+        # Resume capability: if chunks already exist locally, skip writing
         if output_file.exists():
             logger.info(
                 ("Chunks already exist for %s at %s. Skipping save."),

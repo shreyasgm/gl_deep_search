@@ -131,6 +131,7 @@ def test_publication():
     return pub
 
 
+@pytest.mark.slow
 class TestETLPipelineIntegration:
     """End-to-end integration tests for complete ETL pipeline."""
 

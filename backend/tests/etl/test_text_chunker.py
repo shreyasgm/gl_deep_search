@@ -20,7 +20,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import yaml
@@ -305,12 +305,12 @@ Economic complexity provides another lens through which we can understand develo
         doc4_dir.mkdir(parents=True)
         (doc4_dir / "processed_text.txt").write_text("Short text.")
 
-        # Setup mock storage
-        mock_storage = Mock()
+        # Use real LocalStorage so glob/exists/download work
+        storage = LocalStorage(temp_config_dir / "data")
 
         # Run batch processing
         chunker = TextChunker(temp_config_dir / "config.yaml")
-        results = chunker.process_all_documents(mock_storage)
+        results = chunker.process_all_documents(storage)
 
         # Validate results
         assert len(results) == 4

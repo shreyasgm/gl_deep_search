@@ -60,3 +60,27 @@ class LocalStorage(StorageBase):
             return list(self.base_path.glob(pattern))
         else:
             return [p for p in self.base_path.iterdir() if p.is_file()]
+
+    def exists(self, filename: str) -> bool:
+        """Check if a file or directory exists locally."""
+        return (self.base_path / filename).exists()
+
+    def download(self, filename: str) -> Path:
+        """Return local path (no-op for local storage)."""
+        return self.base_path / filename
+
+    def upload(self, filename: str) -> None:
+        """No-op for local storage."""
+        pass
+
+    def glob(self, pattern: str) -> list[str]:
+        """Glob for files relative to base_path."""
+        matches = list(self.base_path.glob(pattern))
+        result = []
+        for m in matches:
+            if m.is_file():
+                try:
+                    result.append(str(m.relative_to(self.base_path)))
+                except ValueError:
+                    result.append(str(m))
+        return result
