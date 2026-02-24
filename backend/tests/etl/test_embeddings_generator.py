@@ -6,6 +6,7 @@ This test suite focuses on reliability and critical workflows:
 - Output format validation (Parquet + JSON)
 - Resume capability (idempotency)
 - PublicationTracker integration
+- SentenceTransformer provider (mocked unit tests + slow integration)
 - Integration tests with real OpenAI API (small scale, ~$0.01 cost)
 """
 
@@ -16,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
+import numpy as np
 import pandas as pd
 import pytest
 from dotenv import load_dotenv
@@ -134,6 +136,7 @@ class TestEmbeddingsGeneratorUnit:
 
         mock_response = Mock()
         mock_response.data = [Mock(embedding=[0.1] * 1536)]
+        mock_response.usage.total_tokens = 10
 
         call_count = 0
 
@@ -158,7 +161,11 @@ class TestEmbeddingsGeneratorUnit:
 
             # Generate embeddings (should succeed after retries)
             texts = [sample_chunks[0]["text_content"]]
-            embeddings, api_calls = await generator._generate_embeddings_batch(texts)
+            (
+                embeddings,
+                api_calls,
+                total_tokens,
+            ) = await generator._generate_embeddings_batch(texts)
 
             # Verify retries occurred
             assert call_count == 3  # Total attempts (2 failures + 1 success)
@@ -288,6 +295,239 @@ class TestEmbeddingsGeneratorUnit:
         embeddings_files = list(embeddings_base.rglob("embeddings.parquet"))
         assert len(embeddings_files) == 1, "Should have exactly one embeddings file"
         assert embeddings_files[0].exists()
+
+
+class TestSentenceTransformerProvider:
+    """Unit tests for the sentence_transformer embedding provider."""
+
+    @pytest.fixture
+    def st_config_dir(self, test_storage):
+        """Create config for sentence_transformer provider."""
+        temp_dir = Path(tempfile.mkdtemp())
+        storage_dir, _ = test_storage
+        config_path = temp_dir / "config.yaml"
+
+        config_content = f"""
+file_processing:
+  embedding:
+    model: "sentence_transformer"
+    model_name: "Qwen/Qwen3-Embedding-8B"
+    dimensions: 1024
+    batch_size: 32
+    max_retries: 3
+    retry_delays: [1, 2, 4]
+    timeout: 30
+    rate_limit_delay: 0.1
+
+runtime:
+  local_storage_path: "{storage_dir}/"
+"""
+        config_path.write_text(config_content)
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.mark.asyncio
+    async def test_sentence_transformer_truncation_and_renormalization(
+        self, st_config_dir, sample_chunks
+    ):
+        """Verify MRL truncation to 1024 dims with renormalization."""
+        config_path = st_config_dir / "config.yaml"
+
+        # Mock SentenceTransformer to avoid downloading the real model
+        mock_model = Mock()
+        # Simulate model returning 4096-dim normalized vectors
+        raw_vectors = np.random.randn(2, 4096).astype(np.float32)
+        norms = np.linalg.norm(raw_vectors, axis=1, keepdims=True)
+        raw_vectors = raw_vectors / norms
+        mock_model.encode.return_value = raw_vectors
+
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            return_value=mock_model,
+        ):
+            generator = EmbeddingsGenerator(config_path=config_path)
+
+        texts = [chunk["text_content"] for chunk in sample_chunks]
+        (
+            embeddings,
+            api_calls,
+            total_tokens,
+        ) = await generator._generate_embeddings_batch(texts)
+
+        # Should return 1024-dim vectors (truncated from 4096)
+        assert len(embeddings) == 2
+        assert len(embeddings[0]) == 1024
+        assert len(embeddings[1]) == 1024
+
+        # No API calls for local model
+        assert api_calls == 0
+        assert total_tokens == 0
+
+        # Vectors should be normalized (L2 norm ~= 1.0)
+        for emb in embeddings:
+            norm = sum(x * x for x in emb) ** 0.5
+            assert abs(norm - 1.0) < 1e-5, f"Expected norm ~1.0, got {norm}"
+
+        # Verify encode was called with correct args
+        mock_model.encode.assert_called_once_with(
+            texts,
+            batch_size=32,
+            show_progress_bar=True,
+            normalize_embeddings=True,
+        )
+
+    @pytest.mark.asyncio
+    async def test_sentence_transformer_no_truncation_when_dims_match(
+        self, test_storage
+    ):
+        """When model output dims <= configured dims, no truncation happens."""
+        temp_dir = Path(tempfile.mkdtemp())
+        storage_dir, _ = test_storage
+        config_path = temp_dir / "config.yaml"
+
+        # Set dims to 4096 (same as model native output)
+        config_content = f"""
+file_processing:
+  embedding:
+    model: "sentence_transformer"
+    model_name: "Qwen/Qwen3-Embedding-8B"
+    dimensions: 4096
+    batch_size: 32
+
+runtime:
+  local_storage_path: "{storage_dir}/"
+"""
+        config_path.write_text(config_content)
+
+        mock_model = Mock()
+        raw_vectors = np.random.randn(1, 4096).astype(np.float32)
+        norms = np.linalg.norm(raw_vectors, axis=1, keepdims=True)
+        raw_vectors = raw_vectors / norms
+        mock_model.encode.return_value = raw_vectors
+
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            return_value=mock_model,
+        ):
+            generator = EmbeddingsGenerator(config_path=config_path)
+
+        embeddings, _, _ = await generator._generate_embeddings_batch(["test text"])
+
+        # Should keep full 4096 dims
+        assert len(embeddings[0]) == 4096
+
+        shutil.rmtree(temp_dir)
+
+    @pytest.mark.asyncio
+    async def test_sentence_transformer_save_format(
+        self, st_config_dir, test_storage, sample_chunks
+    ):
+        """Verify embeddings are saved as 1024-dim in Parquet + metadata JSON."""
+        config_path = st_config_dir / "config.yaml"
+        temp_dir, storage = test_storage
+        doc_id = "test_st_doc"
+
+        # Create chunks file
+        chunks_dir = (
+            temp_dir / "processed" / "chunks" / "documents" / "growthlab" / doc_id
+        )
+        chunks_dir.mkdir(parents=True, exist_ok=True)
+        with open(chunks_dir / "chunks.json", "w") as f:
+            json.dump(sample_chunks, f)
+
+        mock_model = Mock()
+        raw_vectors = np.random.randn(2, 4096).astype(np.float32)
+        norms = np.linalg.norm(raw_vectors, axis=1, keepdims=True)
+        mock_model.encode.return_value = raw_vectors / norms
+
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            return_value=mock_model,
+        ):
+            generator = EmbeddingsGenerator(config_path=config_path)
+
+        # Create 1024-dim chunk embeddings
+        chunk_embeddings = [
+            ChunkEmbedding(
+                chunk_id=chunk["chunk_id"],
+                embedding_vector=[0.1] * 1024,
+                model="Qwen/Qwen3-Embedding-8B",
+                dimensions=1024,
+                created_at=datetime.now(),
+            )
+            for chunk in sample_chunks
+        ]
+
+        generator._save_embeddings(
+            document_id=doc_id,
+            chunks_data=sample_chunks,
+            chunk_embeddings=chunk_embeddings,
+            storage=storage,
+        )
+
+        # Verify output
+        embeddings_base = temp_dir / "processed" / "embeddings"
+        embeddings_files = list(embeddings_base.rglob("embeddings.parquet"))
+        assert len(embeddings_files) == 1
+
+        df = pd.read_parquet(embeddings_files[0])
+        assert len(df) == 2
+        assert len(df.iloc[0]["embedding"]) == 1024
+
+        metadata_file = embeddings_files[0].parent / "metadata.json"
+        with open(metadata_file) as f:
+            metadata = json.load(f)
+        assert metadata["embedding_model"] == "Qwen/Qwen3-Embedding-8B"
+        assert metadata["embedding_dimensions"] == 1024
+
+    @pytest.mark.asyncio
+    async def test_real_sentence_transformer_inference(self, test_storage):
+        """Integration test: load real model and generate embeddings.
+
+        Uses all-MiniLM-L6-v2 (~80MB) — fast enough to run in every
+        test suite without GPU.
+        """
+        temp_dir = Path(tempfile.mkdtemp())
+        storage_dir, _ = test_storage
+        config_path = temp_dir / "config.yaml"
+
+        config_content = f"""
+file_processing:
+  embedding:
+    model: "sentence_transformer"
+    model_name: "all-MiniLM-L6-v2"
+    dimensions: 384
+    batch_size: 2
+
+runtime:
+  local_storage_path: "{storage_dir}/"
+"""
+        config_path.write_text(config_content)
+
+        generator = EmbeddingsGenerator(config_path=config_path)
+        texts = [
+            "Economic growth requires productive capabilities.",
+            "Development pathways depend on economic complexity.",
+        ]
+        (
+            embeddings,
+            api_calls,
+            total_tokens,
+        ) = await generator._generate_embeddings_batch(texts)
+
+        assert len(embeddings) == 2
+        assert len(embeddings[0]) == 384
+        assert api_calls == 0
+
+        # Vectors should be normalized
+        for emb in embeddings:
+            norm = sum(x * x for x in emb) ** 0.5
+            assert abs(norm - 1.0) < 1e-4
+
+        # Different texts should produce different embeddings
+        assert embeddings[0] != embeddings[1]
+
+        shutil.rmtree(temp_dir)
 
 
 class TestEmbeddingsGeneratorIntegration:

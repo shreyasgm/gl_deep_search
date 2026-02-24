@@ -20,9 +20,11 @@ class ServiceSettings(BaseSettings):
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
 
-    # Embedding settings
-    embedding_model: str = "text-embedding-3-small"
-    embedding_dimensions: int = 1536
+    # Embedding settings (OpenRouter-hosted Qwen3-Embedding-8B)
+    embedding_model: str = "qwen/qwen3-embedding-8b"
+    embedding_dimensions: int = 1024
+    embedding_api_base_url: str = "https://openrouter.ai/api/v1"
+    embedding_api_key: str | None = None  # EMBEDDING_API_KEY env var
 
     # Qdrant collection
     qdrant_collection: str = "gl_chunks"

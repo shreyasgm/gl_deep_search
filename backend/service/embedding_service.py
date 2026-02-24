@@ -1,4 +1,4 @@
-"""Async wrapper for query-time embedding via OpenAI + BM25 sparse via fastembed."""
+"""Async wrapper for query-time dense embedding (OpenRouter) + BM25 sparse."""
 
 from fastembed import SparseTextEmbedding
 from loguru import logger
@@ -9,7 +9,7 @@ from backend.service.config import ServiceSettings
 
 
 class EmbeddingService:
-    """Dense (OpenAI) + sparse (BM25) embedding client."""
+    """Dense (OpenRouter/OpenAI-compatible) + sparse (BM25) embedding client."""
 
     def __init__(self, settings: ServiceSettings) -> None:
         self._settings = settings
@@ -17,10 +17,16 @@ class EmbeddingService:
         self._sparse_model: SparseTextEmbedding | None = None
 
     def initialize(self) -> None:
-        """Create the AsyncOpenAI client and load the BM25 sparse model."""
-        self._client = AsyncOpenAI(api_key=self._settings.openai_api_key)
+        """Create the AsyncOpenAI client (pointed at OpenRouter) and load BM25."""
+        self._client = AsyncOpenAI(
+            api_key=self._settings.embedding_api_key,
+            base_url=self._settings.embedding_api_base_url,
+        )
         self._sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
-        logger.info("BM25 sparse embedding model loaded")
+        logger.info(
+            f"Embedding service initialized: model={self._settings.embedding_model}, "
+            f"base_url={self._settings.embedding_api_base_url}"
+        )
 
     async def close(self) -> None:
         """Close the underlying HTTP client."""
@@ -50,7 +56,16 @@ class EmbeddingService:
             model=self._settings.embedding_model,
             input=[text],
         )
-        return response.data[0].embedding
+        vector = response.data[0].embedding
+        # Truncate to configured dimensions (MRL) if API returns full dims
+        target_dims = self._settings.embedding_dimensions
+        if len(vector) > target_dims:
+            vector = vector[:target_dims]
+            # Re-normalize after truncation
+            norm = sum(x * x for x in vector) ** 0.5
+            if norm > 0:
+                vector = [x / norm for x in vector]
+        return vector
 
     def sparse_embed_query(self, text: str) -> qdrant_models.SparseVector:
         """BM25 sparse embedding for a single query (sync, CPU-only, fast)."""

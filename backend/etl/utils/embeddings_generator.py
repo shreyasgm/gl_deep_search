@@ -1,7 +1,8 @@
 """
 Embeddings Generation System for Growth Lab Deep Search.
 
-This module generates vector embeddings from text chunks using OpenAI's API,
+This module generates vector embeddings from text chunks using either OpenAI's API
+or a local SentenceTransformer model (e.g. Qwen3-Embedding-8B on GPU),
 storing results in Parquet format for efficient vector database ingestion.
 """
 
@@ -35,7 +36,7 @@ class ChunkEmbedding:
     """Represents an embedding for a single text chunk."""
 
     chunk_id: str  # Reference to original chunk
-    embedding_vector: list[float]  # The embedding (1536 dims)
+    embedding_vector: list[float]  # The embedding vector
     model: str  # Model used for generation
     dimensions: int  # Vector dimensionality
     created_at: datetime  # Generation timestamp
@@ -123,10 +124,15 @@ class EmbeddingsGenerator:
         self.timeout = merged["timeout"]
         self.rate_limit_delay = merged["rate_limit_delay"]
 
-        # Initialize OpenAI client (async for better performance)
+        # Initialize embedding backend
         if self.model_provider == "openai":
             self.client = AsyncOpenAI()
             self.model_name = "text-embedding-3-small"
+        elif self.model_provider == "sentence_transformer":
+            from sentence_transformers import SentenceTransformer
+
+            self.model_name = emb_config.get("model_name", "Qwen/Qwen3-Embedding-8B")
+            self.st_model = SentenceTransformer(self.model_name, trust_remote_code=True)
         else:
             raise ValueError(
                 f"Unsupported embedding model provider: {self.model_provider}"
@@ -299,6 +305,25 @@ class EmbeddingsGenerator:
         Returns:
             Tuple of (embeddings list, api_calls count, total_tokens used)
         """
+        # Sentence-transformer local inference (no API calls)
+        if self.model_provider == "sentence_transformer":
+            import numpy as np
+
+            vectors = self.st_model.encode(
+                texts,
+                batch_size=self.batch_size,
+                show_progress_bar=True,
+                normalize_embeddings=True,
+            )
+            # Truncate to configured dimensions (MRL)
+            if vectors.shape[1] > self.dimensions:
+                vectors = vectors[:, : self.dimensions]
+                # Re-normalize after truncation
+                norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+                vectors = vectors / norms
+            return [v.tolist() for v in vectors], 0, 0
+
+        # OpenAI API path
         embeddings = []
         api_calls = 0
         total_tokens = 0

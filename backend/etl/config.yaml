@@ -66,10 +66,10 @@ file_processing:
       num_threads: 4
 
   embedding:
-    model: "openai"  # Options: openai, sentence_transformer
-    model_name: "text-embedding-3-small"  # Specific embedding model
-    dimensions: 1536
-    max_tokens: 8192               # Embedding model's token limit
+    model: "sentence_transformer"  # Options: openai, sentence_transformer
+    model_name: "Qwen/Qwen3-Embedding-8B"
+    dimensions: 1024               # MRL truncation from native 4096
+    max_tokens: 32768              # Qwen3-Embedding-8B context window
     tiktoken_encoding: "cl100k_base"  # Tokenizer encoding for token counting
     batch_size: 32
     max_retries: 3                 # Maximum retry attempts for failed API calls
@@ -81,7 +81,7 @@ file_processing:
     enabled: true
     strategy: "hybrid"             # Options: fixed, sentence, structure, hybrid
     # NOTE: All size limits below are in TOKENS (not characters) to ensure
-    # compatibility with embedding model token limits (text-embedding-3-small: 8192)
+    # compatibility with embedding model token limits (Qwen3-Embedding-8B: 32768)
     chunk_size: 500                # target tokens per chunk
     chunk_overlap: 50              # tokens of overlap between chunks
     min_chunk_size: 50             # minimum viable chunk size in tokens

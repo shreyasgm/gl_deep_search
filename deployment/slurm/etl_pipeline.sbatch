@@ -77,9 +77,8 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-    echo "ERROR: OPENAI_API_KEY not set."
-    echo "Create $ENV_FILE with:  OPENAI_API_KEY=sk-..."
-    exit 1
+    echo "WARNING: OPENAI_API_KEY not set. OpenAI-based steps will fail."
+    echo "Embeddings will use local SentenceTransformer model (no API key needed)."
 fi
 
 # ── Ensure directories exist ─────────────────────────────────────────
@@ -153,9 +152,12 @@ singularity exec --nv --writable-tmpfs --pwd /app \
     --bind "$LOCAL_WORK/data:/app/data" \
     --bind "$LOCAL_WORK/logs:/app/logs" \
     --bind "$LOCAL_WORK/reports:/app/reports" \
-    --env OPENAI_API_KEY="$OPENAI_API_KEY" \
+    --bind "$LOCAL_WORK/.model_cache:$LOCAL_WORK/.model_cache" \
+    --env OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
     --env PDF_DEVICE=cuda \
     --env MODEL_CACHE_DIR="$LOCAL_WORK/.model_cache" \
+    --env HF_HOME="$LOCAL_WORK/.model_cache" \
+    --env TRANSFORMERS_CACHE="$LOCAL_WORK/.model_cache" \
     --env OMP_NUM_THREADS=2 \
     --env MKL_NUM_THREADS=2 \
     --env OPENBLAS_NUM_THREADS=2 \
