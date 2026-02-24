@@ -1,13 +1,16 @@
 """
 Embeddings Generation System for Growth Lab Deep Search.
 
-This module generates vector embeddings from text chunks using either OpenAI's API
-or a local SentenceTransformer model (e.g. Qwen3-Embedding-8B on GPU),
-storing results in Parquet format for efficient vector database ingestion.
+This module generates vector embeddings from text chunks using either:
+- OpenRouter API (Qwen3-Embedding-8B hosted remotely), or
+- A local SentenceTransformer model (e.g. Qwen3-Embedding-8B on GPU)
+
+Results are stored in Parquet format for efficient vector database ingestion.
 """
 
 import asyncio
 import json
+import os
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -73,7 +76,12 @@ class EmbeddingResult:
 
 class EmbeddingsGenerator:
     """
-    Main embeddings generation system using OpenAI API.
+    Main embeddings generation system.
+
+    Supports two providers:
+    - ``openrouter``: calls OpenRouter's OpenAI-compatible API
+      (default model: ``qwen/qwen3-embedding-8b``)
+    - ``sentence_transformer``: local inference via SentenceTransformer
 
     Expected Directory Structure
     ============================
@@ -103,8 +111,8 @@ class EmbeddingsGenerator:
 
         # Defaults matching config.yaml
         defaults = {
-            "model": "openai",
-            "dimensions": 1536,
+            "model": "sentence_transformer",
+            "dimensions": 1024,
             "batch_size": 32,
             "max_retries": 3,
             "retry_delays": [1, 2, 4],
@@ -125,9 +133,13 @@ class EmbeddingsGenerator:
         self.rate_limit_delay = merged["rate_limit_delay"]
 
         # Initialize embedding backend
-        if self.model_provider == "openai":
-            self.client = AsyncOpenAI()
-            self.model_name = "text-embedding-3-small"
+        if self.model_provider == "openrouter":
+            api_base_url = emb_config.get(
+                "api_base_url", "https://openrouter.ai/api/v1"
+            )
+            api_key = emb_config.get("api_key", os.environ.get("EMBEDDING_API_KEY"))
+            self.model_name = emb_config.get("model_name", "qwen/qwen3-embedding-8b")
+            self.client = AsyncOpenAI(api_key=api_key, base_url=api_base_url)
         elif self.model_provider == "sentence_transformer":
             from sentence_transformers import SentenceTransformer
 
@@ -323,7 +335,9 @@ class EmbeddingsGenerator:
                 vectors = vectors / norms
             return [v.tolist() for v in vectors], 0, 0
 
-        # OpenAI API path
+        # OpenRouter API path (OpenAI-compatible)
+        import numpy as np
+
         embeddings = []
         api_calls = 0
         total_tokens = 0
@@ -372,7 +386,7 @@ class EmbeddingsGenerator:
                         raise
 
                 except OpenAIError as e:
-                    logger.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
+                    logger.error(f"OpenRouter API error on attempt {attempt + 1}: {e}")
                     if attempt < self.max_retries - 1:
                         delay = self.retry_delays[attempt]
                         logger.info(f"Retrying in {delay}s...")
@@ -386,6 +400,13 @@ class EmbeddingsGenerator:
                 except Exception as e:
                     logger.error(f"Unexpected error generating embeddings: {e}")
                     raise
+
+        # MRL truncation: trim to configured dimensions and re-normalize
+        if embeddings and len(embeddings[0]) > self.dimensions:
+            vectors = np.array(embeddings)[:, : self.dimensions]
+            norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+            vectors = vectors / norms
+            embeddings = [v.tolist() for v in vectors]
 
         return embeddings, api_calls, total_tokens
 

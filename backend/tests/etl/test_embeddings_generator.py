@@ -6,8 +6,8 @@ This test suite focuses on reliability and critical workflows:
 - Output format validation (Parquet + JSON)
 - Resume capability (idempotency)
 - PublicationTracker integration
-- SentenceTransformer provider (mocked unit tests + slow integration)
-- Integration tests with real OpenAI API (small scale, ~$0.01 cost)
+- SentenceTransformer provider (mocked unit tests + real integration)
+- Integration tests with real OpenRouter API (small scale)
 """
 
 import json
@@ -65,8 +65,9 @@ def temp_config_dir(test_storage):
     config_content = f"""
 file_processing:
   embedding:
-    model: "openai"
-    dimensions: 1536
+    model: "openrouter"
+    model_name: "qwen/qwen3-embedding-8b"
+    dimensions: 1024
     batch_size: 32
     max_retries: 3
     retry_delays: [1, 2, 4]
@@ -131,11 +132,11 @@ class TestEmbeddingsGeneratorUnit:
         config_path = temp_config_dir / "config.yaml"
         generator = EmbeddingsGenerator(config_path=config_path)
 
-        # Mock OpenAI to fail twice then succeed
+        # Mock OpenRouter to fail twice then succeed
         from openai import RateLimitError
 
         mock_response = Mock()
-        mock_response.data = [Mock(embedding=[0.1] * 1536)]
+        mock_response.data = [Mock(embedding=[0.1] * 1024)]
         mock_response.usage.total_tokens = 10
 
         call_count = 0
@@ -197,9 +198,9 @@ class TestEmbeddingsGeneratorUnit:
         chunk_embeddings = [
             ChunkEmbedding(
                 chunk_id=chunk["chunk_id"],
-                embedding_vector=[0.1] * 1536,
-                model="text-embedding-3-small",
-                dimensions=1536,
+                embedding_vector=[0.1] * 1024,
+                model="qwen/qwen3-embedding-8b",
+                dimensions=1024,
                 created_at=datetime.now(),
             )
             for chunk in sample_chunks
@@ -230,7 +231,7 @@ class TestEmbeddingsGeneratorUnit:
         assert len(df) == 2
         assert "chunk_id" in df.columns
         assert "embedding" in df.columns
-        assert len(df.iloc[0]["embedding"]) == 1536
+        assert len(df.iloc[0]["embedding"]) == 1024
 
         # Verify JSON metadata
         with open(metadata_file) as f:
@@ -238,8 +239,8 @@ class TestEmbeddingsGeneratorUnit:
 
         assert metadata["document_id"] == doc_id
         assert metadata["total_chunks"] == 2
-        assert metadata["embedding_model"] == "text-embedding-3-small"
-        assert metadata["embedding_dimensions"] == 1536
+        assert metadata["embedding_model"] == "qwen/qwen3-embedding-8b"
+        assert metadata["embedding_dimensions"] == 1024
         assert len(metadata["chunks"]) == 2
 
     @pytest.mark.asyncio
@@ -266,9 +267,9 @@ class TestEmbeddingsGeneratorUnit:
         chunk_embeddings = [
             ChunkEmbedding(
                 chunk_id=chunk["chunk_id"],
-                embedding_vector=[0.1] * 1536,
-                model="text-embedding-3-small",
-                dimensions=1536,
+                embedding_vector=[0.1] * 1024,
+                model="qwen/qwen3-embedding-8b",
+                dimensions=1024,
                 created_at=datetime.now(),
             )
             for chunk in sample_chunks
@@ -531,7 +532,7 @@ runtime:
 
 
 class TestEmbeddingsGeneratorIntegration:
-    """Integration tests with real OpenAI API (small scale, ~$0.01 cost)."""
+    """Integration tests with real OpenRouter API (small scale)."""
 
     @pytest.fixture
     def tracker_with_test_data(self, test_storage):
@@ -602,7 +603,7 @@ class TestEmbeddingsGeneratorIntegration:
     async def test_end_to_end_embedding_generation(
         self, temp_config_dir, tracker_with_test_data
     ):
-        """Test complete embedding generation workflow with real API."""
+        """Test complete embedding generation workflow with real OpenRouter API."""
         config_path = temp_config_dir / "config.yaml"
         tracker, temp_dir, storage, pub_id = tracker_with_test_data
 
@@ -633,7 +634,7 @@ class TestEmbeddingsGeneratorIntegration:
         # Verify Parquet content
         df = pd.read_parquet(embeddings_file)
         assert len(df) == 2
-        assert all(len(emb) == 1536 for emb in df["embedding"])
+        assert all(len(emb) == 1024 for emb in df["embedding"])
 
         # Verify embeddings are different (not all zeros)
         assert (df.iloc[0]["embedding"] != df.iloc[1]["embedding"]).any()
