@@ -7,8 +7,10 @@ with proper error handling, monitoring, and data validation.
 
 import argparse
 import asyncio
+import copy
 import json
 import sys
+import tempfile
 import time
 import traceback
 from collections import Counter
@@ -70,6 +72,7 @@ class OrchestrationConfig:
     storage_type: str | None = None
     log_level: str = "INFO"
     dry_run: bool = False
+    dev_mode: bool = False
 
     # Scraper settings
     skip_scraping: bool = False
@@ -96,12 +99,28 @@ class OrchestrationConfig:
     max_tokens: int | None = None
 
 
+def _deep_merge(base: dict, overlay: dict) -> dict:
+    """Deep-merge *overlay* into a copy of *base*.
+
+    For nested dicts, values are merged recursively.
+    For all other types, the overlay value wins.
+    """
+    result = copy.deepcopy(base)
+    for key, value in overlay.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
+
+
 class ETLOrchestrator:
     """Main orchestrator for the ETL pipeline."""
 
     def __init__(self, config: OrchestrationConfig):
         """Initialize the orchestrator with configuration."""
         self.config = config
+        self._resolved_config_path: Path | None = None
         self.storage = get_storage(storage_type=config.storage_type)
         self.results: list[ComponentResult] = []
 
@@ -121,19 +140,60 @@ class ETLOrchestrator:
             ),
         )
 
-        # Load ETL configuration
+        # Load ETL configuration (applies dev overlay if --dev)
         self.etl_config = self._load_etl_config()
 
     def _load_etl_config(self) -> dict[str, Any]:
-        """Load ETL configuration from YAML file."""
+        """Load ETL configuration from YAML file.
+
+        When dev mode is active, deep-merges config.dev.yaml on top of the
+        base config and writes the resolved result to a temp file so that
+        downstream components (which load config by path) see the merged
+        values automatically.
+        """
         try:
             with open(self.config.config_path) as f:
-                return yaml.safe_load(f)
+                base_config = yaml.safe_load(f)
         except Exception as e:
             logger.error(
                 f"Failed to load ETL config from {self.config.config_path}: {e}"
             )
             raise
+
+        if not self.config.dev_mode:
+            return base_config
+
+        # Locate dev overlay relative to the base config file
+        dev_overlay_path = self.config.config_path.parent / "config.dev.yaml"
+        if not dev_overlay_path.exists():
+            logger.warning(
+                f"Dev mode requested but {dev_overlay_path} not found — "
+                "running with base config only"
+            )
+            return base_config
+
+        with open(dev_overlay_path) as f:
+            dev_overlay = yaml.safe_load(f) or {}
+
+        merged = _deep_merge(base_config, dev_overlay)
+        logger.info(f"Dev mode: merged {dev_overlay_path.name} on top of base config")
+
+        # Write resolved config to a temp file so components that load by
+        # path see the merged values.  The file is kept alive for the
+        # lifetime of the orchestrator via self._resolved_config_path.
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".yaml",
+            prefix="etl_config_resolved_",
+            delete=False,
+        )
+        yaml.safe_dump(merged, tmp, default_flow_style=False, sort_keys=False)
+        tmp.close()
+        self._resolved_config_path = Path(tmp.name)
+        self.config.config_path = self._resolved_config_path
+        logger.debug(f"Resolved config written to {self._resolved_config_path}")
+
+        return merged
 
     def _path_exists(self, path: Path) -> bool:
         """Check if a path exists via the local filesystem.
@@ -734,6 +794,9 @@ Examples:
 
   # Dry run to preview actions
   python -m backend.etl.orchestrator --dry-run
+
+  # Lightweight dev mode (small embedding model + fast PDF extraction)
+  python -m backend.etl.orchestrator --dev --skip-scraping --download-limit 3
         """,
     )
 
@@ -757,6 +820,15 @@ Examples:
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Preview actions without execution"
+    )
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help=(
+            "Enable dev mode: merges config.dev.yaml overrides on top of "
+            "the base config for lightweight local iteration "
+            "(small embedding model + fast PDF extraction)"
+        ),
     )
 
     # Scraper parameters
@@ -850,6 +922,7 @@ async def main() -> None:
         storage_type=args.storage_type,
         log_level=args.log_level,
         dry_run=args.dry_run,
+        dev_mode=args.dev,
         skip_scraping=args.skip_scraping,
         scraper_concurrency=args.scraper_concurrency,
         scraper_delay=args.scraper_delay,
@@ -870,7 +943,13 @@ async def main() -> None:
 
     # Run orchestration
     orchestrator = ETLOrchestrator(config)
-    results = await orchestrator.run_pipeline()
+    try:
+        results = await orchestrator.run_pipeline()
+    finally:
+        # Clean up resolved temp config if dev mode created one
+        tmp_cfg = orchestrator._resolved_config_path
+        if tmp_cfg and tmp_cfg.exists():
+            tmp_cfg.unlink()
 
     # Exit with appropriate code
     failed_components = [r for r in results if r.status == ComponentStatus.FAILED]

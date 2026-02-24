@@ -1,0 +1,26 @@
+# Growth Lab Deep Search - Development Mode Overrides
+#
+# This file contains ONLY the settings that differ from the base config
+# for lightweight local development. It is deep-merged on top of config.yaml
+# when the orchestrator is run with --dev.
+#
+# Purpose: avoid loading heavy ML models (Marker ~4GB, Qwen3-8B ~16GB)
+# so the pipeline can iterate quickly on CPU/MPS.
+#
+# Usage:
+#   uv run python -m backend.etl.orchestrator --dev --skip-scraping --download-limit 3
+
+file_processing:
+  ocr:
+    default_model: "unstructured"
+
+    unstructured:
+      strategy: "fast"          # pdfminer text extraction only, no ML models
+      languages: ["eng"]
+      extract_images: false
+
+  embedding:
+    model_name: "all-MiniLM-L6-v2"  # 80MB, instant CPU load
+    dimensions: 384                  # Native output dimensions (no MRL truncation)
+    max_tokens: 512                  # all-MiniLM-L6-v2 context window
+    batch_size: 64                   # Small model can batch more
