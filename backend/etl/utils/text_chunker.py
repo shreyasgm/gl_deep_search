@@ -5,8 +5,8 @@ This module provides text chunking functionality that transforms processed text
 documents into semantically meaningful chunks for vector embeddings and retrieval.
 
 All chunk size limits are enforced using token counts (not character counts) to
-ensure compatibility with embedding model token limits (e.g., OpenAI's
-text-embedding-3-small has an 8,192 token limit).
+ensure compatibility with embedding model token limits (e.g., Qwen3-Embedding-8B
+has a 32,768 token context window).
 """
 
 import json
@@ -19,7 +19,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-import tiktoken
 import yaml
 from loguru import logger
 
@@ -27,8 +26,20 @@ from backend.etl.models.tracking import ProcessingStatus
 from backend.etl.utils.publication_tracker import PublicationTracker
 
 # Fallback defaults if not specified in config
-DEFAULT_TIKTOKEN_ENCODING = "cl100k_base"
 DEFAULT_EMBEDDING_MAX_TOKENS = 8192
+
+
+class _HFTokenizerAdapter:
+    """Wraps a HuggingFace AutoTokenizer with tiktoken-compatible interface."""
+
+    def __init__(self, tokenizer):
+        self._tok = tokenizer
+
+    def encode(self, text: str) -> list[int]:
+        return self._tok.encode(text, add_special_tokens=False)
+
+    def decode(self, tokens: list[int]) -> str:
+        return self._tok.decode(tokens, skip_special_tokens=True)
 
 
 class ChunkingStatus(Enum):
@@ -95,7 +106,7 @@ class TextChunker:
     """Main text chunking system with multiple strategies.
 
     All size limits are enforced using token counts to ensure compatibility
-    with embedding model limits (e.g., OpenAI text-embedding-3-small: 8192 tokens).
+    with embedding model limits (e.g., Qwen3-Embedding-8B: 32768 tokens).
     """
 
     def __init__(self, config_path: Path, tracker: PublicationTracker | None = None):
@@ -117,30 +128,28 @@ class TextChunker:
 
         # Get embedding config for tokenizer settings
         embedding_config = self.config.get("file_processing", {}).get("embedding", {})
-        tiktoken_encoding = embedding_config.get(
-            "tiktoken_encoding", DEFAULT_TIKTOKEN_ENCODING
-        )
         self.embedding_max_tokens = embedding_config.get(
             "max_tokens", DEFAULT_EMBEDDING_MAX_TOKENS
         )
 
-        # Initialize tiktoken encoder for token counting
-        self.encoder = tiktoken.get_encoding(tiktoken_encoding)
+        # Initialize tokenizer from embedding model (AutoTokenizer with fallback)
+        model_name = embedding_config.get("model_name", "Qwen/Qwen3-Embedding-8B")
+        self.encoder = self._load_tokenizer(model_name)
         logger.debug(
-            f"Using tiktoken encoding: {tiktoken_encoding}, "
+            f"Tokenizer loaded for model: {model_name}, "
             f"embedding max tokens: {self.embedding_max_tokens}"
         )
 
         raw_config = self.config.get("file_processing", {}).get("chunking", {})
 
         # Defaults (all sizes in TOKENS, not characters)
-        # These are conservative defaults that work well with text-embedding-3-small
+        # These are conservative defaults that work well with Qwen3-Embedding-8B
         defaults = {
             "strategy": "hybrid",
             "chunk_size": 500,  # target tokens per chunk
             "chunk_overlap": 50,  # tokens of overlap between chunks
             "min_chunk_size": 50,  # minimum viable chunk size in tokens
-            "max_chunk_size": 8000,  # max tokens (embedding model limit is 8192)
+            "max_chunk_size": 8000,  # safety net for edge cases; clamped to model limit
             "preserve_structure": True,
             "respect_sentences": True,
             "structure_markers": [
@@ -180,6 +189,19 @@ class TextChunker:
             )
             merged["max_chunk_size"] = self.embedding_max_tokens - 100  # Leave buffer
 
+        # Guard: after clamping max_chunk_size, chunk_size may exceed it
+        if merged["chunk_size"] > merged["max_chunk_size"]:
+            old_size = merged["chunk_size"]
+            merged["chunk_size"] = max(
+                merged["max_chunk_size"] - merged["chunk_overlap"],
+                merged["min_chunk_size"],
+            )
+            logger.warning(
+                f"chunk_size ({old_size}) exceeds max_chunk_size "
+                f"({merged['max_chunk_size']}) after clamping. "
+                f"Reduced chunk_size to {merged['chunk_size']}."
+            )
+
         if (
             not isinstance(merged.get("chunk_overlap"), int)
             or merged["chunk_overlap"] < 0
@@ -208,6 +230,36 @@ class TextChunker:
             f"TextChunker initialized with strategy: {self.strategy}, "
             f"chunk_size: {self.chunk_size} tokens, max: {self.max_chunk_size} tokens"
         )
+
+    @staticmethod
+    def _load_tokenizer(model_name: str) -> "_HFTokenizerAdapter":
+        """Load a HuggingFace tokenizer for the given model, with fallbacks.
+
+        Tries: model_name → sentence-transformers/model_name → tiktoken cl100k_base.
+        """
+        from transformers import AutoTokenizer
+
+        try:
+            hf_tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+            return _HFTokenizerAdapter(hf_tok)
+        except Exception:
+            pass
+
+        try:
+            hf_tok = AutoTokenizer.from_pretrained(
+                f"sentence-transformers/{model_name}", trust_remote_code=True
+            )
+            return _HFTokenizerAdapter(hf_tok)
+        except Exception:
+            pass
+
+        logger.warning(
+            f"Could not load tokenizer for {model_name}, "
+            "falling back to tiktoken cl100k_base"
+        )
+        import tiktoken
+
+        return tiktoken.get_encoding("cl100k_base")
 
     def _count_tokens(self, text: str) -> int:
         """Count the number of tokens in a text string."""

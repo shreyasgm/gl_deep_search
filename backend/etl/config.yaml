@@ -66,11 +66,10 @@ file_processing:
       num_threads: 4
 
   embedding:
-    model: "sentence_transformer"  # Options: openai, sentence_transformer
+    model: "sentence_transformer"  # Options: openrouter, sentence_transformer
     model_name: "Qwen/Qwen3-Embedding-8B"
-    dimensions: 1024               # MRL truncation from native 4096
+    dimensions: 1024               # MRL truncation from native 4096; changing requires full re-embedding
     max_tokens: 32768              # Qwen3-Embedding-8B context window
-    tiktoken_encoding: "cl100k_base"  # Tokenizer encoding for token counting
     batch_size: 32
     max_retries: 3                 # Maximum retry attempts for failed API calls
     retry_delays: [1, 2, 4]        # Exponential backoff delays in seconds

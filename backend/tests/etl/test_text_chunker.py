@@ -848,6 +848,7 @@ directions for further investigation.
 
         This is a critical test to prevent the 33% embedding failure rate
         that was caused by chunks exceeding OpenAI's 8192 token limit.
+        Uses the tiktoken fallback path (no model_name in config).
         """
         import tempfile
 
@@ -880,6 +881,42 @@ directions for further investigation.
 
         # Also verify we created multiple chunks (not one huge chunk)
         assert len(chunks) > 10, "Should create many chunks for this large document"
+
+    def test_chunk_size_clamped_when_exceeds_max_after_model_limit(self):
+        """Test that chunk_size is reduced when max_chunk_size is clamped below it.
+
+        When max_tokens is small (e.g., 256 for all-MiniLM-L6-v2), max_chunk_size
+        gets clamped to max_tokens - 100. If chunk_size > clamped max_chunk_size,
+        chunk_size must also be reduced automatically.
+        """
+        import tempfile
+
+        config = {
+            "file_processing": {
+                "embedding": {
+                    "model_name": "all-MiniLM-L6-v2",
+                    "max_tokens": 256,
+                },
+                "chunking": {
+                    "chunk_size": 500,  # Would exceed clamped max_chunk_size
+                    "max_chunk_size": 8000,
+                    "chunk_overlap": 50,
+                    "min_chunk_size": 50,
+                },
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(config, f)
+            config_path = Path(f.name)
+
+        chunker = TextChunker(config_path)
+
+        # max_chunk_size should be clamped to 256 - 100 = 156
+        assert chunker.max_chunk_size == 156
+        # chunk_size must be reduced to fit within max_chunk_size
+        assert chunker.chunk_size <= chunker.max_chunk_size
+        assert chunker.chunk_size >= chunker.min_chunk_size
 
 
 class TestTextChunkerConfiguration:

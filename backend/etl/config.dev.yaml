@@ -22,5 +22,10 @@ file_processing:
   embedding:
     model_name: "all-MiniLM-L6-v2"  # 80MB, instant CPU load
     dimensions: 384                  # Native output dimensions (no MRL truncation)
-    max_tokens: 512                  # all-MiniLM-L6-v2 context window
+    max_tokens: 256                  # True effective limit (model truncates at 256)
     batch_size: 64                   # Small model can batch more
+
+  chunking:
+    chunk_size: 100                  # ~100 tokens — safe for 256 token limit
+    chunk_overlap: 20
+    max_chunk_size: 200              # Hard cap: clamped to min(200, 256-100) = 156
