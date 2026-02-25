@@ -4,6 +4,7 @@ import math
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from qdrant_client import models as qdrant_models
 
 from backend.service.config import ServiceSettings
 from backend.service.embedding_service import EmbeddingService
@@ -98,3 +99,96 @@ class TestEmbeddingServiceInit:
                 api_key="test-key",
                 base_url="https://openrouter.ai/api/v1",
             )
+
+
+class TestSparseEmbedding:
+    """Tests for sparse (BM25) embedding methods."""
+
+    @pytest.fixture
+    def initialized_service(self, settings):
+        """EmbeddingService with mocked sparse model."""
+        with (
+            patch("backend.service.embedding_service.AsyncOpenAI"),
+            patch("backend.service.embedding_service.SparseTextEmbedding") as mock_cls,
+        ):
+            mock_sparse = Mock()
+            mock_cls.return_value = mock_sparse
+            service = EmbeddingService(settings)
+            service.initialize()
+        return service, mock_sparse
+
+    def test_sparse_embed_query_returns_sparse_vector(self, initialized_service):
+        """sparse_embed_query returns a SparseVector with correct indices/values."""
+        service, mock_sparse = initialized_service
+        import numpy as np
+
+        result_obj = Mock()
+        result_obj.indices = np.array([3, 17, 42])
+        result_obj.values = np.array([0.9, 0.4, 0.1])
+        mock_sparse.query_embed.return_value = iter([result_obj])
+
+        sv = service.sparse_embed_query("some text")
+
+        assert isinstance(sv, qdrant_models.SparseVector)
+        assert sv.indices == [3, 17, 42]
+        assert sv.values == [0.9, 0.4, 0.1]
+
+    def test_sparse_embed_query_calls_query_embed_not_embed(self, initialized_service):
+        """sparse_embed_query must use query_embed (BM25 query mode), not embed."""
+        service, mock_sparse = initialized_service
+        import numpy as np
+
+        result_obj = Mock()
+        result_obj.indices = np.array([0])
+        result_obj.values = np.array([1.0])
+        mock_sparse.query_embed.return_value = iter([result_obj])
+
+        service.sparse_embed_query("some text")
+
+        mock_sparse.query_embed.assert_called_once_with("some text")
+        mock_sparse.embed.assert_not_called()
+
+    def test_sparse_embed_documents_returns_one_vector_per_text(
+        self, initialized_service
+    ):
+        """sparse_embed_documents returns a list with one SparseVector per input."""
+        service, mock_sparse = initialized_service
+        import numpy as np
+
+        r1 = Mock()
+        r1.indices = np.array([1, 5])
+        r1.values = np.array([0.8, 0.3])
+        r2 = Mock()
+        r2.indices = np.array([2, 9])
+        r2.values = np.array([0.7, 0.2])
+        mock_sparse.embed.return_value = iter([r1, r2])
+
+        vectors = service.sparse_embed_documents(["text one", "text two"])
+
+        assert len(vectors) == 2
+        assert vectors[0].indices == [1, 5]
+        assert vectors[0].values == [0.8, 0.3]
+        assert vectors[1].indices == [2, 9]
+        assert vectors[1].values == [0.7, 0.2]
+
+    def test_sparse_model_not_initialized_raises(self, settings):
+        """Accessing sparse methods before initialize() raises RuntimeError."""
+        service = EmbeddingService(settings)
+
+        with pytest.raises(RuntimeError, match="not initialized"):
+            service.sparse_embed_query("hello")
+
+    def test_sparse_embed_query_empty_result(self, initialized_service):
+        """Empty indices/values from BM25 should produce a valid SparseVector."""
+        service, mock_sparse = initialized_service
+        import numpy as np
+
+        result_obj = Mock()
+        result_obj.indices = np.array([], dtype=np.int64)
+        result_obj.values = np.array([], dtype=np.float64)
+        mock_sparse.query_embed.return_value = iter([result_obj])
+
+        sv = service.sparse_embed_query("xyzzy")
+
+        assert sv.indices == []
+        assert sv.values == []
