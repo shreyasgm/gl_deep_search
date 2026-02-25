@@ -156,6 +156,15 @@ class EmbeddingsGenerator:
             f"batch_size: {self.batch_size})"
         )
 
+    def cleanup(self) -> None:
+        """Release the embedding model and free GPU memory."""
+        from backend.etl.utils.gpu_memory import release_gpu_memory
+
+        if hasattr(self, "st_model"):
+            del self.st_model
+        release_gpu_memory()
+        logger.info("EmbeddingsGenerator cleaned up and GPU memory released")
+
     def _load_config(self) -> dict:
         """Load configuration from YAML file."""
         try:
@@ -321,12 +330,38 @@ class EmbeddingsGenerator:
         if self.model_provider == "sentence_transformer":
             import numpy as np
 
-            vectors = self.st_model.encode(
-                texts,
-                batch_size=self.batch_size,
-                show_progress_bar=True,
-                normalize_embeddings=True,
-            )
+            from backend.etl.utils.gpu_memory import release_gpu_memory
+
+            batch_size = self.batch_size
+            max_oom_retries = 3
+
+            for oom_attempt in range(max_oom_retries + 1):
+                try:
+                    vectors = self.st_model.encode(
+                        texts,
+                        batch_size=batch_size,
+                        show_progress_bar=True,
+                        normalize_embeddings=True,
+                    )
+                    break  # success
+                except RuntimeError as e:
+                    if "out of memory" not in str(e).lower():
+                        raise
+                    if oom_attempt >= max_oom_retries:
+                        logger.error(
+                            f"OOM after {max_oom_retries} retries "
+                            f"(batch_size={batch_size}), giving up"
+                        )
+                        raise
+                    new_batch_size = max(1, batch_size // 2)
+                    logger.warning(
+                        f"CUDA OOM at batch_size={batch_size}, "
+                        f"retrying with batch_size={new_batch_size} "
+                        f"(attempt {oom_attempt + 1}/{max_oom_retries})"
+                    )
+                    release_gpu_memory()
+                    batch_size = new_batch_size
+
             # Truncate to configured dimensions (MRL)
             if vectors.shape[1] > self.dimensions:
                 vectors = vectors[:, : self.dimensions]

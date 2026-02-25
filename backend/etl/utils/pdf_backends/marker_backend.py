@@ -11,6 +11,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from backend.etl.utils.gpu_memory import release_gpu_memory
 from backend.etl.utils.pdf_backends import register_backend
 from backend.etl.utils.pdf_backends.base import ExtractionResult, PDFBackend
 from backend.etl.utils.pdf_backends.device import DeviceType, detect_device
@@ -172,7 +173,8 @@ class MarkerBackend(PDFBackend):
         self._converter = None
         self._models = None
         self._api_version = None
-        logger.debug("Marker backend cleaned up")
+        release_gpu_memory()
+        logger.info("Marker backend cleaned up and GPU memory released")
 
 
 register_backend("marker", MarkerBackend)

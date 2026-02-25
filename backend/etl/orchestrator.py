@@ -206,6 +206,12 @@ class ETLOrchestrator:
         """Execute the complete ETL pipeline."""
         logger.info("Starting ETL pipeline orchestration")
 
+        # Enable expandable CUDA memory segments to reduce fragmentation.
+        # Uses setdefault so user/sbatch overrides are respected.
+        import os
+
+        os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
         if self.config.dry_run:
             logger.info("DRY RUN MODE - No actual processing will be performed")
             return await self._simulate_pipeline()
@@ -482,6 +488,9 @@ class ETLOrchestrator:
                     logger.error(f"Error processing PDF {pdf_path}: {e}")
                     processed_files.append({"output_path": None, "success": False})
 
+        # Release PDF backend models and GPU memory before next stage
+        processor._backend.cleanup()
+
         result.metrics = {
             "files_processed": len(processed_files),
             "successful_extractions": sum(
@@ -692,6 +701,8 @@ class ETLOrchestrator:
             result.error = str(e)
             logger.error(f"Embeddings generation failed: {e}")
             raise
+        finally:
+            generator.cleanup()
 
     async def _simulate_pipeline(self) -> list[ComponentResult]:
         """Simulate pipeline execution for dry run mode."""
