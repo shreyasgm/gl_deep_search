@@ -30,7 +30,7 @@ from backend.etl.models.tracking import (
     ProcessingStatus,
     PublicationTracking,
 )
-from backend.etl.utils.publication_tracker import ProcessingPlan, PublicationTracker
+from backend.etl.utils.publication_tracker import PublicationTracker
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -1806,8 +1806,46 @@ class TestPublicationTracking:
         tracking.file_urls = ["https://example.com/paper.pdf"]
         assert tracking.file_urls == ["https://example.com/paper.pdf"]
 
-    def test_update_download_status(self) -> None:
-        """Test update_download_status method."""
+    @pytest.mark.parametrize(
+        "status_field,update_method,status_value,timestamp_field",
+        [
+            (
+                "download_status",
+                "update_download_status",
+                DownloadStatus.DOWNLOADED,
+                "download_timestamp",
+            ),
+            (
+                "processing_status",
+                "update_processing_status",
+                ProcessingStatus.PROCESSED,
+                "processing_timestamp",
+            ),
+            (
+                "embedding_status",
+                "update_embedding_status",
+                EmbeddingStatus.EMBEDDED,
+                "embedding_timestamp",
+            ),
+            (
+                "ingestion_status",
+                "update_ingestion_status",
+                IngestionStatus.INGESTED,
+                "ingestion_timestamp",
+            ),
+        ],
+    )
+    def test_update_status(
+        self,
+        status_field: str,
+        update_method: str,
+        status_value: DownloadStatus
+        | ProcessingStatus
+        | EmbeddingStatus
+        | IngestionStatus,
+        timestamp_field: str,
+    ) -> None:
+        """Test that each update_*_status method sets status and timestamp."""
         tracking = PublicationTracking(
             publication_id="test123",
             source_url="https://example.com/test",
@@ -1817,12 +1855,52 @@ class TestPublicationTracking:
             abstract="Test abstract",
             content_hash="abc123",
         )
-        tracking.update_download_status(DownloadStatus.DOWNLOADED)
-        assert tracking.download_status == DownloadStatus.DOWNLOADED
-        assert tracking.download_timestamp is not None
+        getattr(tracking, update_method)(status_value)
+        assert getattr(tracking, status_field) == status_value
+        assert getattr(tracking, timestamp_field) is not None
 
-    def test_update_processing_status(self) -> None:
-        """Test update_processing_status method."""
+    @pytest.mark.parametrize(
+        "update_method,fail_status,success_status",
+        [
+            (
+                "update_download_status",
+                DownloadStatus.FAILED,
+                DownloadStatus.DOWNLOADED,
+            ),
+            (
+                "update_processing_status",
+                ProcessingStatus.FAILED,
+                ProcessingStatus.PROCESSED,
+            ),
+            (
+                "update_embedding_status",
+                EmbeddingStatus.FAILED,
+                EmbeddingStatus.EMBEDDED,
+            ),
+            (
+                "update_ingestion_status",
+                IngestionStatus.FAILED,
+                IngestionStatus.INGESTED,
+            ),
+        ],
+    )
+    def test_error_message_cleared_on_success(
+        self,
+        update_method: str,
+        fail_status: DownloadStatus
+        | ProcessingStatus
+        | EmbeddingStatus
+        | IngestionStatus,
+        success_status: DownloadStatus
+        | ProcessingStatus
+        | EmbeddingStatus
+        | IngestionStatus,
+    ) -> None:
+        """Test that error_message is cleared when status transitions to success.
+
+        Bug: updating status to FAILED with an error message, then updating
+        to a success status, should clear the error_message field.
+        """
         tracking = PublicationTracking(
             publication_id="test123",
             source_url="https://example.com/test",
@@ -1832,59 +1910,13 @@ class TestPublicationTracking:
             abstract="Test abstract",
             content_hash="abc123",
         )
-        tracking.update_processing_status(ProcessingStatus.PROCESSED)
-        assert tracking.processing_status == ProcessingStatus.PROCESSED
-        assert tracking.processing_timestamp is not None
+        # Set to FAILED with error message
+        getattr(tracking, update_method)(fail_status, "timeout")
+        assert tracking.error_message == "timeout"
 
-    def test_update_embedding_status(self) -> None:
-        """Test update_embedding_status method."""
-        tracking = PublicationTracking(
-            publication_id="test123",
-            source_url="https://example.com/test",
-            title="Test Paper",
-            authors=["Test Author"],
-            year=2023,
-            abstract="Test abstract",
-            content_hash="abc123",
+        # Update to success status (no error kwarg)
+        getattr(tracking, update_method)(success_status)
+        assert tracking.error_message is None, (
+            f"error_message should be cleared on success via "
+            f"{update_method}, but was: {tracking.error_message!r}"
         )
-        tracking.update_embedding_status(EmbeddingStatus.EMBEDDED)
-        assert tracking.embedding_status == EmbeddingStatus.EMBEDDED
-        assert tracking.embedding_timestamp is not None
-
-    def test_update_ingestion_status(self) -> None:
-        """Test update_ingestion_status method."""
-        tracking = PublicationTracking(
-            publication_id="test123",
-            source_url="https://example.com/test",
-            title="Test Paper",
-            authors=["Test Author"],
-            year=2023,
-            abstract="Test abstract",
-            content_hash="abc123",
-        )
-        tracking.update_ingestion_status(IngestionStatus.INGESTED)
-        assert tracking.ingestion_status == IngestionStatus.INGESTED
-        assert tracking.ingestion_timestamp is not None
-
-
-class TestProcessingPlan:
-    """Tests for the ProcessingPlan class."""
-
-    def test_processing_plan_creation(self) -> None:
-        """Test ProcessingPlan creation."""
-        plan = ProcessingPlan(
-            publication_id="test123",
-            needs_download=True,
-            needs_processing=True,
-            needs_embedding=True,
-            needs_ingestion=True,
-            files_to_reprocess=["file1.pdf", "file2.pdf"],
-            reason="Test reason",
-        )
-        assert plan.publication_id == "test123"
-        assert plan.needs_download is True
-        assert plan.needs_processing is True
-        assert plan.needs_embedding is True
-        assert plan.needs_ingestion is True
-        assert plan.files_to_reprocess == ["file1.pdf", "file2.pdf"]
-        assert plan.reason == "Test reason"

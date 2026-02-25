@@ -6,6 +6,7 @@ import pytest
 from backend.etl.scrapers.growthlab import (
     GrowthLabPublication,
     GrowthLabScraper,
+    _parse_author_string,
 )
 
 # Configure logger
@@ -262,37 +263,154 @@ def test_publication_model(sample_publication):
         GrowthLabPublication(title="Invalid Year", year=1899, source="GrowthLab")
 
 
-def test_publication_enrichment():
-    """Test the enrichment functionality without using async mocks"""
-    # Create a test publication with missing fields
-    test_pub = GrowthLabPublication(
-        title="Test Publication",
-        year=2023,
-        pub_url="https://growthlab.hks.harvard.edu/publications/test",
-        file_urls=["https://growthlab.hks.harvard.edu/files/test.pdf"],
-        source="GrowthLab",
-        abstract=None,  # Set to None to test enrichment
-    )
+class TestParseAuthorString:
+    """Tests for the _parse_author_string pure function."""
 
-    # Manually enrich the publication as the method would
-    # (parse_endnote_content now returns authors as a list)
-    endnote_data = {
-        "author": ["John Doe", "Jane Smith"],
-        "title": "Test Publication",
-        "date": "2023",
-        "abstract": "This is an enriched abstract",
-    }
+    def test_single_author(self):
+        assert _parse_author_string("Hausmann, R.") == ["Hausmann, R."]
 
-    # Update fields that are missing in the original
-    if not test_pub.authors and "author" in endnote_data:
-        test_pub.authors = endnote_data["author"]
+    def test_two_authors_with_ampersand(self):
+        result = _parse_author_string("Hausmann, R. & Klinger, B.")
+        assert result == ["Hausmann, R.", "Klinger, B."]
 
-    if not test_pub.abstract and "abstract" in endnote_data:
-        test_pub.abstract = endnote_data["abstract"]
+    def test_multiple_authors_comma_ampersand(self):
+        result = _parse_author_string("Hausmann, R., Tyson, L.D. & Zahidi, S.")
+        assert result == ["Hausmann, R.", "Tyson, L.D.", "Zahidi, S."]
 
-    # Verify enrichment process worked
-    assert test_pub.abstract == "This is an enriched abstract"
-    assert test_pub.authors == ["John Doe", "Jane Smith"]
+    def test_empty_string(self):
+        assert _parse_author_string("") == []
+
+    def test_whitespace_only(self):
+        assert _parse_author_string("   ") == []
+
+    def test_none_input(self):
+        assert _parse_author_string(None) == []
+
+    def test_single_full_name_no_initials(self):
+        # Full names without period-comma pattern stay as one entry
+        result = _parse_author_string("John Doe")
+        assert result == ["John Doe"]
+
+    def test_parenthetical_initials(self):
+        # Closing paren followed by comma should split
+        result = _parse_author_string("Hausmann, R. (A.), Klinger, B.")
+        # The regex splits on ")" followed by ", " and uppercase letter
+        assert len(result) == 2
+        assert "Hausmann, R. (A.)" in result[0]
+
+
+class TestParseEndnoteContent:
+    """Tests for parse_endnote_content method."""
+
+    @pytest.mark.asyncio
+    async def test_valid_endnote(self):
+        scraper = GrowthLabScraper()
+        content = (
+            "%A Hausmann, Ricardo\n"
+            "%A Klinger, Bailey\n"
+            "%T Economic Complexity\n"
+            "%D 2023\n"
+            "%X <p>This is the abstract.</p>\n"
+        )
+        result = await scraper.parse_endnote_content(content)
+        assert result["author"] == ["Ricardo Hausmann", "Bailey Klinger"]
+        assert result["title"] == "Economic Complexity"
+        assert result["date"] == "2023"
+        assert result["abstract"] == "This is the abstract."
+
+    @pytest.mark.asyncio
+    async def test_missing_fields(self):
+        scraper = GrowthLabScraper()
+        content = "%T Only a Title\n"
+        result = await scraper.parse_endnote_content(content)
+        assert result["title"] == "Only a Title"
+        assert "author" not in result
+        assert "abstract" not in result
+
+    @pytest.mark.asyncio
+    async def test_html_in_abstract(self):
+        scraper = GrowthLabScraper()
+        content = "%X <p><b>Bold</b> and <strong>strong</strong> text.</p>\n"
+        result = await scraper.parse_endnote_content(content)
+        # Bold/strong tags should be unwrapped, leaving just text
+        assert "Bold" in result["abstract"]
+        assert "strong" in result["abstract"]
+        assert "<b>" not in result["abstract"]
+        assert "<strong>" not in result["abstract"]
+
+
+class TestParsePublicationNewFormat:
+    """Tests for parse_publication with new cp-publication HTML structure."""
+
+    @pytest.mark.asyncio
+    async def test_cp_publication_format(self):
+        scraper = GrowthLabScraper()
+        html = """
+        <div class="cp-publication">
+            <h2 class="publication-title">
+                <a href="/publications/test-new-format">New Format Publication</a>
+            </h2>
+            <p class="publication-authors">
+                Hausmann, R. &amp; Klinger, B.
+                <span class="publication-year">, 2024</span>
+            </p>
+            <div class="publication-excerpt">
+                <div>This is the abstract for the new format.</div>
+            </div>
+            <div class="publication-links">
+                <a href="/files/test-new.pdf">Download PDF</a>
+                <a href="https://doi.org/10.1234/test">DOI</a>
+            </div>
+        </div>
+        """
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html, "html.parser")
+        pub_element = soup.find("div", {"class": "cp-publication"})
+
+        pub = await scraper.parse_publication(
+            pub_element,
+            "https://growthlab.hks.harvard.edu/publications-home/repository",
+        )
+
+        assert pub is not None
+        assert pub.title == "New Format Publication"
+        assert pub.year == 2024
+        assert pub.abstract == "This is the abstract for the new format."
+        assert len(pub.file_urls) == 2
+        assert pub.authors == ["Hausmann, R.", "Klinger, B."]
+        assert pub.paper_id is not None
+        assert pub.content_hash is not None
+
+
+class TestLoadFromCsvSafety:
+    """Test that load_from_csv uses safe parsing (not eval) for list fields."""
+
+    def test_load_csv_with_list_strings(self, scraper, tmp_path):
+        """CSV with list-like string values should load correctly."""
+        import pandas as pd
+
+        csv_path = tmp_path / "test_safe_load.csv"
+        df = pd.DataFrame(
+            [
+                {
+                    "paper_id": "gl_test_123",
+                    "title": "Test Paper",
+                    "authors": "['Alice', 'Bob']",
+                    "year": 2023,
+                    "abstract": "An abstract",
+                    "pub_url": "https://growthlab.hks.harvard.edu/publications/test",
+                    "file_urls": "['https://example.com/test.pdf']",
+                    "source": "GrowthLab",
+                    "content_hash": "abc123",
+                }
+            ]
+        )
+        df.to_csv(csv_path, index=False)
+        pubs = scraper.load_from_csv(csv_path)
+        assert len(pubs) == 1
+        assert pubs[0].authors == ["Alice", "Bob"]
+        assert [str(u) for u in pubs[0].file_urls] == ["https://example.com/test.pdf"]
 
 
 def test_save_and_load_publications(scraper, sample_publication, tmp_path):

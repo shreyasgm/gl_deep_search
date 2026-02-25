@@ -3,8 +3,7 @@ Tests for the Growth Lab file downloader module.
 """
 
 import logging
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from curl_cffi.requests import AsyncSession
@@ -84,177 +83,137 @@ async def test_get_file_path(file_downloader, sample_publication):
 
 @pytest.mark.asyncio
 async def test_validate_downloaded_file(file_downloader, tmp_path):
-    """Test file validation."""
-    # Create a valid PDF file
-    valid_pdf_path = tmp_path / "valid.pdf"
-    with open(valid_pdf_path, "wb") as f:
-        f.write(b"%PDF-1.5\n1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj\n%%EOF")
+    """Test real file validation with magic bytes for different file types."""
+    file_downloader.min_file_size = 10
 
-    # Create a valid Word document (just the signature)
-    valid_doc_path = tmp_path / "valid.doc"
-    with open(valid_doc_path, "wb") as f:
-        f.write(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 100)
+    # --- Valid PDF ---
+    valid_pdf = tmp_path / "valid.pdf"
+    valid_pdf.write_bytes(b"%PDF-1.5\n" + b"\x00" * 100)
+    result = await file_downloader._validate_downloaded_file(
+        valid_pdf, expected_content_type="application/pdf"
+    )
+    assert result["is_valid"] is True
+    assert result["file_exists"] is True
+    assert result["size_check"] is True
+    assert result["format_check"] is True
 
-    # Create a valid DOCX document (just the signature)
-    valid_docx_path = tmp_path / "valid.docx"
-    with open(valid_docx_path, "wb") as f:
-        f.write(b"PK\x03\x04" + b"\x00" * 100)
+    # --- Valid DOCX (PK zip signature) ---
+    valid_docx = tmp_path / "valid.docx"
+    valid_docx.write_bytes(b"PK\x03\x04" + b"\x00" * 100)
+    _docx_ct = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    result = await file_downloader._validate_downloaded_file(
+        valid_docx, expected_content_type=_docx_ct
+    )
+    assert result["is_valid"] is True
+    assert result["format_check"] is True
 
-    # Create an invalid file
-    invalid_file_path = tmp_path / "invalid.pdf"
-    with open(invalid_file_path, "wb") as f:
-        f.write(b"This is not a valid file")
+    # --- Valid DOC (OLE compound document signature) ---
+    valid_doc = tmp_path / "valid.doc"
+    valid_doc.write_bytes(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 100)
+    result = await file_downloader._validate_downloaded_file(
+        valid_doc, expected_content_type="application/msword"
+    )
+    assert result["is_valid"] is True
+    assert result["format_check"] is True
 
-    # Create a too small file
-    small_file_path = tmp_path / "small.pdf"
-    with open(small_file_path, "wb") as f:
-        f.write(b"%PDF-1.5\n")  # Just the header
+    # --- Invalid file (random bytes, claimed PDF) ---
+    invalid_pdf = tmp_path / "invalid.pdf"
+    invalid_pdf.write_bytes(b"This is not a valid PDF file at all!!")
+    result = await file_downloader._validate_downloaded_file(
+        invalid_pdf, expected_content_type="application/pdf"
+    )
+    assert result["is_valid"] is False
+    assert result["file_exists"] is True
+    assert result["format_check"] is False
 
-    # Mock the file existence check
-    file_downloader.storage.ensure_dir = MagicMock()
+    # --- Too-small file ---
+    small_file = tmp_path / "small.pdf"
+    small_file.write_bytes(b"%PDF")  # Only 4 bytes, below min_file_size=10
+    result = await file_downloader._validate_downloaded_file(
+        small_file, expected_content_type="application/pdf"
+    )
+    assert result["is_valid"] is False
+    assert result["size_check"] is False
 
-    # Directly patch the file operations for simplicity
-    with patch.object(Path, "exists", return_value=True):
-        with patch.object(Path, "stat") as mock_stat:
-            # Setup stat for file size
-            mock_stat_result = MagicMock()
-            mock_stat_result.st_size = 100  # Valid size
-            mock_stat.return_value = mock_stat_result
-
-            # Mock header check
-            with patch("builtins.open", mock_open(read_data=b"%PDF-1.5\nTest content")):
-                # Valid PDF with smaller min_file_size for test
-                file_downloader.min_file_size = 10
-
-                # Simply patch the validation results for predictable behavior
-                valid_result = {
-                    "is_valid": True,
-                    "file_exists": True,
-                    "size_check": True,
-                    "format_check": True,
-                    "file_size": 100,
-                }
-
-                invalid_format_result = {
-                    "is_valid": False,
-                    "file_exists": True,
-                    "size_check": True,
-                    "format_check": False,
-                    "file_size": 100,
-                }
-
-                too_small_result = {
-                    "is_valid": False,
-                    "file_exists": True,
-                    "size_check": False,
-                    "format_check": True,
-                    "file_size": 7,
-                }
-
-                nonexistent_result = {
-                    "is_valid": False,
-                    "file_exists": False,
-                    "size_check": False,
-                    "format_check": False,
-                    "file_size": 0,
-                }
-
-                # Test validation logic by patching directly
-                with patch.object(
-                    file_downloader, "_validate_downloaded_file"
-                ) as mock_validate:
-                    # Test all cases
-                    mock_validate.return_value = valid_result
-                    result = await file_downloader._validate_downloaded_file(
-                        valid_pdf_path
-                    )
-                    assert result["is_valid"]
-                    assert result["file_exists"]
-                    assert result["format_check"]
-
-                    mock_validate.return_value = invalid_format_result
-                    result = await file_downloader._validate_downloaded_file(
-                        invalid_file_path
-                    )
-                    assert not result["is_valid"]
-                    assert result["file_exists"]
-                    assert not result["format_check"]
-
-                    mock_validate.return_value = too_small_result
-                    result = await file_downloader._validate_downloaded_file(
-                        small_file_path
-                    )
-                    assert not result["is_valid"]
-                    assert result["file_exists"]
-                    assert not result["size_check"]
-
-                    # Non-existent file test
-                    with patch.object(Path, "exists", return_value=False):
-                        mock_validate.return_value = nonexistent_result
-                        result = await file_downloader._validate_downloaded_file(
-                            tmp_path / "nonexistent.pdf"
-                        )
-                        assert not result["is_valid"]
-                        assert not result["file_exists"]
-
-
-# Mock response for download tests
-class MockResponse:
-    def __init__(self, status, content=b"", headers=None):
-        self.status = status
-        self._content = content
-        self.headers = headers or {}
-        self.request_info = MagicMock()
-        self.history = []
-
-    @property
-    def content(self):
-        class MockContent:
-            def __init__(self, content):
-                self._content = content
-
-            async def iter_chunked(self, chunk_size):
-                yield self._content
-
-        return MockContent(self._content)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
+    # --- Non-existent file ---
+    result = await file_downloader._validate_downloaded_file(
+        tmp_path / "nonexistent.pdf"
+    )
+    assert result["is_valid"] is False
+    assert result["file_exists"] is False
 
 
 @pytest.mark.asyncio
-async def test_download_file_impl(file_downloader, tmp_path):
-    """Test the file download implementation."""
-    # Create a simpler test by directly skipping to the validate step
-    dest_path = tmp_path / "test_download.pdf"
+async def test_download_file_impl_status_codes(file_downloader, tmp_path):
+    """Test _download_file_impl handles HTTP status codes correctly."""
+    file_downloader.min_file_size = 10
     url = "https://example.com/test.pdf"
 
-    # Create a successful result
-    success_result = DownloadResult(
-        url=url,
-        success=True,
-        file_path=dest_path,
-        file_size=1024,
-        content_type="application/pdf",
-        validation_info={"is_valid": True},
+    # Helper: create a mock curl_cffi response
+    def _make_mock_response(status_code, content=b"", headers=None):
+        resp = MagicMock()
+        resp.status_code = status_code
+        resp.headers = headers or {"Content-Type": "application/pdf"}
+
+        # aiter_content for streaming
+        async def _aiter():
+            yield content
+
+        resp.aiter_content = _aiter
+        return resp
+
+    mock_session = MagicMock(spec=AsyncSession)
+
+    # --- 200 OK: successful download ---
+    dest_200 = tmp_path / "download_200.pdf"
+    pdf_content = b"%PDF-1.5\n" + b"\x00" * 100
+    mock_session.get = AsyncMock(
+        return_value=_make_mock_response(200, content=pdf_content)
     )
+    result = await file_downloader._download_file_impl(
+        mock_session, url, dest_200, resume=False
+    )
+    assert result.success is True
+    assert result.file_path.exists()
+    assert result.file_size > 0
 
-    # Patch the implementation to return our result directly
-    with patch.object(
-        file_downloader, "_download_file_impl", AsyncMock(return_value=success_result)
-    ):
-        # Now test the download_file method that uses our mocked impl
-        result = await file_downloader._download_file_impl(MagicMock(), url, dest_path)
+    # --- 206 Partial Content: resume ---
+    dest_206 = tmp_path / "download_206.pdf"
+    # Write initial partial content
+    dest_206.write_bytes(b"%PDF-1.5\n")
+    remaining = b"\x00" * 100
+    mock_session.get = AsyncMock(
+        return_value=_make_mock_response(206, content=remaining)
+    )
+    result = await file_downloader._download_file_impl(
+        mock_session, url, dest_206, resume=True
+    )
+    assert result.success is True
+    # File should contain original + remaining
+    assert dest_206.stat().st_size == len(b"%PDF-1.5\n") + len(remaining)
 
-        # Check the result
-        assert isinstance(result, DownloadResult)
-        assert result.url == url
-        assert result.file_path == dest_path
-        assert result.success is True
-        assert result.file_size == 1024
+    # --- 416 Range Not Satisfiable: file already complete ---
+    dest_416 = tmp_path / "download_416.pdf"
+    dest_416.write_bytes(b"%PDF-1.5\n" + b"\x00" * 100)
+    mock_session.get = AsyncMock(
+        return_value=_make_mock_response(
+            416, headers={"Content-Type": "application/pdf"}
+        )
+    )
+    result = await file_downloader._download_file_impl(
+        mock_session, url, dest_416, resume=True
+    )
+    assert result.cached is True
+    assert result.success is True  # validation passes since file is valid
+
+    # --- 404 Not Found: error ---
+    dest_404 = tmp_path / "download_404.pdf"
+    mock_session.get = AsyncMock(return_value=_make_mock_response(404))
+    result = await file_downloader._download_file_impl(
+        mock_session, url, dest_404, resume=False
+    )
+    assert result.success is False
+    assert "404" in result.error
 
 
 @pytest.mark.asyncio
@@ -344,94 +303,45 @@ async def test_download_publications(file_downloader, sample_publication, tmp_pa
 
 @pytest.mark.asyncio
 async def test_download_growthlab_files(storage, sample_publication, tmp_path):
-    """Test the main download_growthlab_files function."""
-    # Mock the required modules
-    scraper_module = MagicMock()
-    scraper_module.GrowthLabScraper.return_value.load_from_csv.return_value = [
-        sample_publication
-    ]
+    """Test download_growthlab_files with real production function."""
+    # Save sample publication to a real CSV so load_from_csv works
+    from backend.etl.scrapers.growthlab import GrowthLabScraper
+    from backend.etl.utils.gl_file_downloader import download_growthlab_files
 
-    file_downloader_module = MagicMock()
-    mock_downloader = MagicMock()
-    mock_downloader.download_publications = AsyncMock(
-        return_value=[
-            {
-                "publication_id": sample_publication.paper_id,
-                "publication_title": sample_publication.title,
-                "url": str(sample_publication.file_urls[0]),
-                "success": True,
-                "file_path": tmp_path / "test.pdf",
-                "file_size": 1000,
-                "cached": False,
-            },
-            {
-                "publication_id": sample_publication.paper_id,
-                "publication_title": sample_publication.title,
-                "url": str(sample_publication.file_urls[1]),
-                "success": True,
-                "file_path": tmp_path / "test.docx",
-                "file_size": 1000,
-                "cached": False,
-            },
-        ]
-    )
-    file_downloader_module.FileDownloader.return_value = mock_downloader
-
-    # Create a test function that mimics the real one but uses our mocks
-    async def test_download_func(
-        storage=None,
-        publication_data_path=None,
-        overwrite=False,
-        limit=None,
-        concurrency=3,
-        config_path=None,
-    ):
-        # Load publication data (using mock)
-        scraper = scraper_module.GrowthLabScraper()
-        publications = scraper.load_from_csv(publication_data_path)
-
-        # Filter to publications with file URLs
-        publications_with_files = [p for p in publications if p.file_urls]
-
-        # Create downloader and download files (using mock)
-        downloader = file_downloader_module.FileDownloader(
-            storage=storage,
-            concurrency_limit=concurrency,
-            config_path=config_path,
-        )
-
-        results = await downloader.download_publications(
-            publications_with_files,
-            overwrite=overwrite,
-            limit=limit,
-            progress_bar=False,
-        )
-
-        return results
-
-    # Create test CSV path
+    scraper = GrowthLabScraper()
     csv_path = tmp_path / "test_publications.csv"
+    scraper.save_to_csv([sample_publication], csv_path)
 
-    # Run the test function
-    results = await test_download_func(
-        storage=storage,
-        publication_data_path=csv_path,
-        overwrite=False,
-        limit=None,
-        concurrency=3,
-    )
+    # Mock download_file to avoid real HTTP calls
+    async def mock_download_file(
+        url, destination, referer=None, overwrite=False, resume=True
+    ):
+        # Write a fake PDF so validation passes
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(b"%PDF-1.5\n" + b"\x00" * 100)
+        return DownloadResult(
+            url=str(url),
+            success=True,
+            file_path=destination,
+            file_size=110,
+            content_type="application/pdf",
+            cached=False,
+        )
 
-    # Check results - should have both files
+    with patch.object(FileDownloader, "download_file", side_effect=mock_download_file):
+        results = await download_growthlab_files(
+            storage=storage,
+            publication_data_path=csv_path,
+            overwrite=False,
+            limit=None,
+            concurrency=1,
+        )
+
+    # Sample publication has 2 file URLs
     assert len(results) == 2
     assert results[0]["publication_id"] == sample_publication.paper_id
-    assert results[0]["success"]
-    assert results[1]["success"]
-
-    # Verify mocks were called correctly
-    scraper_module.GrowthLabScraper.return_value.load_from_csv.assert_called_once_with(
-        csv_path
-    )
-    mock_downloader.download_publications.assert_called_once()
+    assert results[0]["success"] is True
+    assert results[1]["success"] is True
 
 
 @pytest.mark.integration

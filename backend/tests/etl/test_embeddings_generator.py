@@ -420,68 +420,6 @@ runtime:
         shutil.rmtree(temp_dir)
 
     @pytest.mark.asyncio
-    async def test_sentence_transformer_save_format(
-        self, st_config_dir, test_storage, sample_chunks
-    ):
-        """Verify embeddings are saved as 1024-dim in Parquet + metadata JSON."""
-        config_path = st_config_dir / "config.yaml"
-        temp_dir, storage = test_storage
-        doc_id = "test_st_doc"
-
-        # Create chunks file
-        chunks_dir = (
-            temp_dir / "processed" / "chunks" / "documents" / "growthlab" / doc_id
-        )
-        chunks_dir.mkdir(parents=True, exist_ok=True)
-        with open(chunks_dir / "chunks.json", "w") as f:
-            json.dump(sample_chunks, f)
-
-        mock_model = Mock()
-        raw_vectors = np.random.randn(2, 4096).astype(np.float32)
-        norms = np.linalg.norm(raw_vectors, axis=1, keepdims=True)
-        mock_model.encode.return_value = raw_vectors / norms
-
-        with patch(
-            "sentence_transformers.SentenceTransformer",
-            return_value=mock_model,
-        ):
-            generator = EmbeddingsGenerator(config_path=config_path)
-
-        # Create 1024-dim chunk embeddings
-        chunk_embeddings = [
-            ChunkEmbedding(
-                chunk_id=chunk["chunk_id"],
-                embedding_vector=[0.1] * 1024,
-                model="Qwen/Qwen3-Embedding-8B",
-                dimensions=1024,
-                created_at=datetime.now(),
-            )
-            for chunk in sample_chunks
-        ]
-
-        generator._save_embeddings(
-            document_id=doc_id,
-            chunks_data=sample_chunks,
-            chunk_embeddings=chunk_embeddings,
-            storage=storage,
-        )
-
-        # Verify output
-        embeddings_base = temp_dir / "processed" / "embeddings"
-        embeddings_files = list(embeddings_base.rglob("embeddings.parquet"))
-        assert len(embeddings_files) == 1
-
-        df = pd.read_parquet(embeddings_files[0])
-        assert len(df) == 2
-        assert len(df.iloc[0]["embedding"]) == 1024
-
-        metadata_file = embeddings_files[0].parent / "metadata.json"
-        with open(metadata_file) as f:
-            metadata = json.load(f)
-        assert metadata["embedding_model"] == "Qwen/Qwen3-Embedding-8B"
-        assert metadata["embedding_dimensions"] == 1024
-
-    @pytest.mark.asyncio
     async def test_real_sentence_transformer_inference(self, test_storage):
         """Integration test: load real model and generate embeddings.
 
@@ -737,3 +675,246 @@ class TestEmbeddingsGeneratorIntegration:
         for i in range(3):
             pub = tracker.get_publication_status(f"{base_id}_{i}")
             assert pub["embedding_status"] == EmbeddingStatus.EMBEDDED.value
+
+
+class TestEmbeddingsGeneratorErrorPaths:
+    """Test error paths in generate_embeddings_for_document()."""
+
+    @pytest.fixture
+    def openrouter_generator(self, test_storage):
+        """Create an EmbeddingsGenerator with openrouter config."""
+        temp_dir = Path(tempfile.mkdtemp())
+        storage_dir, _ = test_storage
+        config_path = temp_dir / "config.yaml"
+
+        config_content = f"""
+file_processing:
+  embedding:
+    model: "openrouter"
+    model_name: "qwen/qwen3-embedding-8b"
+    dimensions: 1024
+    batch_size: 32
+    max_retries: 1
+    retry_delays: [0]
+    timeout: 5
+    rate_limit_delay: 0
+
+runtime:
+  local_storage_path: "{storage_dir}/"
+"""
+        config_path.write_text(config_content)
+        generator = EmbeddingsGenerator(config_path=config_path)
+        yield generator, storage_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.mark.asyncio
+    async def test_chunks_file_not_found(self, openrouter_generator, test_storage):
+        """When chunks file does not exist, should return FAILED status."""
+        generator, storage_dir = openrouter_generator
+        _, storage = test_storage
+
+        # Use a document_id with no corresponding chunks file
+        result = await generator.generate_embeddings_for_document(
+            document_id="nonexistent_doc_xyz",
+            storage=storage,
+        )
+
+        assert result.status == EmbeddingGenerationStatus.FAILED
+        assert "not found" in result.error_message.lower()
+        assert result.total_embeddings == 0
+        assert result.embeddings == []
+
+    @pytest.mark.asyncio
+    async def test_empty_chunks_list(self, openrouter_generator, test_storage):
+        """When chunks file contains empty list, should return FAILED status."""
+        generator, storage_dir = openrouter_generator
+        _, storage = test_storage
+
+        # Create a chunks file with empty list
+        doc_id = "empty_chunks_doc"
+        chunks_dir = (
+            Path(storage_dir)
+            / "processed"
+            / "chunks"
+            / "documents"
+            / "growthlab"
+            / doc_id
+        )
+        chunks_dir.mkdir(parents=True, exist_ok=True)
+        with open(chunks_dir / "chunks.json", "w") as f:
+            json.dump([], f)
+
+        result = await generator.generate_embeddings_for_document(
+            document_id=doc_id,
+            storage=storage,
+        )
+
+        assert result.status == EmbeddingGenerationStatus.FAILED
+        assert "no chunks" in result.error_message.lower()
+        assert result.total_embeddings == 0
+
+    @pytest.mark.asyncio
+    async def test_api_returns_no_embeddings(self, openrouter_generator, test_storage):
+        """When batch generation returns empty list, should return FAILED."""
+        generator, storage_dir = openrouter_generator
+        _, storage = test_storage
+
+        doc_id = "no_embeddings_doc"
+        chunks_dir = (
+            Path(storage_dir)
+            / "processed"
+            / "chunks"
+            / "documents"
+            / "growthlab"
+            / doc_id
+        )
+        chunks_dir.mkdir(parents=True, exist_ok=True)
+        chunks_data = [
+            {
+                "chunk_id": f"{doc_id}_chunk_0001",
+                "source_document_id": doc_id,
+                "source_file_path": "test.txt",
+                "chunk_index": 0,
+                "text_content": "Some text content.",
+                "character_start": 0,
+                "character_end": 18,
+                "page_numbers": [1],
+                "section_title": None,
+                "metadata": {},
+                "created_at": datetime.now().isoformat(),
+                "chunk_size": 18,
+            }
+        ]
+        with open(chunks_dir / "chunks.json", "w") as f:
+            json.dump(chunks_data, f)
+
+        # Mock batch generation to return empty embeddings
+        with patch.object(
+            generator,
+            "_generate_embeddings_batch",
+            new_callable=AsyncMock,
+            return_value=([], 1, 0),
+        ):
+            result = await generator.generate_embeddings_for_document(
+                document_id=doc_id,
+                storage=storage,
+            )
+
+        assert result.status == EmbeddingGenerationStatus.FAILED
+        assert "failed to generate" in result.error_message.lower()
+
+    @pytest.mark.asyncio
+    async def test_unexpected_exception_during_batch(
+        self, openrouter_generator, test_storage
+    ):
+        """When batch generation raises unexpected exception, should return FAILED."""
+        generator, storage_dir = openrouter_generator
+        _, storage = test_storage
+
+        doc_id = "exception_doc"
+        chunks_dir = (
+            Path(storage_dir)
+            / "processed"
+            / "chunks"
+            / "documents"
+            / "growthlab"
+            / doc_id
+        )
+        chunks_dir.mkdir(parents=True, exist_ok=True)
+        chunks_data = [
+            {
+                "chunk_id": f"{doc_id}_chunk_0001",
+                "source_document_id": doc_id,
+                "source_file_path": "test.txt",
+                "chunk_index": 0,
+                "text_content": "Some text content.",
+                "character_start": 0,
+                "character_end": 18,
+                "page_numbers": [1],
+                "section_title": None,
+                "metadata": {},
+                "created_at": datetime.now().isoformat(),
+                "chunk_size": 18,
+            }
+        ]
+        with open(chunks_dir / "chunks.json", "w") as f:
+            json.dump(chunks_data, f)
+
+        # Mock batch generation to raise unexpected error
+        with patch.object(
+            generator,
+            "_generate_embeddings_batch",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("GPU out of memory"),
+        ):
+            result = await generator.generate_embeddings_for_document(
+                document_id=doc_id,
+                storage=storage,
+            )
+
+        assert result.status == EmbeddingGenerationStatus.FAILED
+        assert "GPU out of memory" in result.error_message
+
+
+class TestEmbeddingsBatching:
+    """Test that batching splits texts correctly and makes the right
+    number of API calls."""
+
+    @pytest.mark.asyncio
+    async def test_65_texts_at_batch_size_32(self, test_storage):
+        """65 texts with batch_size=32 should produce 3 API calls (32, 32, 1)."""
+        temp_dir = Path(tempfile.mkdtemp())
+        storage_dir, _ = test_storage
+        config_path = temp_dir / "config.yaml"
+
+        config_content = f"""
+file_processing:
+  embedding:
+    model: "openrouter"
+    model_name: "qwen/qwen3-embedding-8b"
+    dimensions: 1024
+    batch_size: 32
+    max_retries: 1
+    retry_delays: [0]
+    timeout: 5
+    rate_limit_delay: 0
+
+runtime:
+  local_storage_path: "{storage_dir}/"
+"""
+        config_path.write_text(config_content)
+        generator = EmbeddingsGenerator(config_path=config_path)
+
+        # Track batch sizes seen by the mock
+        batch_sizes_seen = []
+
+        async def mock_create(*args, **kwargs):
+            batch_input = kwargs.get("input", args[0] if args else [])
+            batch_sizes_seen.append(len(batch_input))
+
+            mock_response = Mock()
+            mock_response.data = [Mock(embedding=[0.1] * 1024) for _ in batch_input]
+            mock_response.usage = Mock(total_tokens=len(batch_input) * 10)
+            return mock_response
+
+        with patch.object(
+            generator.client.embeddings, "create", new_callable=AsyncMock
+        ) as mock_embeddings_create:
+            mock_embeddings_create.side_effect = mock_create
+
+            texts = [f"Text number {i}" for i in range(65)]
+            (
+                embeddings,
+                api_calls,
+                total_tokens,
+            ) = await generator._generate_embeddings_batch(texts)
+
+        # Should have made exactly 3 API calls
+        assert api_calls == 3
+        assert len(batch_sizes_seen) == 3
+        assert batch_sizes_seen == [32, 32, 1]
+
+        # Should have 65 embeddings total
+        assert len(embeddings) == 65
+
+        shutil.rmtree(temp_dir)

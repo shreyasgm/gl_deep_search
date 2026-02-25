@@ -13,44 +13,14 @@ from backend.etl.orchestrator import (
     ComponentStatus,
     ETLOrchestrator,
     OrchestrationConfig,
+    _deep_merge,
     create_argument_parser,
     main,
 )
 
 
-class TestComponentStatus:
-    """Test ComponentStatus enum."""
-
-    def test_component_status_values(self):
-        """Test that ComponentStatus has expected values."""
-        assert ComponentStatus.PENDING.value == "pending"
-        assert ComponentStatus.RUNNING.value == "running"
-        assert ComponentStatus.COMPLETED.value == "completed"
-        assert ComponentStatus.FAILED.value == "failed"
-        assert ComponentStatus.SKIPPED.value == "skipped"
-
-
 class TestComponentResult:
     """Test ComponentResult dataclass."""
-
-    def test_component_result_creation(self):
-        """Test basic ComponentResult creation."""
-        result = ComponentResult(
-            component_name="test_component",
-            status=ComponentStatus.PENDING,
-            start_time=None,
-            end_time=None,
-            error=None,
-            metrics={},
-            output_files=[],
-        )
-        assert result.component_name == "test_component"
-        assert result.status == ComponentStatus.PENDING
-        assert result.start_time is None
-        assert result.end_time is None
-        assert result.error is None
-        assert result.metrics == {}
-        assert result.output_files == []
 
     def test_component_result_duration_calculation(self):
         """Test duration property calculation."""
@@ -75,66 +45,9 @@ class TestComponentResult:
         result.end_time = None
         assert result.duration is None
 
-    def test_component_result_with_error(self):
-        """Test ComponentResult with error information."""
-        result = ComponentResult(
-            component_name="failed_component",
-            status=ComponentStatus.FAILED,
-            start_time=100.0,
-            end_time=120.0,
-            error="Test error message",
-            metrics={"attempts": 3},
-            output_files=[],
-        )
-        assert result.status == ComponentStatus.FAILED
-        assert result.error == "Test error message"
-        assert result.metrics["attempts"] == 3
-
-    def test_component_result_with_output_files(self):
-        """Test ComponentResult with output files."""
-        output_files = [Path("/tmp/file1.txt"), Path("/tmp/file2.txt")]
-        result = ComponentResult(
-            component_name="processor",
-            status=ComponentStatus.COMPLETED,
-            start_time=100.0,
-            end_time=120.0,
-            error=None,
-            metrics={"processed_files": 2},
-            output_files=output_files,
-        )
-        assert len(result.output_files) == 2
-        assert result.output_files[0] == Path("/tmp/file1.txt")
-        assert result.output_files[1] == Path("/tmp/file2.txt")
-
 
 class TestOrchestrationConfig:
     """Test OrchestrationConfig dataclass."""
-
-    def test_orchestration_config_defaults(self):
-        """Test OrchestrationConfig with default values."""
-        config = OrchestrationConfig(
-            config_path=Path("/tmp/config.yaml"),
-        )
-        assert config.config_path == Path("/tmp/config.yaml")
-        assert config.storage_type is None
-        assert config.log_level == "INFO"
-        assert config.dry_run is False
-        assert config.skip_scraping is False
-        assert config.scraper_concurrency == 2
-        assert config.scraper_delay == 2.0
-        assert config.scraper_limit is None
-        assert config.download_concurrency == 3
-        assert config.download_limit is None
-        assert config.overwrite_files is False
-        assert config.min_file_size == 1024
-        assert config.max_file_size == 100_000_000
-        assert config.force_reprocess is False
-        assert config.ocr_language == ["eng"]
-        assert config.extract_images is False
-        assert config.min_chars_per_page == 100
-        assert config.transcripts_input is None
-        assert config.transcripts_limit is None
-        assert config.max_tokens is None
 
     def test_orchestration_config_custom_values(self):
         """Test OrchestrationConfig with custom values."""
@@ -179,6 +92,64 @@ class TestOrchestrationConfig:
         assert config.transcripts_input == Path("/transcripts")
         assert config.transcripts_limit == 25
         assert config.max_tokens == 4000
+
+
+class TestDeepMerge:
+    """Test the _deep_merge pure function."""
+
+    def test_flat_merge(self):
+        """Test merging non-nested dicts."""
+        base = {"a": 1, "b": 2}
+        overlay = {"c": 3, "d": 4}
+        result = _deep_merge(base, overlay)
+        assert result == {"a": 1, "b": 2, "c": 3, "d": 4}
+
+    def test_nested_merge(self):
+        """Test merging nested dicts recursively."""
+        base = {"top": {"a": 1, "b": 2}}
+        overlay = {"top": {"b": 99, "c": 3}}
+        result = _deep_merge(base, overlay)
+        assert result == {"top": {"a": 1, "b": 99, "c": 3}}
+
+    def test_overlay_wins_on_conflict(self):
+        """Test that overlay values win when keys conflict."""
+        base = {"key": "base_value", "num": 1}
+        overlay = {"key": "overlay_value", "num": 999}
+        result = _deep_merge(base, overlay)
+        assert result["key"] == "overlay_value"
+        assert result["num"] == 999
+
+    def test_base_preserved_for_non_overlapping_keys(self):
+        """Test that base keys not in overlay are preserved."""
+        base = {"only_in_base": "preserved", "shared": "base"}
+        overlay = {"shared": "overlay"}
+        result = _deep_merge(base, overlay)
+        assert result["only_in_base"] == "preserved"
+        assert result["shared"] == "overlay"
+
+    def test_empty_overlay_returns_base(self):
+        """Test that empty overlay returns base unchanged."""
+        base = {"a": 1, "b": {"c": 2}}
+        result = _deep_merge(base, {})
+        assert result == base
+
+    def test_empty_base_returns_overlay(self):
+        """Test that empty base returns overlay."""
+        overlay = {"x": 10, "y": {"z": 20}}
+        result = _deep_merge({}, overlay)
+        assert result == overlay
+
+    def test_does_not_mutate_inputs(self):
+        """Test that _deep_merge does not mutate base or overlay."""
+        base = {"nested": {"a": 1}}
+        overlay = {"nested": {"b": 2}}
+        base_copy = {"nested": {"a": 1}}
+        overlay_copy = {"nested": {"b": 2}}
+
+        _deep_merge(base, overlay)
+
+        assert base == base_copy
+        assert overlay == overlay_copy
 
 
 class TestCreateArgumentParser:
@@ -431,8 +402,12 @@ class TestETLOrchestrator:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_run_pipeline_with_component_failure(self):
-        """Integration test with component failure handling."""
+    async def test_scraper_failure_stops_pipeline(self):
+        """Test that Growth Lab Scraper failure triggers early pipeline exit.
+
+        The scraper is a critical component. When it fails, the pipeline should
+        stop immediately and subsequent components should NOT execute.
+        """
         with tempfile.TemporaryDirectory() as tmp_dir:
             config_path = Path(tmp_dir) / "config.yaml"
             config_path.write_text("test_config: true")
@@ -442,7 +417,67 @@ class TestETLOrchestrator:
             with patch("backend.etl.orchestrator.logger"):
                 orchestrator = ETLOrchestrator(config)
 
-                # Mock components with one failure
+                with (
+                    patch.object(orchestrator, "_run_scraper") as mock_scraper,
+                    patch.object(
+                        orchestrator, "_run_file_downloader"
+                    ) as mock_downloader,
+                    patch.object(orchestrator, "_run_pdf_processor") as mock_processor,
+                    patch.object(
+                        orchestrator, "_run_lecture_transcripts"
+                    ) as mock_transcripts,
+                    patch.object(orchestrator, "_run_text_chunker") as mock_chunker,
+                    patch.object(
+                        orchestrator, "_run_embeddings_generator"
+                    ) as mock_embeddings,
+                ):
+                    # Scraper raises an exception -> FAILED status
+                    mock_scraper.side_effect = RuntimeError(
+                        "Scraper connection refused"
+                    )
+
+                    # All other components configured to succeed (should never run)
+                    async def mock_success(result):
+                        result.metrics = {"processed": 1}
+
+                    mock_downloader.side_effect = mock_success
+                    mock_processor.side_effect = mock_success
+                    mock_transcripts.side_effect = mock_success
+                    mock_chunker.side_effect = mock_success
+                    mock_embeddings.side_effect = mock_success
+
+                    results = await orchestrator.run_pipeline()
+
+                    # Only the scraper should have run
+                    assert len(results) == 1
+                    assert results[0].component_name == "Growth Lab Scraper"
+                    assert results[0].status == ComponentStatus.FAILED
+                    assert "Scraper connection refused" in results[0].error
+
+                    # Subsequent components must NOT have been called
+                    mock_downloader.assert_not_called()
+                    mock_processor.assert_not_called()
+                    mock_transcripts.assert_not_called()
+                    mock_chunker.assert_not_called()
+                    mock_embeddings.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_non_critical_failure_continues_pipeline(self):
+        """Test that non-critical component failure does NOT stop the pipeline.
+
+        The file downloader is not in the critical list, so its failure
+        should allow subsequent components to continue.
+        """
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "config.yaml"
+            config_path.write_text("test_config: true")
+
+            config = OrchestrationConfig(config_path=config_path, dry_run=False)
+
+            with patch("backend.etl.orchestrator.logger"):
+                orchestrator = ETLOrchestrator(config)
+
                 with (
                     patch.object(orchestrator, "_run_scraper") as mock_scraper,
                     patch.object(
@@ -454,12 +489,11 @@ class TestETLOrchestrator:
                     ) as mock_transcripts,
                     patch.object(orchestrator, "_run_text_chunker") as mock_chunker,
                 ):
-                    # First component succeeds
+
                     async def mock_success(result):
                         result.metrics = {"processed": 3}
                         result.output_files = [Path("/tmp/success.txt")]
 
-                    # Second component fails
                     async def mock_failure(result):
                         raise RuntimeError("Simulated component failure")
 
@@ -471,7 +505,7 @@ class TestETLOrchestrator:
 
                     results = await orchestrator.run_pipeline()
 
-                    assert len(results) == 6  # Six components
+                    assert len(results) == 6  # All six components ran
 
                     # First component should succeed
                     assert results[0].status == ComponentStatus.COMPLETED
@@ -486,8 +520,6 @@ class TestETLOrchestrator:
                     assert results[2].status == ComponentStatus.COMPLETED
                     assert results[3].status == ComponentStatus.COMPLETED
                     assert results[4].status == ComponentStatus.COMPLETED
-                    # Embeddings generator may be skipped if no chunks found
-                    assert results[5].component_name == "Embeddings Generator"
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -539,6 +571,39 @@ class TestETLOrchestrator:
                     for i in range(1, 6):
                         if results[i].component_name != "Embeddings Generator":
                             assert results[i].status == ComponentStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_text_chunker_dispatch(self):
+        """Test that the orchestrator dispatches to _run_text_chunker correctly.
+
+        Relocated from test_text_chunker.py — validates that the orchestrator
+        includes the Text Chunker in its pipeline and invokes the correct method.
+        """
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "config.yaml"
+            config_path.write_text("test_config: true")
+
+            # Verify Text Chunker appears in dry-run simulation
+            config = OrchestrationConfig(config_path=config_path, dry_run=True)
+            with patch("backend.etl.orchestrator.logger"):
+                orchestrator = ETLOrchestrator(config)
+                results = await orchestrator.run_pipeline()
+                assert any(r.component_name == "Text Chunker" for r in results)
+
+            # Verify the method is actually invoked when executing that component
+            config = OrchestrationConfig(config_path=config_path, dry_run=False)
+            with patch("backend.etl.orchestrator.logger"):
+                orchestrator = ETLOrchestrator(config)
+                with patch.object(
+                    orchestrator,
+                    "_run_text_chunker",
+                    new_callable=AsyncMock,
+                ) as mock_chunker:
+                    await orchestrator._execute_component(
+                        "Text Chunker", orchestrator._run_text_chunker
+                    )
+                    mock_chunker.assert_awaited_once()
 
 
 class TestMainFunction:

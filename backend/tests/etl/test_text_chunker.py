@@ -20,13 +20,12 @@ import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 import yaml
 
-from backend.etl.orchestrator import ETLOrchestrator, OrchestrationConfig
-from backend.etl.utils.text_chunker import ChunkingStatus, TextChunker
+from backend.etl.utils.text_chunker import ChunkingStatus, DocumentChunk, TextChunker
 from backend.storage.local import LocalStorage
 
 
@@ -327,31 +326,6 @@ Economic complexity provides another lens through which we can understand develo
         assert "empty" in failed[0].error_message.lower()
 
     @pytest.mark.integration
-    @pytest.mark.asyncio
-    async def test_orchestrator_integration(self, temp_config_dir):
-        """Test that chunking integrates properly with ETL orchestrator."""
-        # Create orchestrator with config
-        config = OrchestrationConfig(
-            config_path=temp_config_dir / "config.yaml",
-            storage_type="local",
-            dry_run=True,
-        )
-        orchestrator = ETLOrchestrator(config)
-
-        # Dry-run pipeline should include Text Chunker in simulated components
-        results = await orchestrator.run_pipeline()
-        assert any(r.component_name == "Text Chunker" for r in results)
-
-        # Now ensure the chunker method is invoked when executing that component
-        with patch.object(
-            ETLOrchestrator, "_run_text_chunker", new_callable=AsyncMock
-        ) as mock_chunker:
-            await orchestrator._execute_component(
-                "Text Chunker", orchestrator._run_text_chunker
-            )
-            mock_chunker.assert_awaited_once()
-
-    @pytest.mark.integration
     def test_performance_requirements(self, temp_config_dir, sample_pdf_text):
         """Test that performance requirements are met.
 
@@ -382,57 +356,6 @@ Economic complexity provides another lens through which we can understand develo
 
         # Memory usage validation would require memory profiling tools
         # For now, ensure processing completes without memory errors
-
-    @pytest.mark.integration
-    def test_process_actual_sample_pdfs(self, temp_config_dir):
-        """Test processing with actual sample PDF files from the requirements."""
-        # Check if sample processed PDFs exist (as mentioned in requirements)
-        base_path = Path(
-            "/Users/shg309/Dropbox (Personal)/Education/hks_cid_growth_lab/"
-            "gl_deep_search"
-        )
-        sample_files = [
-            base_path
-            / (
-                "data/processed/documents/growthlab/gl_url_39aabeaa471ae241/"
-                "2019-09-cid-fellows-wp-117-tax-avoidance-buenos-aires.txt"
-            ),
-            base_path
-            / (
-                "data/processed/documents/growthlab/gl_url_3e115487b5f521a6/"
-                "libro-hiper-15-05-19-paginas-185-207.txt"
-            ),
-            base_path
-            / (
-                "data/processed/documents/growthlab/gl_url_71a29a74fc0321d5/"
-                "growth_diagnostic_paraguay.txt"
-            ),
-        ]
-
-        # Find which sample files actually exist
-        existing_files = [f for f in sample_files if f.exists()]
-
-        if not existing_files:
-            pytest.skip("No actual processed PDF files found for testing")
-
-        chunker = TextChunker(temp_config_dir / "config.yaml")
-
-        # Process one of the actual files
-        sample_file = existing_files[0]
-        result = chunker.process_single_document(sample_file)
-
-        # Validate results with real data
-        assert result.status == ChunkingStatus.SUCCESS
-        assert len(result.chunks) > 0
-        assert result.processing_time > 0
-
-        # Validate that chunks contain meaningful content
-        total_chars = sum(len(chunk.text_content) for chunk in result.chunks)
-        assert total_chars > 1000  # Should have substantial content
-
-        # Check that page markers are detected (PDFs should have them)
-        page_chunks = [c for c in result.chunks if c.page_numbers]
-        assert len(page_chunks) > 0  # Real PDFs should have page information
 
 
 class TestTextChunkerStrategies:
@@ -1112,3 +1035,182 @@ class TestTextChunkerTrackerIntegration:
 
         # Should complete without errors
         assert isinstance(results, list)
+
+
+class TestEnforceTokenLimits:
+    """Tests for _enforce_token_limits() and _force_split_by_tokens()."""
+
+    @pytest.fixture
+    def chunker(self):
+        """Create a TextChunker with small token limits for testing."""
+        import tempfile
+
+        config = {
+            "file_processing": {
+                "chunking": {
+                    "strategy": "hybrid",
+                    "chunk_size": 50,
+                    "chunk_overlap": 10,
+                    "min_chunk_size": 10,
+                    "max_chunk_size": 100,
+                }
+            }
+        }
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(config, f)
+            config_path = Path(f.name)
+        return TextChunker(config_path)
+
+    def _make_chunk(self, chunker, text: str, index: int = 0) -> DocumentChunk:
+        """Helper to create a DocumentChunk with correct token_count."""
+        return DocumentChunk(
+            chunk_id=f"doc_chunk_{index:04d}",
+            source_document_id="doc",
+            source_file_path=Path("/test.txt"),
+            chunk_index=index,
+            text_content=text,
+            character_start=0,
+            character_end=len(text),
+            page_numbers=[],
+            section_title=None,
+            metadata={},
+            created_at=datetime.now(),
+            chunk_size=len(text),
+            token_count=chunker._count_tokens(text),
+        )
+
+    def test_oversized_chunk_gets_split(self, chunker):
+        """A chunk at 2x the max_chunk_size should be force-split."""
+        # Create text that is ~200 tokens (2x max_chunk_size of 100)
+        oversized_text = "word " * 200
+        chunk = self._make_chunk(chunker, oversized_text)
+        assert chunk.token_count > chunker.max_chunk_size
+
+        result = chunker._enforce_token_limits([chunk], Path("/test.txt"), "doc")
+
+        # Should have split into multiple chunks
+        assert len(result) > 1
+        # Every resulting chunk must respect the token limit
+        for c in result:
+            assert c.token_count <= chunker.max_chunk_size
+        # Chunk indices should be reindexed
+        for i, c in enumerate(result):
+            assert c.chunk_index == i
+            assert c.chunk_id == f"doc_chunk_{i:04d}"
+
+    def test_chunk_at_limit_not_split(self, chunker):
+        """A chunk exactly at max_chunk_size should NOT be split."""
+        # Build text that is exactly max_chunk_size tokens
+        # Approach: encode tokens, then decode exactly max_chunk_size of them
+        base_text = "word " * 200
+        tokens = chunker.encoder.encode(base_text)
+        exact_text = chunker.encoder.decode(tokens[: chunker.max_chunk_size])
+        chunk = self._make_chunk(chunker, exact_text)
+        assert chunk.token_count == chunker.max_chunk_size
+
+        result = chunker._enforce_token_limits([chunk], Path("/test.txt"), "doc")
+
+        assert len(result) == 1
+        assert result[0].text_content == exact_text
+
+    def test_multiple_oversized_chunks(self, chunker):
+        """Multiple oversized chunks should each be split independently."""
+        oversized1 = "alpha " * 200
+        oversized2 = "beta " * 200
+        normal = "gamma " * 20  # Should be small enough
+
+        chunks = [
+            self._make_chunk(chunker, oversized1, 0),
+            self._make_chunk(chunker, normal, 1),
+            self._make_chunk(chunker, oversized2, 2),
+        ]
+
+        result = chunker._enforce_token_limits(chunks, Path("/test.txt"), "doc")
+
+        # Should have more than 3 chunks due to splitting
+        assert len(result) > 3
+        # All chunks respect limit
+        for c in result:
+            assert c.token_count <= chunker.max_chunk_size
+        # The normal chunk text should still appear in the results
+        normal_texts = [c.text_content for c in result if "gamma" in c.text_content]
+        assert len(normal_texts) >= 1
+
+    def test_force_split_by_tokens_produces_valid_chunks(self, chunker):
+        """_force_split_by_tokens splits text into max_chunk_size chunks."""
+        big_text = "word " * 300
+        sub_texts = chunker._force_split_by_tokens(big_text)
+
+        assert len(sub_texts) > 1
+        for sub in sub_texts:
+            assert chunker._count_tokens(sub) <= chunker.max_chunk_size
+
+
+class TestDetectSentencesAdversarial:
+    """Tests for _detect_sentences with adversarial/edge-case input."""
+
+    @pytest.fixture
+    def chunker(self):
+        """Create a TextChunker instance for sentence detection tests."""
+        import tempfile
+
+        config = {"file_processing": {"chunking": {"chunk_size": 500}}}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(config, f)
+            config_path = Path(f.name)
+        return TextChunker(config_path)
+
+    def test_no_punctuation_ocr_text(self, chunker):
+        """OCR text without any sentence-ending punctuation should not crash."""
+        text = (
+            "the quick brown fox jumps over the lazy dog "
+            "no punctuation anywhere at all "
+            "just continuous text without any periods or marks"
+        )
+        result = chunker._detect_sentences(text)
+        # Should return at least one segment (the whole text)
+        assert len(result) >= 1
+        # Combined result should contain all the original text
+        combined = "".join(result)
+        assert "the quick brown fox" in combined
+
+    def test_abbreviations(self, chunker):
+        """Abbreviations like 'Dr.' and 'et al.' should not crash."""
+        text = (
+            "Dr. Smith et al. found that the rate was significant. The study continued."
+        )
+        result = chunker._detect_sentences(text)
+        # Should not crash and should return some sentences
+        assert len(result) >= 1
+        combined = "".join(result)
+        assert "Dr" in combined
+        assert "study continued" in combined
+
+    def test_decimal_numbers(self, chunker):
+        """Decimal numbers like '3.14' should not crash."""
+        text = "The rate was 3.14 percent. This exceeded expectations."
+        result = chunker._detect_sentences(text)
+        assert len(result) >= 1
+        combined = "".join(result)
+        assert "3" in combined
+        assert "expectations" in combined
+
+    def test_urls(self, chunker):
+        """URLs with periods should not crash."""
+        text = "Visit https://example.com. Then continue reading the document."
+        result = chunker._detect_sentences(text)
+        assert len(result) >= 1
+        combined = "".join(result)
+        assert "example" in combined
+        assert "document" in combined
+
+    def test_empty_string(self, chunker):
+        """Empty string should return empty list without crashing."""
+        result = chunker._detect_sentences("")
+        assert result == []
+
+    def test_only_punctuation(self, chunker):
+        """String of only punctuation should not crash."""
+        result = chunker._detect_sentences("... !!! ???")
+        # Should not crash; may return empty or contain punctuation
+        assert isinstance(result, list)
