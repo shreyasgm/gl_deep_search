@@ -130,7 +130,13 @@ class OpenAlexFileDownloader:
             try:
                 with open(config_path) as f:
                     config = yaml.safe_load(f)
-                    return config.get("oa_file_downloader", {})
+                    result = config.get("oa_file_downloader", {})
+                    # Fall back to sources.openalex for unpaywall_email
+                    if "unpaywall_email" not in result:
+                        oa_config = config.get("sources", {}).get("openalex", {})
+                        if "unpaywall_email" in oa_config:
+                            result["unpaywall_email"] = oa_config["unpaywall_email"]
+                    return result
             except Exception as e:
                 logger.warning(
                     f"Error loading file downloader config: {e}. Using defaults."
@@ -641,7 +647,7 @@ class OpenAlexFileDownloader:
             # Download the paper
             logger.info(f"Downloading paper with scidownl: {doi}")
             scihub_download(
-                paper=doi, paper_type="doi", out=str(destination), proxies=proxies
+                keyword=doi, paper_type="doi", out=str(destination), proxies=proxies
             )
 
             # Validate the file

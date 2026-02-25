@@ -100,19 +100,6 @@ async def main():
     args = parse_args()
     setup_logging(args.verbose)
 
-    # TEMPORARILY DISABLED: OpenAlex file downloader is being skipped due to issues
-    logger.warning("OpenAlex File Downloader is temporarily disabled")
-    logger.warning(
-        "This component is being skipped to allow ETL orchestration "
-        "development to continue"
-    )
-    logger.warning(
-        "To re-enable, remove the skip logic in run_openalex_file_downloader.py"
-    )
-
-    # Return empty results to maintain compatibility with any calling code
-    return 0
-
     # Get storage
     storage = get_storage()
 

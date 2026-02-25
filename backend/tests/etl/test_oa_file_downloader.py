@@ -750,7 +750,7 @@ class TestDownloadWithScidownl:
 
         dest = tmp_path / "paper.pdf"
 
-        def fake_scihub_download(paper, paper_type, out, proxies=None):
+        def fake_scihub_download(keyword, paper_type, out, proxies=None):
             Path(out).write_bytes(b"%PDF-1.5\n" + b"\x00" * 100)
 
         with patch(
@@ -864,7 +864,7 @@ class TestDownloadFileOrchestration:
 
         downloader._check_open_access = AsyncMock(return_value=(False, None))
 
-        def fake_scihub(paper, paper_type, out, proxies=None):
+        def fake_scihub(keyword, paper_type, out, proxies=None):
             Path(out).write_bytes(pdf_bytes)
 
         with (
@@ -962,7 +962,7 @@ class TestDownloadFileOrchestration:
         mock_session.get = MagicMock(return_value=AsyncContextManagerMock(head_resp))
         downloader._session = mock_session
 
-        def fake_scihub(paper, paper_type, out, proxies=None):
+        def fake_scihub(keyword, paper_type, out, proxies=None):
             Path(out).write_bytes(pdf_bytes)
 
         with (
