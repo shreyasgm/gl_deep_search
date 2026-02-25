@@ -20,7 +20,6 @@ from unittest.mock import AsyncMock, Mock, patch
 import numpy as np
 import pandas as pd
 import pytest
-from dotenv import load_dotenv
 
 from backend.etl.models.publications import GrowthLabPublication
 from backend.etl.models.tracking import EmbeddingStatus, ProcessingStatus
@@ -31,9 +30,6 @@ from backend.etl.utils.embeddings_generator import (
 )
 from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.storage.local import LocalStorage
-
-# Load environment variables from .env file for integration tests
-load_dotenv(dotenv_path=Path(__file__).parents[2] / "etl" / ".env")
 
 
 @pytest.fixture
@@ -539,7 +535,7 @@ class TestEmbeddingsGeneratorIntegration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_end_to_end_embedding_generation(
-        self, temp_config_dir, tracker_with_test_data
+        self, temp_config_dir, tracker_with_test_data, require_api_keys
     ):
         """Test complete embedding generation workflow with real OpenRouter API."""
         config_path = temp_config_dir / "config.yaml"
@@ -581,7 +577,7 @@ class TestEmbeddingsGeneratorIntegration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_publication_tracker_integration(
-        self, temp_config_dir, tracker_with_test_data
+        self, temp_config_dir, tracker_with_test_data, require_api_keys
     ):
         """Test integration with PublicationTracker status updates."""
         config_path = temp_config_dir / "config.yaml"
@@ -609,7 +605,7 @@ class TestEmbeddingsGeneratorIntegration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_batch_processing_multiple_documents(
-        self, temp_config_dir, test_storage
+        self, temp_config_dir, test_storage, require_api_keys
     ):
         """Test batch processing of multiple documents."""
         config_path = temp_config_dir / "config.yaml"
