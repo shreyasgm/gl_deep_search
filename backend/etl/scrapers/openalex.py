@@ -2,6 +2,7 @@
 OpenAlex API client for fetching academic publications
 """
 
+import ast
 import asyncio
 import json
 import logging
@@ -53,9 +54,12 @@ class OpenAlexClient:
 
     def _build_url(self, cursor: str | None = None) -> str:
         """Build OpenAlex API URL with proper parameters"""
+        # Use removeprefix instead of lstrip to avoid stripping multiple leading A's
+        # (lstrip('A') on "AAB123" would produce "B123" instead of "AB123")
+        author_id_clean = self.author_id.removeprefix("A")
         base_url = (
             f"https://api.openalex.org/works?"
-            f"filter=authorships.author.id:A{self.author_id.lstrip('A')},"
+            f"filter=authorships.author.id:A{author_id_clean},"
             f"primary_location.version:!submittedVersion"
             f"&mailto={self.email}"
         )
@@ -254,11 +258,11 @@ class OpenAlexClient:
             df = pd.read_csv(input_path)
 
             # Convert string representation of lists to actual lists
-            # Process list fields
+            # Process list fields (use ast.literal_eval for safety instead of eval)
             for list_field in ["file_urls", "concepts", "authors"]:
                 if list_field in df.columns:
                     df[list_field] = df[list_field].apply(
-                        lambda x: eval(x)
+                        lambda x: ast.literal_eval(x)
                         if isinstance(x, str) and x.startswith("[")
                         else []
                     )

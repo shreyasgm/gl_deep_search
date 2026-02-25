@@ -258,12 +258,12 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
             error: Optional error message if status indicates failure
 
         Updates attempt count, timestamp, and general last_updated field.
+        Clears error_message on non-error transitions.
         """
         self.download_status = status
         self.download_timestamp = datetime.datetime.now()
         self.download_attempt_count += 1
-        if error:
-            self.error_message = error
+        self.error_message = error
         self.last_updated = datetime.datetime.now()
 
     def update_processing_status(
@@ -279,12 +279,12 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
             error: Optional error message if status indicates failure
 
         Updates attempt count, timestamp, and general last_updated field.
+        Clears error_message on non-error transitions.
         """
         self.processing_status = status
         self.processing_timestamp = datetime.datetime.now()
         self.processing_attempt_count += 1
-        if error:
-            self.error_message = error
+        self.error_message = error
         self.last_updated = datetime.datetime.now()
 
     def update_embedding_status(
@@ -300,12 +300,12 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
             error: Optional error message if status indicates failure
 
         Updates attempt count, timestamp, and general last_updated field.
+        Clears error_message on non-error transitions.
         """
         self.embedding_status = status
         self.embedding_timestamp = datetime.datetime.now()
         self.embedding_attempt_count += 1
-        if error:
-            self.error_message = error
+        self.error_message = error
         self.last_updated = datetime.datetime.now()
 
     def update_ingestion_status(
@@ -321,10 +321,10 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
             error: Optional error message if status indicates failure
 
         Updates attempt count, timestamp, and general last_updated field.
+        Clears error_message on non-error transitions.
         """
         self.ingestion_status = status
         self.ingestion_timestamp = datetime.datetime.now()
         self.ingestion_attempt_count += 1
-        if error:
-            self.error_message = error
+        self.error_message = error
         self.last_updated = datetime.datetime.now()

@@ -4,6 +4,7 @@ Scraper module for the Growth Lab website publications
 Uses curl_cffi for HTTP requests to bypass Cloudflare TLS fingerprinting.
 """
 
+import ast
 import asyncio
 import json
 import logging
@@ -997,12 +998,15 @@ class GrowthLabScraper:
                 }
             )
             # Convert string representation of list to actual list for file_urls
+            # (use ast.literal_eval for safety instead of eval)
             df["file_urls"] = df["file_urls"].apply(
-                lambda x: eval(x) if isinstance(x, str) else []
+                lambda x: ast.literal_eval(x) if isinstance(x, str) else []
             )
             # Convert string representation of list to actual list for authors
             df["authors"] = df["authors"].apply(
-                lambda x: eval(x) if isinstance(x, str) and x.startswith("[") else []
+                lambda x: ast.literal_eval(x)
+                if isinstance(x, str) and x.startswith("[")
+                else []
             )
             publications = [GrowthLabPublication(**row) for _, row in df.iterrows()]
             logger.info(f"Loaded {len(publications)} publications from {input_path}")
