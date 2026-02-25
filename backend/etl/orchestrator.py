@@ -26,11 +26,14 @@ from loguru import logger
 from backend.etl.scrapers.growthlab import GrowthLabScraper
 from backend.etl.utils.embeddings_generator import EmbeddingsGenerator
 from backend.etl.utils.gl_file_downloader import FileDownloader
-from backend.etl.utils.pdf_processor import PDFProcessor, find_growth_lab_pdfs
+from backend.etl.utils.pdf_processor import PDFProcessor, find_pdfs
 from backend.etl.utils.profiling import log_component_metrics, profile_operation
 from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.text_chunker import TextChunker
 from backend.storage.factory import get_storage
+
+# Valid data source names for --sources flag
+VALID_SOURCES = {"growthlab", "openalex", "lectures"}
 
 
 class ComponentStatus(Enum):
@@ -73,6 +76,9 @@ class OrchestrationConfig:
     log_level: str = "INFO"
     dry_run: bool = False
     dev_mode: bool = False
+
+    # Data sources to include (growthlab, openalex, lectures)
+    sources: list[str] = field(default_factory=lambda: ["growthlab"])
 
     # Scraper settings
     skip_scraping: bool = False
@@ -128,20 +134,27 @@ class ETLOrchestrator:
         self.tracker = PublicationTracker()
 
         # Set up logging
-        logger.remove()
-        logger.add(
-            sys.stdout,
-            level=config.log_level,
-            format=(
-                "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-                "<level>{level: <8}</level> | "
-                "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-                "<level>{message}</level>"
-            ),
+        self._log_format = (
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+            "<level>{message}</level>"
         )
+        self._configure_logger()
 
         # Load ETL configuration (applies dev overlay if --dev)
         self.etl_config = self._load_etl_config()
+
+    def _configure_logger(self) -> None:
+        """Configure loguru. Called on init and after components that may
+        import third-party libraries which reset the global logger
+        (e.g. scidownl calls logger.remove() at import time)."""
+        logger.remove()
+        logger.add(
+            sys.stdout,
+            level=self.config.log_level,
+            format=self._log_format,
+        )
 
     def _load_etl_config(self) -> dict[str, Any]:
         """Load ETL configuration from YAML file.
@@ -205,6 +218,7 @@ class ETLOrchestrator:
     async def run_pipeline(self) -> list[ComponentResult]:
         """Execute the complete ETL pipeline."""
         logger.info("Starting ETL pipeline orchestration")
+        logger.info(f"Active sources: {', '.join(self.config.sources)}")
 
         # Enable expandable CUDA memory segments to reduce fragmentation.
         # Uses setdefault so user/sbatch overrides are respected.
@@ -216,23 +230,43 @@ class ETLOrchestrator:
             logger.info("DRY RUN MODE - No actual processing will be performed")
             return await self._simulate_pipeline()
 
-        # Execute components in sequence
-        components = [
-            ("Growth Lab Scraper", self._run_scraper),
-            ("Growth Lab File Downloader", self._run_file_downloader),
-            ("PDF Processor", self._run_pdf_processor),
-            ("Lecture Transcripts Processor", self._run_lecture_transcripts),
-            ("Text Chunker", self._run_text_chunker),
-            ("Embeddings Generator", self._run_embeddings_generator),
-        ]
+        # Build component list based on active sources
+        sources = self.config.sources
+        components: list[tuple[str, Any]] = []
+
+        if "growthlab" in sources:
+            components.append(("Growth Lab Scraper", self._run_scraper))
+            components.append(("Growth Lab File Downloader", self._run_file_downloader))
+
+        if "openalex" in sources:
+            components.append(("OpenAlex Scraper", self._run_openalex_scraper))
+            components.append(
+                ("OpenAlex File Downloader", self._run_openalex_downloader)
+            )
+
+        # PDF processing, chunking, and embeddings always run
+        components.append(("PDF Processor", self._run_pdf_processor))
+
+        if "lectures" in sources:
+            components.append(
+                ("Lecture Transcripts Processor", self._run_lecture_transcripts)
+            )
+
+        components.append(("Text Chunker", self._run_text_chunker))
+        components.append(("Embeddings Generator", self._run_embeddings_generator))
 
         for component_name, component_func in components:
             result = await self._execute_component(component_name, component_func)
             self.results.append(result)
 
-            # Stop on critical failures
+            # Re-configure logger after each component in case a third-party
+            # library (e.g. scidownl) called logger.remove() during import
+            self._configure_logger()
+
+            # Stop on critical failures (scrapers)
             if result.status == ComponentStatus.FAILED and component_name in [
-                "Growth Lab Scraper"
+                "Growth Lab Scraper",
+                "OpenAlex Scraper",
             ]:
                 logger.error(
                     f"Critical component {component_name} failed, stopping pipeline"
@@ -451,6 +485,105 @@ class ETLOrchestrator:
         )
         log_component_metrics("File Downloader", result.metrics)
 
+    async def _run_openalex_scraper(self, result: ComponentResult) -> None:
+        """Execute the OpenAlex scraper component."""
+        if self.config.skip_scraping:
+            result.status = ComponentStatus.SKIPPED
+            logger.info("Skipping OpenAlex scraping as requested")
+            return
+
+        from backend.etl.scrapers.openalex import OpenAlexClient
+
+        with profile_operation("Initialize OpenAlex scraper", include_resources=True):
+            client = OpenAlexClient(config_path=self.config.config_path)
+
+        with profile_operation("Fetch OpenAlex publications", include_resources=True):
+            publications = await client.update_publications(
+                storage=self.storage,
+            )
+
+        result.metrics = {
+            "publications_scraped": len(publications),
+        }
+
+        output_path = self.storage.get_path("intermediate/openalex_publications.csv")
+        result.output_files = [output_path]
+
+        logger.info(f"Scraped {len(publications)} OpenAlex publications")
+        log_component_metrics("OpenAlex Scraper", result.metrics)
+
+    async def _run_openalex_downloader(self, result: ComponentResult) -> None:
+        """Execute the OpenAlex file downloader component."""
+        from backend.etl.utils.oa_file_downloader import (
+            OpenAlexFileDownloader,
+        )
+
+        pub_relative = "intermediate/openalex_publications.csv"
+        if not self.storage.exists(pub_relative):
+            raise FileNotFoundError(
+                f"OpenAlex publications file not found: {pub_relative}"
+            )
+        publications_path = self.storage.download(pub_relative)
+
+        with profile_operation(
+            "Initialize OpenAlex downloader", include_resources=True
+        ):
+            from backend.etl.scrapers.openalex import OpenAlexClient
+
+            client = OpenAlexClient(config_path=self.config.config_path)
+            publications = client.load_from_csv(publications_path)
+
+        if not publications:
+            logger.warning("No OpenAlex publications found in CSV")
+            result.status = ComponentStatus.SKIPPED
+            return
+
+        # Apply download limit
+        pubs_to_download = publications
+        if self.config.download_limit:
+            pubs_to_download = publications[: self.config.download_limit]
+            logger.info(
+                f"Limiting OpenAlex downloads to {len(pubs_to_download)} "
+                f"publications (from {len(publications)} total)"
+            )
+
+        with profile_operation(
+            "Initialize OpenAlex file downloader", include_resources=True
+        ):
+            downloader = OpenAlexFileDownloader(
+                storage=self.storage,
+                concurrency_limit=self.config.download_concurrency,
+                config_path=self.config.config_path,
+            )
+
+        with profile_operation("Download OpenAlex files", include_resources=True):
+            download_results = await downloader.download_publications(
+                pubs_to_download,
+                overwrite=self.config.overwrite_files,
+                limit=self.config.download_limit,
+                progress_bar=True,
+            )
+
+        successful = sum(1 for r in download_results if r.get("success", False))
+        total_size = sum(r.get("file_size", 0) or 0 for r in download_results)
+        oa_downloads = sum(1 for r in download_results if r.get("open_access", False))
+
+        result.metrics = {
+            "total_downloads_attempted": len(download_results),
+            "successful_downloads": successful,
+            "open_access_downloads": oa_downloads,
+            "failed_downloads": len(download_results) - successful,
+            "total_size_bytes": total_size,
+            "total_size_mb": total_size / (1024 * 1024),
+        }
+
+        logger.info(
+            f"Downloaded {successful}/{len(download_results)} OpenAlex files "
+            f"({oa_downloads} via open access, "
+            f"{total_size / (1024 * 1024):.2f} MB)"
+        )
+        log_component_metrics("OpenAlex File Downloader", result.metrics)
+
     async def _run_pdf_processor(self, result: ComponentResult) -> None:
         """Execute the PDF processor component."""
         with profile_operation("Initialize PDF processor", include_resources=True):
@@ -460,10 +593,12 @@ class ETLOrchestrator:
                 tracker=self.tracker,
             )
 
-        # Find downloaded PDF files (includes magic-byte fallback for
-        # files with wrong extensions)
+        # Find PDFs across all active sources that produce PDFs
+        pdf_sources = [s for s in self.config.sources if s in ("growthlab", "openalex")]
         with profile_operation("Find PDF files"):
-            pdf_files = find_growth_lab_pdfs(self.storage)
+            pdf_files: list[Path] = []
+            for source in pdf_sources:
+                pdf_files.extend(find_pdfs(self.storage, source=source))
 
         if not pdf_files:
             logger.warning("No PDF files found, skipping PDF processing")
@@ -509,9 +644,16 @@ class ETLOrchestrator:
         log_component_metrics("PDF Processor", result.metrics)
 
     async def _run_lecture_transcripts(self, result: ComponentResult) -> None:
-        """Execute the lecture transcripts processor component."""
-        # This is a placeholder - the actual implementation would need to be
-        # adapted from the existing run_lecture_transcripts.py script
+        """Execute the lecture transcripts processor component.
+
+        Processes raw lecture transcript .txt files through the OpenAI
+        cleaning and metadata extraction pipeline, then copies the cleaned
+        transcript text into ``processed/documents/lecture_transcripts/`` so
+        the downstream text chunker and embeddings generator pick it up.
+        """
+        from backend.etl.scripts.run_lecture_transcripts import (
+            process_single_transcript,
+        )
 
         transcripts_input = self.config.transcripts_input or self.storage.get_path(
             "raw/lecture_transcripts"
@@ -519,19 +661,77 @@ class ETLOrchestrator:
 
         if not self.storage.exists("raw/lecture_transcripts"):
             logger.warning(
-                "No lecture transcripts found, skipping transcript processing"
+                "No lecture transcripts directory found, skipping transcript processing"
             )
             result.status = ComponentStatus.SKIPPED
             return
 
-        # For now, just simulate processing
+        # Find raw transcript files
+        transcript_files = sorted(Path(transcripts_input).glob("*.txt"))
+        if not transcript_files:
+            logger.warning("No transcript .txt files found, skipping")
+            result.status = ComponentStatus.SKIPPED
+            return
+
+        # Apply limit
+        if self.config.transcripts_limit:
+            transcript_files = transcript_files[: self.config.transcripts_limit]
+            logger.info(f"Limiting to {len(transcript_files)} transcripts (limit set)")
+
+        logger.info(f"Found {len(transcript_files)} lecture transcripts to process")
+
+        # Output directories
+        output_dir = str(self.storage.get_path("processed/lecture_transcripts"))
+        intermediate_dir = str(
+            self.storage.get_path("intermediate/lecture_transcripts")
+        )
+        # Also write cleaned text to processed/documents/ for chunker
+        docs_output = self.storage.get_path("processed/documents/lecture_transcripts")
+        self.storage.ensure_dir(docs_output)
+
+        successful = 0
+        for transcript_path in transcript_files:
+            try:
+                ok = process_single_transcript(
+                    transcript_path,
+                    output_dir,
+                    intermediate_dir,
+                    max_tokens=self.config.max_tokens,
+                )
+                if ok:
+                    successful += 1
+                    # Copy cleaned text to processed/documents/ so chunker finds it
+                    stem = transcript_path.stem
+                    cleaned_path = (
+                        Path(intermediate_dir) / f"lecture_{stem}_cleaned.txt"
+                    )
+                    # Fallback: try extracting lecture number like the script does
+                    if not cleaned_path.exists():
+                        try:
+                            num = int("".join(filter(str.isdigit, stem)))
+                            cleaned_path = (
+                                Path(intermediate_dir)
+                                / f"lecture_{num:02d}_cleaned.txt"
+                            )
+                        except (ValueError, TypeError):
+                            pass
+                    if cleaned_path.exists():
+                        dest = docs_output / f"{stem}.txt"
+                        dest.write_text(cleaned_path.read_text(encoding="utf-8"))
+                        logger.debug(f"Copied cleaned transcript to {dest}")
+            except Exception as e:
+                logger.error(f"Error processing transcript {transcript_path.name}: {e}")
+
         result.metrics = {
-            "transcripts_processed": 0,
-            "note": "Lecture transcript processing not yet implemented in orchestrator",
+            "transcripts_found": len(transcript_files),
+            "transcripts_processed": successful,
+            "transcripts_failed": len(transcript_files) - successful,
         }
 
-        logger.info("Lecture transcript processing skipped - not yet implemented")
-        result.status = ComponentStatus.SKIPPED
+        logger.info(
+            f"Processed {successful}/{len(transcript_files)} lecture transcripts"
+        )
+        log_component_metrics("Lecture Transcripts", result.metrics)
 
     async def _run_text_chunker(self, result: ComponentResult) -> None:
         """Execute the text chunker component."""
@@ -597,8 +797,10 @@ class ETLOrchestrator:
             )
             log_component_metrics("Text Chunker", result.metrics)
 
-            # Mark as failed if no documents were successfully processed
-            if successful_chunks == 0:
+            # Mark as failed only if documents were attempted but none
+            # succeeded. If 0 were processed (all skipped/already chunked),
+            # that's a successful resume, not a failure.
+            if successful_chunks == 0 and len(chunking_results) > 0:
                 result.status = ComponentStatus.FAILED
                 result.error = "No documents were successfully chunked"
 
@@ -691,8 +893,10 @@ class ETLOrchestrator:
             )
             log_component_metrics("Embeddings Generator", result.metrics)
 
-            # Mark as failed if no documents were successfully processed
-            if successful_embeddings == 0:
+            # Mark as failed only if documents were attempted but none
+            # succeeded. If 0 were processed (all skipped/already
+            # embedded), that's a successful resume, not a failure.
+            if successful_embeddings == 0 and len(embedding_results) > 0:
                 result.status = ComponentStatus.FAILED
                 result.error = "No embeddings were successfully generated"
 
@@ -706,14 +910,16 @@ class ETLOrchestrator:
 
     async def _simulate_pipeline(self) -> list[ComponentResult]:
         """Simulate pipeline execution for dry run mode."""
-        components = [
-            "Growth Lab Scraper",
-            "Growth Lab File Downloader",
-            "PDF Processor",
-            "Lecture Transcripts Processor",
-            "Text Chunker",
-            "Embeddings Generator",
-        ]
+        sources = self.config.sources
+        components: list[str] = []
+        if "growthlab" in sources:
+            components += ["Growth Lab Scraper", "Growth Lab File Downloader"]
+        if "openalex" in sources:
+            components += ["OpenAlex Scraper", "OpenAlex File Downloader"]
+        components.append("PDF Processor")
+        if "lectures" in sources:
+            components.append("Lecture Transcripts Processor")
+        components += ["Text Chunker", "Embeddings Generator"]
 
         results = []
         for component in components:
@@ -793,18 +999,20 @@ def create_argument_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run full pipeline
-  python -m backend.etl.orchestrator --config config.yaml
+  # Run full pipeline (Growth Lab only, default)
+  python -m backend.etl.orchestrator
 
-  # Run with custom parameters
-  python -m backend.etl.orchestrator --config config.yaml \\
-    --download-concurrency 5 --download-limit 100
+  # Run OpenAlex pipeline end-to-end in dev mode
+  python -m backend.etl.orchestrator --dev --sources openalex --download-limit 5
 
-  # Skip scraping and use existing data
-  python -m backend.etl.orchestrator --skip-scraping --overwrite-files
+  # Run all sources
+  python -m backend.etl.orchestrator --sources all
+
+  # Run OpenAlex + lectures, skip scraping (use cached CSV)
+  python -m backend.etl.orchestrator --sources openalex lectures --skip-scraping
 
   # Dry run to preview actions
-  python -m backend.etl.orchestrator --dry-run
+  python -m backend.etl.orchestrator --dry-run --sources all
 
   # Lightweight dev mode (small embedding model + fast PDF extraction)
   python -m backend.etl.orchestrator --dev --skip-scraping --download-limit 3
@@ -839,6 +1047,15 @@ Examples:
             "Enable dev mode: merges config.dev.yaml overrides on top of "
             "the base config for lightweight local iteration "
             "(small embedding model + fast PDF extraction)"
+        ),
+    )
+    parser.add_argument(
+        "--sources",
+        nargs="+",
+        default=["growthlab"],
+        help=(
+            "Data sources to include: growthlab, openalex, lectures, or all. "
+            "Multiple can be specified. (default: growthlab)"
         ),
     )
 
@@ -927,6 +1144,18 @@ async def main() -> None:
     parser = create_argument_parser()
     args = parser.parse_args()
 
+    # Expand "all" in sources list
+    sources = args.sources
+    if "all" in sources:
+        sources = sorted(VALID_SOURCES)
+    else:
+        invalid = set(sources) - VALID_SOURCES
+        if invalid:
+            parser.error(
+                f"Invalid source(s): {', '.join(invalid)}. "
+                f"Valid: {', '.join(sorted(VALID_SOURCES))}, all"
+            )
+
     # Create configuration from arguments
     config = OrchestrationConfig(
         config_path=args.config,
@@ -934,6 +1163,7 @@ async def main() -> None:
         log_level=args.log_level,
         dry_run=args.dry_run,
         dev_mode=args.dev,
+        sources=sources,
         skip_scraping=args.skip_scraping,
         scraper_concurrency=args.scraper_concurrency,
         scraper_delay=args.scraper_delay,

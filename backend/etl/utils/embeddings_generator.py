@@ -192,6 +192,24 @@ class EmbeddingsGenerator:
         start_time = time.time()
 
         try:
+            # Skip early if embeddings already exist
+            emb_dir = self._resolve_output_relative(document_id, storage)
+            if emb_dir and storage:
+                emb_rel = f"{emb_dir}/embeddings.parquet"
+                meta_rel = f"{emb_dir}/metadata.json"
+                if storage.exists(emb_rel) and storage.exists(meta_rel):
+                    logger.info(f"Embeddings already exist for {document_id}, skipping")
+                    return EmbeddingResult(
+                        document_id=document_id,
+                        source_path=Path(emb_rel),
+                        embeddings=[],
+                        total_embeddings=0,
+                        processing_time=time.time() - start_time,
+                        api_calls=0,
+                        total_tokens=0,
+                        status=EmbeddingGenerationStatus.SUCCESS,
+                    )
+
             # Load chunks from JSON
             chunks_path = self._resolve_chunks_path(document_id, storage)
             if not chunks_path or not chunks_path.exists():
@@ -550,6 +568,42 @@ class EmbeddingsGenerator:
             pass
         return f"processed/embeddings/{document_id}"
 
+    def _discover_documents_from_chunks(
+        self,
+        storage,
+        limit: int | None = None,
+    ) -> list[str]:
+        """Discover document IDs by scanning chunk files on disk.
+
+        Returns document IDs that have chunks but no existing embeddings.
+        """
+        chunk_relatives = storage.glob("processed/chunks/**/chunks.json")
+
+        # Build set of already-embedded document IDs from parquet paths
+        embedded_ids: set[str] = set()
+        for rel in storage.glob("processed/embeddings/**/embeddings.parquet"):
+            parts = Path(rel).parts
+            if len(parts) >= 2:
+                embedded_ids.add(parts[-2])
+
+        seen: set[str] = set()
+        doc_ids: list[str] = []
+        for rel in chunk_relatives:
+            # Extract the document_id from the path
+            # e.g. processed/chunks/documents/openalex/W123/chunks.json → W123
+            parts = Path(rel).parts
+            if len(parts) >= 2:
+                doc_id = parts[-2]  # parent directory of chunks.json
+                if doc_id in seen:
+                    continue
+                seen.add(doc_id)
+                if doc_id not in embedded_ids:
+                    doc_ids.append(doc_id)
+
+        if limit:
+            doc_ids = doc_ids[:limit]
+        return doc_ids
+
     def _resolve_chunks_path(self, document_id: str, storage) -> Path | None:
         """Resolve path to chunks.json for a document.
 
@@ -688,7 +742,26 @@ class EmbeddingsGenerator:
                 publications = tracker.get_publications_for_embedding(limit=limit)
 
             if not publications:
-                logger.info("No documents found for embedding generation")
+                # Fallback: discover document IDs from chunk files on disk.
+                # This handles sources (e.g. OpenAlex) that don't register
+                # publications in the tracker.
+                discovered = self._discover_documents_from_chunks(storage, limit=limit)
+                if not discovered:
+                    logger.info("No documents found for embedding generation")
+                    return results
+
+                logger.info(
+                    f"Tracker had no eligible publications; discovered "
+                    f"{len(discovered)} documents from chunk files"
+                )
+                for doc_id in discovered:
+                    try:
+                        result = await self.generate_embeddings_for_document(
+                            document_id=doc_id, storage=storage
+                        )
+                        results.append(result)
+                    except Exception as e:
+                        logger.error(f"Error processing {doc_id}: {e}")
                 return results
 
             logger.info(f"Processing {len(publications)} documents for embeddings")

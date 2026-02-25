@@ -494,36 +494,43 @@ class FileDownloader:
         except (ValueError, TypeError):
             file_exists_in_storage = destination.exists()
 
-        if file_exists_in_storage and not overwrite and not resume:
-            # Download locally if needed (for validation)
+        # When resume=True, still skip if the file looks complete (>min size)
+        if file_exists_in_storage and not overwrite:
+            # Download locally if needed (for validation / size check)
             if not destination.exists():
                 try:
                     self.storage.download(relative_path)
                 except Exception:
                     pass
-            logger.info(f"File {destination} already exists, skipping download")
 
-            # Still validate the existing file
-            content_type = (
-                mimetypes.guess_type(str(destination))[0] or "application/octet-stream"
-            )
-            validation_result = await self._validate_downloaded_file(
-                destination, expected_content_type=content_type
-            )
+            if destination.exists():
+                file_size = destination.stat().st_size
+                if not resume or file_size >= self.min_file_size:
+                    logger.info(
+                        f"File {destination} already exists "
+                        f"({file_size} bytes), skipping download"
+                    )
 
-            # Update statistics
-            self.download_stats["total_attempted"] += 1
-            self.download_stats["cached"] += 1
+                    content_type = (
+                        mimetypes.guess_type(str(destination))[0]
+                        or "application/octet-stream"
+                    )
+                    validation_result = await self._validate_downloaded_file(
+                        destination, expected_content_type=content_type
+                    )
 
-            return DownloadResult(
-                url=url,
-                success=validation_result["is_valid"],
-                file_path=destination,
-                file_size=destination.stat().st_size,
-                content_type=content_type,
-                cached=True,
-                validation_info=validation_result,
-            )
+                    self.download_stats["total_attempted"] += 1
+                    self.download_stats["cached"] += 1
+
+                    return DownloadResult(
+                        url=url,
+                        success=validation_result["is_valid"],
+                        file_path=destination,
+                        file_size=file_size,
+                        content_type=content_type,
+                        cached=True,
+                        validation_info=validation_result,
+                    )
 
         # Get curl_cffi session
         session = await self._get_session()

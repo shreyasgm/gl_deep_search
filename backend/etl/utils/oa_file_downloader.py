@@ -24,7 +24,6 @@ from urllib.parse import urlparse
 import aiofiles
 import aiohttp
 import tqdm.asyncio
-from scidownl import scihub_download
 
 from backend.etl.models.publications import OpenAlexPublication
 from backend.etl.scrapers.openalex import OpenAlexClient
@@ -644,7 +643,10 @@ class OpenAlexFileDownloader:
             # Configure proxies if needed
             proxies = self.config.get("proxies", None)
 
-            # Download the paper
+            # Download the paper (import deferred to avoid scidownl
+            # calling logger.remove() at module level)
+            from scidownl import scihub_download
+
             logger.info(f"Downloading paper with scidownl: {doi}")
             scihub_download(
                 keyword=doi, paper_type="doi", out=str(destination), proxies=proxies
@@ -834,31 +836,36 @@ class OpenAlexFileDownloader:
         Returns:
             DownloadResult with information about the download
         """
-        # Check if file already exists and skip if not overwriting
-        if destination.exists() and not overwrite and not resume:
-            logger.info(f"File {destination} already exists, skipping download")
+        # Check if file already exists and skip if not overwriting.
+        # When resume=True, still skip if the file looks complete (>min size).
+        if destination.exists() and not overwrite:
+            file_size = destination.stat().st_size
+            if not resume or file_size >= self.min_file_size:
+                logger.info(
+                    f"File {destination} already exists "
+                    f"({file_size} bytes), skipping download"
+                )
 
-            # Still validate the existing file
-            content_type = (
-                mimetypes.guess_type(str(destination))[0] or "application/octet-stream"
-            )
-            validation_result = await self._validate_downloaded_file(
-                destination, expected_content_type=content_type
-            )
+                content_type = (
+                    mimetypes.guess_type(str(destination))[0]
+                    or "application/octet-stream"
+                )
+                validation_result = await self._validate_downloaded_file(
+                    destination, expected_content_type=content_type
+                )
 
-            # Update statistics
-            self.download_stats["total_attempted"] += 1
-            self.download_stats["cached"] += 1
+                self.download_stats["total_attempted"] += 1
+                self.download_stats["cached"] += 1
 
-            return DownloadResult(
-                url=url,
-                success=validation_result["is_valid"],
-                file_path=destination,
-                file_size=destination.stat().st_size,
-                content_type=content_type,
-                cached=True,
-                validation_info=validation_result,
-            )
+                return DownloadResult(
+                    url=url,
+                    success=validation_result["is_valid"],
+                    file_path=destination,
+                    file_size=file_size,
+                    content_type=content_type,
+                    cached=True,
+                    validation_info=validation_result,
+                )
 
         # Get aiohttp session
         session = await self._get_session()

@@ -754,7 +754,7 @@ class TestDownloadWithScidownl:
             Path(out).write_bytes(b"%PDF-1.5\n" + b"\x00" * 100)
 
         with patch(
-            "backend.etl.utils.oa_file_downloader.scihub_download",
+            "scidownl.scihub_download",
             side_effect=fake_scihub_download,
         ):
             result = await downloader._download_file_with_scidownl(
@@ -772,7 +772,7 @@ class TestDownloadWithScidownl:
         dest = tmp_path / "paper.pdf"
 
         with patch(
-            "backend.etl.utils.oa_file_downloader.scihub_download",
+            "scidownl.scihub_download",
             side_effect=RuntimeError("SciHub unavailable"),
         ):
             result = await downloader._download_file_with_scidownl(
@@ -869,7 +869,7 @@ class TestDownloadFileOrchestration:
 
         with (
             patch(
-                "backend.etl.utils.oa_file_downloader.scihub_download",
+                "scidownl.scihub_download",
                 side_effect=fake_scihub,
             ),
             patch(
@@ -967,7 +967,7 @@ class TestDownloadFileOrchestration:
 
         with (
             patch(
-                "backend.etl.utils.oa_file_downloader.scihub_download",
+                "scidownl.scihub_download",
                 side_effect=fake_scihub,
             ),
             patch(

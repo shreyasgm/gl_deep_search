@@ -298,17 +298,23 @@ class TestETLOrchestrator:
             config_path = Path(tmp_dir) / "config.yaml"
             config_path.write_text("test_config: true")
 
-            config = OrchestrationConfig(config_path=config_path, dry_run=True)
+            config = OrchestrationConfig(
+                config_path=config_path,
+                dry_run=True,
+                sources=["growthlab", "openalex", "lectures"],
+            )
 
             with patch("backend.etl.orchestrator.logger"):
                 orchestrator = ETLOrchestrator(config)
 
                 results = await orchestrator._simulate_pipeline()
 
-                assert len(results) == 6  # Six components (added Embeddings Generator)
+                assert len(results) == 8  # All sources + shared components
                 component_names = [r.component_name for r in results]
                 assert "Growth Lab Scraper" in component_names
                 assert "Growth Lab File Downloader" in component_names
+                assert "OpenAlex Scraper" in component_names
+                assert "OpenAlex File Downloader" in component_names
                 assert "PDF Processor" in component_names
                 assert "Lecture Transcripts Processor" in component_names
                 assert "Text Chunker" in component_names

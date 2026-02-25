@@ -107,18 +107,25 @@ class PDFProcessor:
     def _get_processed_relative(self, raw_file_path: Path) -> str:
         """Return the storage-relative path for the processed output.
 
-        E.g. ``"processed/documents/growthlab/<pub_id>/<stem>.txt"``.
+        Derives the source directory (growthlab, openalex, …) from the input
+        path so that each source's outputs stay in their own tree.
+
+        E.g. ``"processed/documents/growthlab/<pub_id>/<stem>.txt"``
+             ``"processed/documents/openalex/<pub_id>/<stem>.txt"``
         """
         try:
             relative_path = raw_file_path.relative_to(
                 self.storage.get_path("raw/documents")
             )
-            pub_id = relative_path.parts[1]  # growthlab, <publication_id>, <filename>
+            # parts[0] = source dir (growthlab, openalex, …)
+            # parts[1] = publication_id
+            source = relative_path.parts[0]
+            pub_id = relative_path.parts[1]
             base_name = raw_file_path.stem
-            return f"{self.processed_root}/{pub_id}/{base_name}.txt"
-        except ValueError:
+            return f"processed/documents/{source}/{pub_id}/{base_name}.txt"
+        except (ValueError, IndexError):
             file_hash = hashlib.md5(str(raw_file_path).encode()).hexdigest()[:8]
-            return f"{self.processed_root}/unknown/{file_hash}.txt"
+            return f"processed/documents/unknown/{file_hash}.txt"
 
     def _get_processed_path(self, raw_file_path: Path) -> Path:
         """
@@ -354,6 +361,55 @@ class PDFProcessor:
         )
 
         return results
+
+
+def find_pdfs(
+    storage: StorageBase | None = None,
+    source: str | None = None,
+) -> list[Path]:
+    """Find PDF files in raw storage, optionally filtered by source.
+
+    Args:
+        storage: Storage backend to use.
+        source: Restrict to a specific source directory (e.g. ``"growthlab"``,
+            ``"openalex"``).  When ``None``, searches all subdirectories of
+            ``raw/documents/``.
+
+    Returns:
+        List of local PDF file paths ready for processing.
+    """
+    storage = storage or get_storage()
+
+    base_dir = f"raw/documents/{source}" if source else "raw/documents"
+    if not storage.exists(base_dir):
+        logger.warning(f"Documents directory not found in storage: {base_dir}")
+        return []
+
+    # Find .pdf files
+    pdf_relatives = storage.glob(f"{base_dir}/**/*.pdf")
+    pdf_files: list[Path] = []
+    for rel in pdf_relatives:
+        local_path = storage.download(rel)
+        pdf_files.append(local_path)
+
+    # Also check files without .pdf extension for PDF magic bytes
+    all_relatives = storage.glob(f"{base_dir}/**/*")
+    pdf_rel_set = set(pdf_relatives)
+    for rel in all_relatives:
+        if rel in pdf_rel_set or rel.lower().endswith(".pdf"):
+            continue
+        local_path = storage.download(rel)
+        if local_path.is_file():
+            try:
+                with open(local_path, "rb") as fh:
+                    if fh.read(5) == b"%PDF-":
+                        pdf_files.append(local_path)
+                        logger.info(f"Found PDF with wrong extension: {rel}")
+            except (OSError, PermissionError):
+                pass
+
+    logger.info(f"Found {len(pdf_files)} PDF files in {base_dir}")
+    return pdf_files
 
 
 def find_growth_lab_pdfs(storage: StorageBase | None = None) -> list[Path]:

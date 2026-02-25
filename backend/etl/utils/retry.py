@@ -7,7 +7,7 @@ Provides retry mechanisms with exponential backoff for async operations.
 import asyncio
 import logging
 import random
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ T = TypeVar("T")
 
 
 async def retry_with_backoff(
-    func: Callable[..., T],
+    func: Callable[..., Awaitable[T]],
     *args,
     max_retries: int = 5,
     base_delay: float = 1.0,

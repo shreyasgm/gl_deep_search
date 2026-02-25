@@ -159,7 +159,10 @@ def extract_lecture_metadata(
 
 
 def process_single_transcript(
-    file_path: Path, output_dir: str, intermediate_dir: str | None = None
+    file_path: Path,
+    output_dir: str,
+    intermediate_dir: str | None = None,
+    max_tokens: int | None = None,
 ) -> bool:
     """
     Process a single transcript file and save the structured result to output directory.
@@ -169,6 +172,7 @@ def process_single_transcript(
         file_path (Path): Path to the raw transcript file.
         output_dir (str): Directory to save processed transcript file.
         intermediate_dir (str): Directory to save cleaned transcripts.
+        max_tokens (int | None): Limit transcript to first N tokens (for testing).
 
     """
     try:
@@ -217,7 +221,6 @@ def process_single_transcript(
                 transcript_text = f.read()
 
             # Apply max_tokens limit if specified
-            max_tokens = getattr(args, "max_tokens", None)
             if max_tokens and max_tokens > 0:
                 # Use tiktoken for accurate token counting
                 encoding = tiktoken.encoding_for_model("gpt-4")
@@ -317,7 +320,9 @@ if __name__ == "__main__":
         # Process just one specific file
         file_path = Path(input_dir) / args.single
         if file_path.exists():
-            process_single_transcript(file_path, output_dir, intermediate_dir)
+            process_single_transcript(
+                file_path, output_dir, intermediate_dir, max_tokens=args.max_tokens
+            )
         else:
             logger.error(f"File {file_path} not found")
     else:
@@ -333,7 +338,9 @@ if __name__ == "__main__":
         successful = 0
         for i, file_path in enumerate(transcript_files, 1):
             logger.info(f"\nProcessing file {i}/{len(transcript_files)}")
-            result = process_single_transcript(file_path, output_dir, intermediate_dir)
+            result = process_single_transcript(
+                file_path, output_dir, intermediate_dir, max_tokens=args.max_tokens
+            )
             if result:
                 successful += 1
 
