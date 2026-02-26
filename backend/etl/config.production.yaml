@@ -52,19 +52,21 @@ gl_file_downloader:
 # File processing
 file_processing:
   ocr:
-    default_model: "docling"  # Options: docling, marker, gemini_flash
+    default_model: "unstructured"  # Lightweight pdfminer-based extraction (no torch needed)
     max_concurrent: 4
     chunk_size: 1000
     chunk_overlap: 200
     language_detection_pages: 5
     max_pages: 250            # Skip PDFs longer than this (0 = no limit)
 
-    marker:
-      force_ocr: true
+    unstructured:
+      strategy: "fast"        # pdfminer-based, no ML models
+      languages: ["eng"]
+      extract_images: false
 
   embedding:
-    model: "sentence_transformer"  # Options: openrouter, sentence_transformer
-    model_name: "Qwen/Qwen3-Embedding-8B"
+    model: "openrouter"       # API-based embeddings (no torch needed)
+    model_name: "qwen/qwen3-embedding-8b"  # lowercase = OpenRouter format
     dimensions: 1024               # MRL truncation from native 4096; changing requires full re-embedding
     max_tokens: 32768              # Qwen3-Embedding-8B context window
     batch_size: 32

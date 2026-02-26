@@ -27,12 +27,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
-    uv sync --locked --no-dev --no-install-project --extra etl
+    uv sync --locked --no-dev --no-install-project --extra etl-lite
 
 # Copy project code and install the project itself
 COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --extra etl
+    uv sync --locked --no-dev --extra etl-lite
 
 # ==============================================================================
 # Stage 2: Runtime - Minimal production image

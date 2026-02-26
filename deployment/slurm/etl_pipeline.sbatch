@@ -4,14 +4,15 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=100G
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=logs/etl_pipeline_%j.out
 #SBATCH --error=logs/etl_pipeline_%j.err
 # Resource notes:
 #   --mem is CPU RAM only (not GPU VRAM). GPU VRAM is determined by hardware.
 #   On the gpu partition, all nodes have A100s (40-80GB VRAM), which is 3-5x
 #   what Marker needs (~8-14GB peak). No need to constrain GPU type.
-#   Increase --time if processing >50 publications.
+#   12h allows for full production runs (scraping + Marker + Qwen3 on hundreds
+#   of papers). For test runs, the job will finish much sooner.
 
 # Growth Lab Deep Search - Full ETL Pipeline via Singularity
 #
@@ -19,11 +20,15 @@
 # Uses Singularity with GPU passthrough for Marker PDF processing.
 #
 # Usage:
-#   # Test run (10 publications):
+#   # Full production run (all sources, no limits):
 #   sbatch deployment/slurm/etl_pipeline.sbatch
 #
-#   # Override limits via environment variables:
-#   SCRAPER_LIMIT=50 DOWNLOAD_LIMIT=50 sbatch deployment/slurm/etl_pipeline.sbatch
+#   # Test run with limits:
+#   SCRAPER_LIMIT=10 DOWNLOAD_LIMIT=10 sbatch deployment/slurm/etl_pipeline.sbatch
+#
+#   # Run specific sources:
+#   SOURCES=lectures sbatch deployment/slurm/etl_pipeline.sbatch
+#   SOURCES="openalex lectures" sbatch deployment/slurm/etl_pipeline.sbatch
 #
 #   # Skip scraping (use existing data):
 #   SKIP_SCRAPING=1 sbatch deployment/slurm/etl_pipeline.sbatch
@@ -40,8 +45,9 @@ PROJECT_DIR="${PROJECT_DIR:-/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_
 SIF_IMAGE="${PROJECT_DIR}/deployment/slurm/gl-pdf-processing.sif"
 CONFIG_FILE="backend/etl/config.yaml"
 
-SCRAPER_LIMIT="${SCRAPER_LIMIT:-10}"
-DOWNLOAD_LIMIT="${DOWNLOAD_LIMIT:-10}"
+SOURCES="${SOURCES:-all}"
+SCRAPER_LIMIT="${SCRAPER_LIMIT:-}"
+DOWNLOAD_LIMIT="${DOWNLOAD_LIMIT:-}"
 SKIP_SCRAPING="${SKIP_SCRAPING:-0}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
@@ -52,8 +58,9 @@ echo "Node:          $(hostname)"
 echo "GPUs:          ${CUDA_VISIBLE_DEVICES:-none}"
 echo "CPUs:          $SLURM_CPUS_PER_TASK"
 echo "Memory:        ${SLURM_MEM_PER_NODE:-unknown} MB"
-echo "Scraper limit: $SCRAPER_LIMIT"
-echo "Download limit:$DOWNLOAD_LIMIT"
+echo "Sources:       $SOURCES"
+echo "Scraper limit: ${SCRAPER_LIMIT:-unlimited}"
+echo "Download limit:${DOWNLOAD_LIMIT:-unlimited}"
 echo "Skip scraping: $SKIP_SCRAPING"
 echo "Start:         $(date)"
 echo "========================"
@@ -135,10 +142,12 @@ CMD_ARGS=(
     python -m backend.etl.orchestrator
     --config "$CONFIG_FILE"
     --storage-type local
-    --scraper-limit "$SCRAPER_LIMIT"
-    --download-limit "$DOWNLOAD_LIMIT"
+    --sources ${SOURCES}
     --log-level "$LOG_LEVEL"
 )
+
+if [[ -n "$SCRAPER_LIMIT" ]]; then CMD_ARGS+=(--scraper-limit "$SCRAPER_LIMIT"); fi
+if [[ -n "$DOWNLOAD_LIMIT" ]]; then CMD_ARGS+=(--download-limit "$DOWNLOAD_LIMIT"); fi
 
 if [[ "$SKIP_SCRAPING" == "1" ]]; then
     CMD_ARGS+=(--skip-scraping)
@@ -158,6 +167,7 @@ singularity exec --nv --writable-tmpfs --pwd /app \
     --env MODEL_CACHE_DIR="$LOCAL_WORK/.model_cache" \
     --env HF_HOME="$LOCAL_WORK/.model_cache" \
     --env TRANSFORMERS_CACHE="$LOCAL_WORK/.model_cache" \
+    --env PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True" \
     --env OMP_NUM_THREADS=2 \
     --env MKL_NUM_THREADS=2 \
     --env OPENBLAS_NUM_THREADS=2 \

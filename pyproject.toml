@@ -43,8 +43,8 @@ Repository = "https://github.com/shreyasgm/gl-deep-search"
 "Bug Tracker" = "https://github.com/shreyasgm/gl-deep-search/issues"
 
 [project.optional-dependencies]
-# ETL pipeline dependencies
-etl = [
+# Lightweight ETL dependencies (for Cloud Run — no torch/ML models)
+etl-lite = [
     # Web scraping
     "beautifulsoup4",
     "requests",
@@ -56,25 +56,33 @@ etl = [
     "aiofiles",
     "scidownl>=1.0.2",
     "curl_cffi>=0.7.0",  # Browser TLS fingerprint impersonation for Cloudflare bypass
-    # PDF processing and OCR
+    # Lightweight PDF text extraction (no ML models)
     "langdetect",
-    "unstructured[all-docs]",
-    "docling",
-    "marker-pdf>=1.0.0",
-    # Vector databases and embeddings
+    "unstructured",
+    "pdfminer.six>=20211012",
+    # Embeddings via OpenRouter (uses openai SDK) and vector DB
     "qdrant-client",
-    "sentence-transformers",
     "openai",
-    "cohere",
     # Data
     "pandas",
     "numpy",
-    "seaborn",
+    "tiktoken>=0.9.0",
+    "pyarrow",
     # Cloud storage
     "google-cloud-storage",
-    "tiktoken>=0.9.0",
-    "pdfminer.six>=20211012",
-    "pyarrow",
+]
+
+# Full ETL dependencies (for SLURM — includes torch/ML models)
+etl = [
+    "gl-deep-search[etl-lite]",
+    # Heavy PDF processing backends (pull in torch)
+    "unstructured[all-docs]",
+    "docling",
+    "marker-pdf>=1.0.0",
+    # Local embedding models (pull in torch)
+    "sentence-transformers",
+    # Visualization (benchmarks/reports)
+    "seaborn",
 ]
 
 # Backend service dependencies
