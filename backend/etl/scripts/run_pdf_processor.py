@@ -75,6 +75,15 @@ def main():
     parser.add_argument(
         "--no-progress", action="store_true", help="Disable progress display"
     )
+    parser.add_argument(
+        "--max-pdfs",
+        type=int,
+        default=None,
+        help=(
+            "Maximum number of PDFs to process (default: None = all PDFs). "
+            "Overrides file_processing.ocr.max_pdfs from config when provided."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -91,6 +100,8 @@ def main():
         storage=storage,
         force_reprocess=args.force_reprocess,
         config_path=Path(args.config) if args.config else None,
+        max_pdfs=args.max_pdfs,
+        show_progress=not args.no_progress,
     )
 
     # Generate summary
