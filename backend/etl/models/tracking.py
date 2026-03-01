@@ -86,6 +86,22 @@ class IngestionStatus(str, Enum):
     FAILED = "Failed"
 
 
+class TaggingStatus(str, Enum):
+    """
+    Enum defining possible states for the document tagging stage.
+
+    PENDING: Chunked document waiting to be tagged
+    IN_PROGRESS: Tag generation currently in progress
+    TAGGED: Document successfully tagged with metadata
+    FAILED: Tag generation failed
+    """
+
+    PENDING = "Pending"
+    IN_PROGRESS = "In Progress"
+    TAGGED = "Tagged"
+    FAILED = "Failed"
+
+
 class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
     """
     SQLModel representing the database table for tracking publications
@@ -163,6 +179,19 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
     ingestion_timestamp: datetime.datetime | None = None
     # Number of ingestion attempts (for retry logic)
     ingestion_attempt_count: int = Field(default=0)
+
+    # --- Tagging stage tracking ---
+    # Current tagging status
+    tagging_status: TaggingStatus = Field(default=TaggingStatus.PENDING)
+    # When last tagging attempt was made
+    tagging_timestamp: datetime.datetime | None = None
+    # Number of tagging attempts (for retry logic)
+    tagging_attempt_count: int = Field(default=0)
+    # Document-level tags stored as JSON dict with taxonomy keys
+    tags_json: str | None = Field(
+        sa_column=sa.Column("tags", sa.Text),
+        default=None,
+    )
 
     # --- General tracking fields ---
     # Automatically updated timestamp for any record modification
@@ -326,5 +355,25 @@ class PublicationTracking(SQLModel, table=True):  # type: ignore[call-arg]
         self.ingestion_status = status
         self.ingestion_timestamp = datetime.datetime.now()
         self.ingestion_attempt_count += 1
+        self.error_message = error
+        self.last_updated = datetime.datetime.now()
+
+    def update_tagging_status(
+        self,
+        status: TaggingStatus,
+        error: str | None = None,
+    ):
+        """
+        Update tagging status with automatic timestamp tracking.
+
+        Args:
+            status: New tagging status to set
+            error: Optional error message if status indicates failure
+
+        Updates attempt count, timestamp, and general last_updated field.
+        """
+        self.tagging_status = status
+        self.tagging_timestamp = datetime.datetime.now()
+        self.tagging_attempt_count += 1
         self.error_message = error
         self.last_updated = datetime.datetime.now()
