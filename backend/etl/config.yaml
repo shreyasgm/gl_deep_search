@@ -92,7 +92,50 @@ file_processing:
       - "^#{1,6}\\s+"              # markdown headers
       - "^\\d+\\.\\s+"             # numbered lists
       - "^[A-Z][A-Z\\s]+:"         # section labels like "INTRODUCTION:"
-
+  tagging:
+    enabled: true
+    abstract_min_length: 100       # chars; below this, fall back to chunk sampling
+    num_fallback_chunks: 3         # number of chunks to sample when abstract is missing
+    llm:
+      provider: "openai"           # Options: openai, openrouter
+      model: "gpt-4o-mini"
+      temperature: 0.1
+      max_tokens: 500
+    taxonomy:
+      regions:
+        - "Latin America"
+        - "Sub-Saharan Africa"
+        - "East Asia"
+        - "South Asia"
+        - "Middle East & North Africa"
+        - "Eastern Europe & Central Asia"
+        - "Global / Cross-regional"
+      topics:
+        - "economic complexity"
+        - "growth diagnostics"
+        - "trade policy"
+        - "labor markets"
+        - "fiscal policy"
+        - "industrial policy"
+        - "migration"
+        - "education"
+        - "energy"
+        - "agriculture"
+        - "financial markets"
+        - "institutions & governance"
+      document_type:
+        - "working paper"
+        - "policy brief"
+        - "report"
+        - "book chapter"
+        - "journal article"
+        - "lecture"
+      methodology:
+        - "empirical"
+        - "theoretical"
+        - "case study"
+        - "mixed methods"
+        - "data analysis"
 # Storage
 storage:
   vector_db:
