@@ -30,3 +30,6 @@ file_processing:
     chunk_size: 100                  # ~100 tokens — safe for 256 token limit
     chunk_overlap: 20
     max_chunk_size: 200              # Hard cap: clamped to min(200, 256-100) = 156
+
+  tagging:
+    max_docs: 10                     # Limit tagging to 10 documents in dev mode
