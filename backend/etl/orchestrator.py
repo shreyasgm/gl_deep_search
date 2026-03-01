@@ -25,6 +25,7 @@ from loguru import logger
 
 from backend.etl.scrapers.growthlab import GrowthLabScraper
 from backend.etl.utils.embeddings_generator import EmbeddingsGenerator
+from backend.etl.utils.document_tagger import DocumentTagger
 from backend.etl.utils.gl_file_downloader import FileDownloader
 from backend.etl.utils.pdf_processor import PDFProcessor, find_pdfs
 from backend.etl.utils.profiling import log_component_metrics, profile_operation
@@ -253,6 +254,7 @@ class ETLOrchestrator:
             )
 
         components.append(("Text Chunker", self._run_text_chunker))
+        components.append(("Document Tagger", self._run_document_tagger))
         components.append(("Embeddings Generator", self._run_embeddings_generator))
 
         for component_name, component_func in components:
@@ -808,6 +810,74 @@ class ETLOrchestrator:
             result.status = ComponentStatus.FAILED
             result.error = str(e)
             logger.error(f"Text chunking failed: {e}")
+            raise
+
+    async def _run_document_tagger(self, result: ComponentResult) -> None:
+        """Execute the document tagger component."""
+        tagging_config = self.etl_config.get("file_processing", {}).get("tagging", {})
+        if not tagging_config.get("enabled", True):
+            logger.info("Document tagging is disabled in configuration")
+            result.status = ComponentStatus.SKIPPED
+            return
+
+        if not self.storage.exists("processed/chunks"):
+            logger.warning("No chunks directory found, skipping document tagging")
+            result.status = ComponentStatus.SKIPPED
+            return
+
+        with profile_operation("Find chunk files for tagging"):
+            chunk_relatives = self.storage.glob("processed/chunks/**/chunks.json")
+
+        if not chunk_relatives:
+            logger.warning("No chunk files found, skipping document tagging")
+            result.status = ComponentStatus.SKIPPED
+            return
+
+        with profile_operation("Initialize document tagger", include_resources=True):
+            tagger = DocumentTagger(
+                config_path=self.config.config_path,
+                tracker=self.tracker,
+            )
+
+        try:
+            with profile_operation("Tag all documents", include_resources=True):
+                tagging_results = await tagger.process_all_documents(
+                    storage=self.storage
+                )
+
+            from backend.etl.models.tracking import TaggingStatus
+
+            successful = sum(
+                1 for r in tagging_results if r.status == TaggingStatus.TAGGED
+            )
+            failed = sum(
+                1 for r in tagging_results if r.status == TaggingStatus.FAILED
+            )
+            total_chunks_tagged = sum(r.chunks_tagged for r in tagging_results)
+            total_processing_time = sum(r.processing_time for r in tagging_results)
+
+            result.metrics = {
+                "documents_processed": len(tagging_results),
+                "successful_documents": successful,
+                "failed_documents": failed,
+                "total_chunks_tagged": total_chunks_tagged,
+                "total_processing_time": total_processing_time,
+            }
+
+            logger.info(
+                f"Document tagging completed: {successful}/{len(tagging_results)} "
+                f"documents tagged ({total_chunks_tagged} chunks updated)"
+            )
+            log_component_metrics("Document Tagger", result.metrics)
+
+            if failed > 0 and successful == 0 and len(tagging_results) > 0:
+                result.status = ComponentStatus.FAILED
+                result.error = "No documents were successfully tagged"
+
+        except Exception as e:
+            result.status = ComponentStatus.FAILED
+            result.error = str(e)
+            logger.error(f"Document tagging failed: {e}")
             raise
 
     async def _run_embeddings_generator(self, result: ComponentResult) -> None:
