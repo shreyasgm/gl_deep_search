@@ -189,6 +189,31 @@ else
 fi
 echo "Staging complete. Local scratch usage: $(du -sh "$LOCAL_WORK" | cut -f1)"
 
+# ── Make scidownl's package directory writable ───────────────────────
+# scidownl stores its SQLite DB *inside its own package directory*
+# (scidownl/db/entities.py computes <site-packages>/scidownl/scidownl.db) and
+# the file does not ship with the package. That directory is read-only in a
+# .sif, so `import scidownl` raises at import time and every non-open-access
+# download fails with "unable to open database file" — 250 of them in the
+# 2026-08-21 production run. Binding just the DB file is not enough, because
+# SQLite also writes journal files into the same directory. So copy the whole
+# package out to scratch and bind it back over the original path.
+# --writable-tmpfs does not cover this path.
+SCIDOWNL_PKG="$(singularity exec "$LOCAL_SIF" python -c 'import importlib.util, os; spec = importlib.util.find_spec("scidownl"); print(os.path.dirname(spec.origin))' 2>/dev/null || true)"
+SCIDOWNL_BIND=()
+if [[ -n "$SCIDOWNL_PKG" ]]; then
+    SCIDOWNL_RW="$LOCAL_WORK/scidownl_rw"
+    mkdir -p "$SCIDOWNL_RW"
+    if singularity exec "$LOCAL_SIF" cp -a "$SCIDOWNL_PKG/." "$SCIDOWNL_RW/" 2>/dev/null; then
+        SCIDOWNL_BIND=(--bind "$SCIDOWNL_RW:$SCIDOWNL_PKG")
+        echo "scidownl package staged writable at $SCIDOWNL_RW"
+    else
+        echo "WARNING: could not stage scidownl; non-open-access downloads will fail."
+    fi
+else
+    echo "WARNING: scidownl not found in image; non-open-access downloads will fail."
+fi
+
 # Copy results back to persistent storage on exit (success or failure)
 cleanup() {
     echo ""
@@ -230,6 +255,7 @@ singularity exec --nv --writable-tmpfs --pwd /app \
     --bind "$LOCAL_WORK/logs:/app/logs" \
     --bind "$LOCAL_WORK/reports:/app/reports" \
     --bind "$LOCAL_WORK/.model_cache:$LOCAL_WORK/.model_cache" \
+    "${SCIDOWNL_BIND[@]}" \
     --env OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
     --env PDF_DEVICE=cuda \
     --env MODEL_CACHE_DIR="$LOCAL_WORK/.model_cache" \

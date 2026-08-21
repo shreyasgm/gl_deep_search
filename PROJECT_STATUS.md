@@ -183,17 +183,12 @@ insufficient because SQLite also needs to write journal files into that director
 normally (2/4 in the smoke test were `open_access_downloads`). Non-OA papers silently fail.
 This affects only OpenAlex; the Growth Lab corpus (451 files) is unaffected.
 
-**Not fixed, deliberately.** The fix is easy — copy the package to scratch at job start and
+**Fixed 2026-08-21** (Sci-Hub use confirmed acceptable by the project owner). The sbatch now resolves the package path with `importlib.util.find_spec` (it cannot `import scidownl` — that is the bug), copies the package to local scratch, and bind-mounts it back over the original path so the directory is writable. Verified on the cluster: `import scidownl` succeeds and `scidownl.db` is created. Degrades to a warning if the package is missing. **The in-flight run 40971461 predates this**, so its OpenAlex coverage is open-access only; a follow-up run picks up the rest incrementally. The original analysis follows. The fix is easy — copy the package to scratch at job start and
 bind-mount it back over the original path so the directory is writable — but scidownl fetches from
 Sci-Hub, whose legal status is contested. Whether to invest in making that path work is a call for
 the project owner, not an incidental infrastructure fix. Options:
 
-1. **Leave it.** Accept OA-only coverage for OpenAlex. Nothing to do.
-2. **Fix the bind** as described, if Sci-Hub use is intended and acceptable.
-3. **Drop scidownl** and rely on Unpaywall alone, removing a dependency that fails noisily and
-   emits 250 error lines per run.
-
-Whichever is chosen, recovery is incremental: resume is file-existence based, so a later run
+Recovery is incremental: resume is file-existence based, so a later run
 downloads only the missing PDFs and extracts only those.
 
 ### 5. 35 download failures + 5 extraction failures never triaged
