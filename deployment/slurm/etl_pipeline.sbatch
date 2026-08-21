@@ -4,18 +4,25 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=100G
-#SBATCH --time=1-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --output=logs/etl_pipeline_%j.out
 #SBATCH --error=logs/etl_pipeline_%j.err
 # Resource notes:
 #   --mem is CPU RAM only (not GPU VRAM). GPU VRAM is determined by hardware.
 #   On the gpu partition, all nodes have A100s (40-80GB VRAM), which is 3-5x
 #   what Marker needs (~8-14GB peak). No need to constrain GPU type.
-#   The 2026-02-25 full run (449 pubs, Marker on A100 + Qwen3-8B) took 17h14m,
-#   of which PDF extraction was 13.1h. 12h was not enough; 24h leaves headroom.
-#   For test runs the job finishes much sooner and the limit costs nothing but
-#   a slightly longer queue wait. If queue time becomes the bottleneck, split
-#   PDF extraction and embedding into two jobs rather than trimming this.
+#   Marker on an A100 runs ~145s/PDF, measured twice: the 2026-02-25 full run
+#   (331 PDFs in 13.1h = 142s each) and the 2026-08-21 smoke test (4 PDFs in
+#   11m13s including model load). With OpenAlex now in scope the corpus is
+#   ~520 PDFs, so extraction alone is ~21h and the full run lands at ~23-24h.
+#   24h was cutting it too close; 48h is still well inside the partition's
+#   3-day ceiling. Jobs are billed for time used, not time requested.
+#
+#   --mem is deliberately left at 100G despite the smoke test peaking at 4.96G
+#   MaxRSS. That evidence is not representative (4 small PDFs; max_pages is
+#   250), and on this partition memory is not the binding constraint: each node
+#   has 4 A100s, so at 1 GPU per job the GPU count caps packing long before
+#   4x100G does. Re-check with `jobstats` after a full run before trimming.
 
 # Growth Lab Deep Search - Full ETL Pipeline via Singularity
 #

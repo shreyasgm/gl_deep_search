@@ -270,6 +270,34 @@ jobstats <JOBID>
 
 ---
 
+## Deployment gotchas found the hard way (2026-08-21)
+
+Four separate failures sat between "code is correct" and "job runs", none visible from the source. Recorded so the next gap doesn't rediscover them.
+
+**1. `uv.lock` carries a developer's global config.** A global `~/.config/uv/uv.toml` with `exclude-newer = "7 days"` makes uv write an `[options]` block into `uv.lock`. A config-less uv inside the container reads that block, decides the lockfile is invalid, re-resolves, and `--locked` then fails the build outright:
+
+```
+Ignoring existing lockfile due to removal of global exclude newer
+The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.
+```
+
+Image builds now use `--frozen` (install the pins, don't re-validate them); CI keeps `--locked` so the lock is still checked somewhere. Locally, use `uv --no-config run --frozen ...` to avoid rewriting the lock. **Committing a lock with an `[options]` block breaks CI**, so check `grep -c '^\[options\]' uv.lock` returns 0 before committing.
+
+**2. Build-context permissions break Singularity but not Docker.** The repo now lives under `~/Library/CloudStorage/Dropbox-Personal/...` (Dropbox's CloudStorage migration), whose directories are mode `0700`. `COPY . /app` preserves that, so `/app/backend` landed in the image as `drwx------ root`. Docker builds and runs as root and never noticed. Singularity runs as the invoking user, so the directory was untraversable and the exact job invocation died instantly:
+
+```
+singularity exec --pwd /app ... python -m backend.etl.orchestrator
+ModuleNotFoundError: No module named 'backend.etl'
+```
+
+The relative `--config backend/etl/config.yaml` path was unreadable for the same reason. Fixed with `chmod -R a+rX /app` in the **builder** stage — doing it after the runtime `COPY` would duplicate the ~4.6 GB virtualenv into a new layer. This is why the February image worked and a rebuild from identical code did not.
+
+**3. Stale GitHub host key on the cluster.** `git pull` failed intermittently with "Please make sure you have the correct access rights" — which is not an auth problem at all. An old GitHub host key pinned to an IP in `~/.ssh/known_hosts` conflicted, and it only tripped when DNS resolved to that IP. Fixed with `ssh-keygen -R 140.82.112.4`. If it recurs for another IP, that's the same cause.
+
+**4. Always verify the image by running the real invocation.** `python -c "import backend..."` passes even when the job would fail, because it resolves the package from the venv's site-packages. Only `singularity exec --writable-tmpfs --pwd /app --bind <data> ... python -m backend.etl.orchestrator --help` exercises the path the job takes. Note the data bind is required: importing the orchestrator initialises the SQLite tracker as a module-level side effect, so without it you get a misleading `unable to open database file`.
+
+---
+
 ## Work done 2026-08-21
 
 All local, all verified. Nothing has been committed, built, or submitted to the cluster.
