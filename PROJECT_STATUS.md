@@ -164,6 +164,38 @@ The audits (`audit_summary.md` and the four detail files) were written Feb 24, a
 - Duplicate GCS implementations, `storage/cloud.py` vs `storage/gcs.py` — one is likely dead code (item 20).
 - Storage-layer tests (item 10) — `StorageFactory` auto-detection silently routing the whole pipeline to the wrong backend is a real risk given the local/cloud split.
 
+### 4b. scidownl (Sci-Hub) fallback cannot work inside the container — needs a decision
+
+Observed live in the production run: **all 250 scidownl attempts failed**, every one with
+
+```
+Error using scidownl: (sqlite3.OperationalError) unable to open database file
+```
+
+Root cause, traced to `scidownl/db/entities.py:22-24`: the DB path is computed as
+`os.path.join(dirname(dirname(__file__)), configs['global_db']['db_name'])` — i.e.
+`<site-packages>/scidownl/scidownl.db`, inside its own package directory. That is read-only in a `.sif`,
+and the file does not ship with the package, so `create_tables()` cannot create it. `import scidownl`
+raises at import time. `--writable-tmpfs` does not help, and bind-mounting just the DB file is
+insufficient because SQLite also needs to write journal files into that directory.
+
+**Impact: OpenAlex downloads are limited to open-access papers.** The Unpaywall/OA path works
+normally (2/4 in the smoke test were `open_access_downloads`). Non-OA papers silently fail.
+This affects only OpenAlex; the Growth Lab corpus (451 files) is unaffected.
+
+**Not fixed, deliberately.** The fix is easy — copy the package to scratch at job start and
+bind-mount it back over the original path so the directory is writable — but scidownl fetches from
+Sci-Hub, whose legal status is contested. Whether to invest in making that path work is a call for
+the project owner, not an incidental infrastructure fix. Options:
+
+1. **Leave it.** Accept OA-only coverage for OpenAlex. Nothing to do.
+2. **Fix the bind** as described, if Sci-Hub use is intended and acceptable.
+3. **Drop scidownl** and rely on Unpaywall alone, removing a dependency that fails noisily and
+   emits 250 error lines per run.
+
+Whichever is chosen, recovery is incremental: resume is file-existence based, so a later run
+downloads only the missing PDFs and extracts only those.
+
 ### 5. 35 download failures + 5 extraction failures never triaged
 
 8% of the corpus. Nobody has looked at whether these are dead links, paywalls, or a fixable bug in the downloader.
