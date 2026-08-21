@@ -118,6 +118,12 @@ class EmbeddingsGenerator:
             "retry_delays": [1, 2, 4],
             "timeout": 30,
             "rate_limit_delay": 0.1,
+            # Local-inference memory controls. Default to None so the model's
+            # own config decides; config.yaml sets these explicitly for the
+            # 8B model, where fp32 weights alone (~32 GB) leave too little
+            # headroom on an 80 GB A100 once activations are allocated.
+            "dtype": None,
+            "max_seq_length": None,
         }
 
         # Merge configuration
@@ -131,6 +137,8 @@ class EmbeddingsGenerator:
         self.retry_delays = merged["retry_delays"]
         self.timeout = merged["timeout"]
         self.rate_limit_delay = merged["rate_limit_delay"]
+        self.dtype = merged["dtype"]
+        self.max_seq_length = merged["max_seq_length"]
 
         # Initialize embedding backend
         if self.model_provider == "openrouter":
@@ -144,7 +152,19 @@ class EmbeddingsGenerator:
             from sentence_transformers import SentenceTransformer
 
             self.model_name = emb_config.get("model_name", "Qwen/Qwen3-Embedding-8B")
-            self.st_model = SentenceTransformer(self.model_name, trust_remote_code=True)
+            # Load in reduced precision when configured. Without an explicit
+            # dtype an 8B model lands in fp32 (~32 GB) and long-sequence
+            # batches then OOM on an 80 GB A100.
+            model_kwargs = {"dtype": self.dtype} if self.dtype else {}
+            self.st_model = SentenceTransformer(
+                self.model_name,
+                trust_remote_code=True,
+                model_kwargs=model_kwargs,
+            )
+            # Cap sequence length. Chunks target ~500 tokens, but outliers up
+            # to max_chunk_size would otherwise drive quadratic attention cost.
+            if self.max_seq_length:
+                self.st_model.max_seq_length = self.max_seq_length
         else:
             raise ValueError(
                 f"Unsupported embedding model provider: {self.model_provider}"
@@ -351,7 +371,10 @@ class EmbeddingsGenerator:
             from backend.etl.utils.gpu_memory import release_gpu_memory
 
             batch_size = self.batch_size
-            max_oom_retries = 3
+            # Keep halving until the batch reaches 1 before giving up. A fixed
+            # retry count meant a batch_size of 32 bottomed out at 4, so the
+            # documents that OOM the hardest were never actually retried small.
+            max_oom_retries = max(1, batch_size.bit_length())
 
             for oom_attempt in range(max_oom_retries + 1):
                 try:
@@ -365,9 +388,9 @@ class EmbeddingsGenerator:
                 except RuntimeError as e:
                     if "out of memory" not in str(e).lower():
                         raise
-                    if oom_attempt >= max_oom_retries:
+                    if batch_size <= 1 or oom_attempt >= max_oom_retries:
                         logger.error(
-                            f"OOM after {max_oom_retries} retries "
+                            f"OOM after {oom_attempt} retries "
                             f"(batch_size={batch_size}), giving up"
                         )
                         raise
@@ -386,7 +409,13 @@ class EmbeddingsGenerator:
                 # Re-normalize after truncation
                 norms = np.linalg.norm(vectors, axis=1, keepdims=True)
                 vectors = vectors / norms
-            return [v.tolist() for v in vectors], 0, 0
+            result = [v.tolist() for v in vectors], 0, 0
+            # Release per document, not just on OOM. Over a few hundred
+            # documents the cached allocator fragments badly enough that a
+            # later long document fails even though total usage is fine.
+            del vectors
+            release_gpu_memory()
+            return result
 
         # OpenRouter API path (OpenAI-compatible)
         import numpy as np

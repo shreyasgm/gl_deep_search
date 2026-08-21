@@ -81,6 +81,13 @@ RUN mkdir -p /app/.venv/lib/python3.12/site-packages/static/fonts && \
     curl -sL https://models.datalab.to/artifacts/GoNotoCurrent-Regular.ttf \
         -o /app/.venv/lib/python3.12/site-packages/static/fonts/GoNotoCurrent-Regular.ttf
 
+# Record which commit this image was built from. The SLURM job compares this
+# against the cluster checkout and refuses to run on a mismatch — a stale image
+# silently missing new CLI flags cost a production run on 2026-02-25.
+ARG GIT_SHA=unknown
+RUN echo "$GIT_SHA" > /app/GIT_SHA
+LABEL org.opencontainers.image.revision=$GIT_SHA
+
 # Default: run the PDF processor script
 ENTRYPOINT ["python", "-m"]
 CMD ["backend.etl.scripts.run_pdf_processor"]

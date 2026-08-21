@@ -6,6 +6,8 @@ steps:
       - 'build'
       - '-f'
       - 'deployment/pdf-processing/Dockerfile'
+      - '--build-arg'
+      - 'GIT_SHA=${_GIT_SHA}'
       - '-t'
       - 'us-east4-docker.pkg.dev/cid-hks-1537286359734/etl-pipeline/gl-pdf-processing:latest'
       - '.'
@@ -15,3 +17,5 @@ timeout: '1800s'  # 30 minutes
 options:
   machineType: 'N1_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
+substitutions:
+  _GIT_SHA: 'unknown'

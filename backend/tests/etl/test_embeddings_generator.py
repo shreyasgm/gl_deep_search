@@ -311,6 +311,8 @@ file_processing:
     model_name: "Qwen/Qwen3-Embedding-8B"
     dimensions: 1024
     batch_size: 32
+    dtype: "bfloat16"
+    max_seq_length: 2048
     max_retries: 3
     retry_delays: [1, 2, 4]
     timeout: 30
@@ -322,6 +324,79 @@ runtime:
         config_path.write_text(config_content)
         yield temp_dir
         shutil.rmtree(temp_dir)
+
+    @pytest.mark.asyncio
+    async def test_oom_retry_halves_batch_all_the_way_to_one(
+        self, st_config_dir, sample_chunks
+    ):
+        """OOM retries must reach batch_size=1 before giving up.
+
+        Regression test for the 2026-02-25 production run, where a fixed
+        retry count of 3 meant a batch_size of 32 bottomed out at 4 and
+        38 documents (13%) were abandoned to CUDA OOM.
+        """
+        config_path = st_config_dir / "config.yaml"
+
+        attempted_batch_sizes = []
+
+        def encode(texts, batch_size=32, **kwargs):
+            attempted_batch_sizes.append(batch_size)
+            if batch_size > 1:
+                raise RuntimeError("CUDA out of memory. Tried to allocate 11.72 GiB")
+            vectors = np.random.randn(len(texts), 4096).astype(np.float32)
+            return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+
+        mock_model = Mock()
+        mock_model.encode.side_effect = encode
+
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            return_value=mock_model,
+        ):
+            generator = EmbeddingsGenerator(config_path=config_path)
+
+        texts = [chunk["text_content"] for chunk in sample_chunks]
+        embeddings, _, _ = await generator._generate_embeddings_batch(texts)
+
+        assert attempted_batch_sizes == [32, 16, 8, 4, 2, 1]
+        assert len(embeddings) == len(texts)
+
+    @pytest.mark.asyncio
+    async def test_non_oom_runtime_error_is_not_retried(
+        self, st_config_dir, sample_chunks
+    ):
+        """A RuntimeError that isn't an OOM must propagate immediately."""
+        config_path = st_config_dir / "config.yaml"
+
+        mock_model = Mock()
+        mock_model.encode.side_effect = RuntimeError("kernel launch failed")
+
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            return_value=mock_model,
+        ):
+            generator = EmbeddingsGenerator(config_path=config_path)
+
+        texts = [chunk["text_content"] for chunk in sample_chunks]
+        with pytest.raises(RuntimeError, match="kernel launch failed"):
+            await generator._generate_embeddings_batch(texts)
+
+        assert mock_model.encode.call_count == 1
+
+    def test_memory_controls_applied_to_model(self, st_config_dir):
+        """bf16 dtype and the sequence cap must reach SentenceTransformer."""
+        config_path = st_config_dir / "config.yaml"
+
+        mock_model = Mock()
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            return_value=mock_model,
+        ) as mock_cls:
+            EmbeddingsGenerator(config_path=config_path)
+
+        kwargs = mock_cls.call_args.kwargs
+        assert kwargs["model_kwargs"] == {"dtype": "bfloat16"}
+        assert mock_model.max_seq_length == 2048
 
     @pytest.mark.asyncio
     async def test_sentence_transformer_truncation_and_renormalization(

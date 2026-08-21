@@ -71,6 +71,13 @@ file_processing:
     dimensions: 1024               # MRL truncation from native 4096; changing requires full re-embedding
     max_tokens: 32768              # Qwen3-Embedding-8B context window
     batch_size: 32
+    # Local-inference memory controls (sentence_transformer provider only).
+    # fp32 weights alone are ~32GB for 8B params; bf16 halves that and leaves
+    # headroom for activations. max_seq_length caps quadratic attention cost
+    # on outlier chunks. Both were unset during the 2026-02-25 run, which
+    # lost 38 documents (13%) to CUDA OOM on an 80GB A100.
+    dtype: "bfloat16"              # null to let the model config decide
+    max_seq_length: 2048           # tokens; chunks target 500
     max_retries: 3                 # Maximum retry attempts for failed API calls
     retry_delays: [1, 2, 4]        # Exponential backoff delays in seconds
     timeout: 30                    # API request timeout in seconds
@@ -84,7 +91,7 @@ file_processing:
     chunk_size: 500                # target tokens per chunk
     chunk_overlap: 50              # tokens of overlap between chunks
     min_chunk_size: 50             # minimum viable chunk size in tokens
-    max_chunk_size: 8000           # maximum tokens (embedding model limit is 8192)
+    max_chunk_size: 2000           # maximum tokens; keep <= embedding max_seq_length
     preserve_structure: true       # respect document hierarchy (headers, sections)
     respect_sentences: true        # prefer sentence boundaries for splits
     structure_markers:             # patterns for detecting document structure

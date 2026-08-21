@@ -32,8 +32,16 @@ CLUSTER_DIR="${CLUSTER_DIR:-/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_
 build() {
     echo "=== Submitting Cloud Build job ==="
     cd "$PROJECT_DIR"
+    local git_sha
+    git_sha="$(git rev-parse HEAD)"
+    if [[ -n "$(git status --porcelain)" ]]; then
+        echo "WARNING: working tree is dirty — the image will be built from"
+        echo "         committed code, not your local edits."
+    fi
+    echo "Building from commit: $git_sha"
     gcloud builds submit \
         --config deployment/cloudbuild-slurm.yaml \
+        --substitutions "_GIT_SHA=${git_sha}" \
         .
     echo ""
     echo "Build complete. Image pushed to: ${SLURM_IMAGE_NAME}"

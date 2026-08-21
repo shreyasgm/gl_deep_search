@@ -95,6 +95,7 @@ class OrchestrationConfig:
 
     # PDF processor settings
     force_reprocess: bool = False
+    pdf_limit: int | None = None  # Limit number of PDFs to process
     ocr_language: list[str] = field(default_factory=lambda: ["eng"])
     extract_images: bool = False
     min_chars_per_page: int = 100
@@ -605,6 +606,13 @@ class ETLOrchestrator:
             result.status = ComponentStatus.SKIPPED
             return
 
+        # Apply limit (sorted first so the selection is stable across runs)
+        if self.config.pdf_limit:
+            total = len(pdf_files)
+            pdf_files.sort()
+            pdf_files = pdf_files[: self.config.pdf_limit]
+            logger.info(f"PDF limit set: processing {len(pdf_files)} of {total} PDFs")
+
         # Process each PDF file
         with profile_operation("Process all PDFs", include_resources=True):
             processed_files = []
@@ -1016,6 +1024,9 @@ Examples:
 
   # Lightweight dev mode (small embedding model + fast PDF extraction)
   python -m backend.etl.orchestrator --dev --skip-scraping --download-limit 3
+
+  # Quick smoke run over a handful of already-downloaded PDFs
+  python -m backend.etl.orchestrator --skip-scraping --download-limit 3 --pdf-limit 3
         """,
     )
 
@@ -1113,6 +1124,11 @@ Examples:
         "--force-reprocess", action="store_true", help="Reprocess existing PDF files"
     )
     parser.add_argument(
+        "--pdf-limit",
+        type=int,
+        help="Maximum number of PDFs to process (for testing)",
+    )
+    parser.add_argument(
         "--ocr-language", nargs="+", default=["eng"], help="OCR language codes"
     )
     parser.add_argument(
@@ -1174,6 +1190,7 @@ async def main() -> None:
         min_file_size=args.min_file_size,
         max_file_size=args.max_file_size,
         force_reprocess=args.force_reprocess,
+        pdf_limit=args.pdf_limit,
         ocr_language=args.ocr_language,
         extract_images=args.extract_images,
         min_chars_per_page=args.min_chars_per_page,

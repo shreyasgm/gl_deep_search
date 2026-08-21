@@ -611,6 +611,78 @@ class TestETLOrchestrator:
                     )
                     mock_chunker.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_pdf_processor_respects_pdf_limit(self):
+        """Test that pdf_limit caps how many discovered PDFs are processed."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "config.yaml"
+            config_path.write_text("test_config: true")
+
+            config = OrchestrationConfig(config_path=config_path, pdf_limit=2)
+            discovered = [Path(f"/tmp/pdfs/doc_{i}.pdf") for i in range(5)]
+
+            with patch("backend.etl.orchestrator.logger"):
+                orchestrator = ETLOrchestrator(config)
+
+                with (
+                    patch(
+                        "backend.etl.orchestrator.find_pdfs", return_value=discovered
+                    ),
+                    patch(
+                        "backend.etl.orchestrator.PDFProcessor"
+                    ) as mock_processor_cls,
+                ):
+                    processor = mock_processor_cls.return_value
+                    processor.process_pdf.return_value = Path("/tmp/out.md")
+
+                    result = ComponentResult(
+                        component_name="PDF Processor",
+                        status=ComponentStatus.RUNNING,
+                    )
+                    await orchestrator._run_pdf_processor(result)
+
+                    # Only the first two (sorted) PDFs should be processed
+                    assert processor.process_pdf.call_count == 2
+                    processed = [
+                        call.args[0] for call in processor.process_pdf.call_args_list
+                    ]
+                    assert processed == discovered[:2]
+                    assert result.metrics["files_processed"] == 2
+
+    @pytest.mark.asyncio
+    async def test_pdf_processor_without_limit_processes_all(self):
+        """Test that every discovered PDF is processed when pdf_limit is None."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "config.yaml"
+            config_path.write_text("test_config: true")
+
+            config = OrchestrationConfig(config_path=config_path)
+            assert config.pdf_limit is None
+            discovered = [Path(f"/tmp/pdfs/doc_{i}.pdf") for i in range(5)]
+
+            with patch("backend.etl.orchestrator.logger"):
+                orchestrator = ETLOrchestrator(config)
+
+                with (
+                    patch(
+                        "backend.etl.orchestrator.find_pdfs", return_value=discovered
+                    ),
+                    patch(
+                        "backend.etl.orchestrator.PDFProcessor"
+                    ) as mock_processor_cls,
+                ):
+                    processor = mock_processor_cls.return_value
+                    processor.process_pdf.return_value = Path("/tmp/out.md")
+
+                    result = ComponentResult(
+                        component_name="PDF Processor",
+                        status=ComponentStatus.RUNNING,
+                    )
+                    await orchestrator._run_pdf_processor(result)
+
+                    assert processor.process_pdf.call_count == len(discovered)
+                    assert result.metrics["files_processed"] == len(discovered)
+
 
 class TestMainFunction:
     """Test main function and CLI integration."""

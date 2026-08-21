@@ -80,7 +80,7 @@ cd /n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search
 sbatch deployment/slurm/etl_pipeline.sbatch
 
 # Override limits via environment variables
-SCRAPER_LIMIT=50 DOWNLOAD_LIMIT=50 sbatch deployment/slurm/etl_pipeline.sbatch
+SCRAPER_LIMIT=5 DOWNLOAD_LIMIT=5 PDF_LIMIT=5 sbatch deployment/slurm/etl_pipeline.sbatch
 
 # Skip scraping and reuse existing data
 SKIP_SCRAPING=1 sbatch deployment/slurm/etl_pipeline.sbatch
@@ -90,10 +90,13 @@ SKIP_SCRAPING=1 sbatch deployment/slurm/etl_pipeline.sbatch
 
 | Variable | Default | Description |
 |---|---|---|
-| `SCRAPER_LIMIT` | 10 | Max publications to scrape |
-| `DOWNLOAD_LIMIT` | 10 | Max publications to download files for |
+| `SOURCES` | `all` | Sources to run: `growthlab`, `openalex`, `lectures`, `all`, or a space-separated subset |
+| `SCRAPER_LIMIT` | unlimited | Max publications to scrape |
+| `DOWNLOAD_LIMIT` | unlimited | Max publications to download files for |
+| `PDF_LIMIT` | unlimited | Max PDFs to process. **Set this for any test run** — the PDF processor otherwise globs every PDF already on disk, so limiting downloads alone does not bound the job |
 | `SKIP_SCRAPING` | 0 | Set to `1` to skip scraping and use existing CSV |
 | `LOG_LEVEL` | INFO | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `ALLOW_STALE_IMAGE` | 0 | Set to `1` to run even when the container image's commit differs from the checkout |
 
 ## Monitoring
 
@@ -121,7 +124,7 @@ The `etl_pipeline.sbatch` script requests:
 | GPU | 1 | Marker CUDA acceleration |
 | CPUs | 8 | Parallel downloads and text extraction |
 | Memory | 100 GB | Marker models + PDF processing headroom |
-| Time limit | 4 hours | Plenty for small runs; increase for full corpus |
+| Time limit | 24 hours | The 2026-02-25 full run took 17h14m (13.1h of it PDF extraction). Small runs finish in minutes |
 
 ## Other SLURM Scripts
 

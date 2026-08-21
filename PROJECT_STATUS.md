@@ -1,1152 +1,300 @@
-# Growth Lab Deep Search - Project Status
+# GL Deep Search — Status as of 2026-08-21
 
-**Last Updated:** November 17, 2025
-**Project Stage:** Alpha (Active Development)
-**Completion:** ~70% (ETL Infrastructure + GCP Deployment Working, Critical Bug in Chunker Found)
+Written after a ~6 month gap. Last commit was **2026-02-25**; last cluster job was **2026-02-25 21:08 EST**; last local activity was **2026-03-11**.
 
-## Executive Summary
-
-The Growth Lab Deep Search project has **successfully deployed ETL infrastructure to GCP** with Docker containerization and Cloud Run integration. The ETL pipeline (scraper → downloader → PDF processor → text chunker → embeddings generator) is fully functional and has been tested end-to-end on a VM. **However, a critical bug has been identified in the text chunker:** chunks are exceeding OpenAI's token limits (18,101 tokens vs 8,192 max for text-embedding-3-small), causing 33% of documents to fail embedding generation.
-
-**Current Status:**
-- ✅ Docker image builds and deploys successfully
-- ✅ Cloud Run Job deployed and configured
-- ✅ End-to-end Phase 1 test completed (10 publications in 5m 30s)
-- ❌ **CRITICAL BUG**: Text chunker creates oversized chunks that exceed embedding model limits
-- 🔴 Vector database and search API still missing
+*This replaces the November 2025 status doc, which had gone badly stale — it still described the OpenAI-embeddings era, claimed the service layer and frontend did not exist, and led with a chunker token-limit bug that has since been fixed.*
 
 ---
 
-## Project Architecture
+## TL;DR
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         USER INTERFACE                          │
-│                     🔴 NOT IMPLEMENTED                          │
-└─────────────────────────────────────────────────────────────────┘
-                              ▲
-                              │
-┌─────────────────────────────────────────────────────────────────┐
-│                         SEARCH API                              │
-│              🔴 NOT IMPLEMENTED (FastAPI)                       │
-└─────────────────────────────────────────────────────────────────┘
-                              ▲
-                              │
-┌─────────────────────────────────────────────────────────────────┐
-│                      VECTOR DATABASE                            │
-│            🔴 NOT IMPLEMENTED (Qdrant)                          │
-└─────────────────────────────────────────────────────────────────┘
-                              ▲
-                              │
-┌─────────────────────────────────────────────────────────────────┐
-│                    EMBEDDINGS GENERATOR                         │
-│              ✅ IMPLEMENTED (OpenAI)                           │
-└─────────────────────────────────────────────────────────────────┘
-                              ▲
-                              │
-┌─────────────────────────────────────────────────────────────────┐
-│                       ETL PIPELINE                              │
-│                     ✅ FULLY FUNCTIONAL                         │
-│                                                                 │
-│  Scraper → Downloader → PDF Processor → Text Chunker → Embeddings │
-│    ✅        ✅             ✅              ✅            ✅      │
-└─────────────────────────────────────────────────────────────────┘
-```
+The project did not stall on a hard problem. It stalled **two minutes into a re-run, on a stale container image**, and then got dropped.
+
+Three things are true right now:
+
+1. **The ETL pipeline works and has been proven at production scale.** A full run finished on the cluster on Feb 25 — 449 publications scraped, 417 files downloaded, 331 PDFs extracted with Marker on an A100, 24,039 chunks, 19,765 Qwen3 embeddings. 17.2 hours wall clock.
+2. **That run's output is gone.** Only the raw PDFs (1.1 GB, 414 publications) and the tracking database survive on the cluster. `data/processed/` — the extracted text, chunks, and embeddings — is not there. Re-running costs ~13 GPU-hours of PDF extraction plus ~4 hours of embedding.
+3. **Nothing has ever reached Qdrant.** The tracking DB shows `ingestion_status = PENDING` for all 449 rows. There is no Qdrant instance running locally, in Docker Compose, or in GCP. The search API, the LangGraph agent, and the Streamlit frontend all exist and are unit-tested, but have never been run against real data.
+
+So the system still cannot answer a search query — the same headline as November — but the gap is now one integration step wide, not three components wide.
 
 ---
 
-## Recent Progress (Nov 2025)
+## How it stopped
 
-### ✅ Deployment Infrastructure Complete
+All times EST, all on 2026-02-25 unless noted.
 
-The project now has production-grade GCP deployment infrastructure:
+| Time | Event |
+|---|---|
+| Feb 24 ~21:39 | Job `62012506` starts — full production ETL run |
+| 13:26 | `aff6176` — GPU memory cleanup between pipeline stages |
+| **14:54** | **Job `62012506` finishes successfully.** 17h 14m. Report written, results synced back to `holystore01` |
+| 16:34 | `d5651cf` — OpenAlex file downloader repaired (scidownl API, Unpaywall email) |
+| 17:55 | `0944528` — OpenAlex + lectures wired into the orchestrator; **`--sources` flag added** |
+| 20:41 | `9a7de2e` — `etl-lite` dep group; **sbatch updated to pass `--sources ${SOURCES}`** |
+| 20:51 | 24 lecture transcripts copied to the cluster |
+| 20:53 | `git pull` on the cluster — code now at `9a7de2e` |
+| 20:54 | Job `62305984` submitted, cancelled 22 seconds in during data staging |
+| 20:59 | New `.sif` pulled from Artifact Registry |
+| 21:06 | Job `62310653` submitted |
+| **21:08** | **Dies in 2 minutes:** `orchestrator.py: error: unrecognized arguments: --sources all` |
+| Mar 2 | `.github/workflows/python-checks.yml` edited locally — never committed |
+| Mar 10–11 | Local dev-mode runs (OpenAlex + lectures, small scale) |
+| — | Silence |
 
-- **Docker Containerization**: Multi-stage build with BuildKit support
-  - Image: `us-east4-docker.pkg.dev/cid-hks-1537286359734/etl-pipeline/etl-pipeline:latest`
-  - Build time: ~12 minutes
-  - Artifact Registry integration working
+### Root cause of the final failure
 
-- **Cloud Run Job**: Deployed and configured
-  - Memory: 8Gi
-  - CPUs: 4
-  - Timeout: 2 hours
-  - Service account with GCS access
+Not a code bug — a **build/deploy skew**. The `.sif` on the cluster was pulled at 20:59, but the image behind the `latest` tag in Artifact Registry had been built *before* commit `0944528`, which is the commit that added `--sources`. Verified directly:
 
-- **Deployment Scripts**: Enhanced with three build modes
-  - `--skip-build`: Use existing registry image (fast)
-  - `--cloud-build`: Submit to Cloud Build service
-  - `--local-build`: Build locally with Docker buildx
+```
+$ singularity exec gl-pdf-processing.sif grep -c -- "--sources" /app/backend/etl/orchestrator.py
+0
+$ singularity exec gl-pdf-processing.sif ls -la /app/backend/etl/orchestrator.py
+-rw-r--r-- 1 root root 36358 Feb 25 17:51 /app/backend/etl/orchestrator.py
 
-- **Phase 1 Testing**: Completed successfully on VM
-  - 10 publications processed in 5m 30s
-  - Cost: $0.00 (under $1.00 threshold)
-  - All components executed end-to-end
+$ wc -c backend/etl/orchestrator.py      # local, current main
+46268
+```
 
-### ❌ CRITICAL BUG FOUND: Text Chunker Token Limit
+The baked-in orchestrator is 36 KB; current `main` is 46 KB. The sbatch script (from `9a7de2e`) passes a flag the container's Python has never heard of.
 
-**Issue**: Text chunker creates chunks that exceed OpenAI's embedding model token limits.
-
-- **Problem**: One chunk was 18,101 tokens vs 8,192 max (text-embedding-3-small)
-- **Impact**: 33% embedding failure rate (2/3 documents successful)
-- **Root Cause**: Chunker validates character limits (max_chunk_size: 2000) but doesn't validate token counts for the embedding model
-- **Location**: `backend/etl/utils/text_chunker.py`
-
-**Required Fix**:
-1. Add token counting with tiktoken (already in pyproject.toml)
-2. Enforce token limits for embedding model (8,192 max)
-3. Implement recursive chunk splitting when tokens exceed limit
-4. Add test cases for large documents
-5. Re-run Phase 1 test to verify fix
-
-**Status**: ⏳ Needs implementation before production deployment
+**Fix: rebuild the image, re-pull the `.sif`.** Two commands, ~20 minutes of Cloud Build. That is the entire blocker.
 
 ---
 
-## Component Status Overview
+## Current state by layer
 
-| Component | Status | Lines | Tests | Notes |
-|-----------|--------|-------|-------|-------|
-| **ETL Pipeline** | | | | |
-| Growth Lab Scraper | ✅ Complete | 1,200 | 465 | Production-ready |
-| File Downloader | ✅ Complete | 896 | 506 | Concurrent downloads |
-| PDF Processor | ✅ Complete | 330 | 178 | OCR via unstructured |
-| Text Chunker | ⚠️ Bug Found | 985 | 972 | **Token limit bug - exceeds embedding model max** |
-| Lecture Transcripts | ✅ Complete | 370 | 129 | LLM-based cleaning |
-| ETL Orchestrator | ✅ Complete | 661 | 640 | Full pipeline coordination |
-| **Deployment** | | | | |
-| Docker Image | ✅ Complete | - | - | Multi-stage build, BuildKit support |
-| Cloud Run Job | ✅ Complete | - | - | 8Gi memory, 4 CPUs, 2h timeout |
-| Deployment Scripts | ✅ Complete | ~200 | - | 3 build modes, cost monitoring |
-| **Storage & Data** | | | | |
-| File Storage | ✅ Complete | 442 | - | Local + GCS support |
-| Publication Tracker | ✅ Complete | 623 | 1,877 | Lifecycle management |
-| Metadata Database | 🟡 Partial | 260 | - | SQLite tracking DB |
-| Vector Database | 🔴 Missing | 0 | 0 | **BLOCKER** |
-| **Service Layer** | | | | |
-| Embeddings Generator | ✅ Complete | 645 | 499 | OpenAI API integration ✅ tested end-to-end |
-| Search API | 🔴 Missing | 0 | 0 | **BLOCKER** |
-| LangGraph Integration | 🔴 Missing | 0 | 0 | For agentic RAG |
-| **Frontend** | | | | |
-| Streamlit UI | 🔴 Missing | 0 | 0 | No interface |
+| Layer | State | Notes |
+|---|---|---|
+| **Growth Lab scraper** | ✅ Working | 449 publications, 452 file URLs |
+| **GL file downloader** | ✅ Working | 417/452 succeeded (92%) |
+| **OpenAlex scraper + downloader** | 🟡 Wired, never run at scale | Repaired Feb 25 (`d5651cf`), wired into orchestrator (`0944528`). Only exercised in local dev runs in March |
+| **PDF processor (Marker/CUDA)** | ✅ Working | 331/336 extracted. 13.1 hours on an A100 — the dominant cost |
+| **Lecture transcripts** | 🟡 Never run | Skipped in the Feb 25 run (transcripts weren't on the cluster yet). 24 files are there now |
+| **Text chunker** | ✅ Working | 24,039 chunks, 0 failures. The Nov token-limit bug is fixed |
+| **Embeddings (Qwen3-8B local)** | ⚠️ Working with a real defect | 266/304 documents. **All 38 failures were CUDA OOM** — see Issue 1 |
+| **Qdrant ingestion** | 🔴 Never executed | `ingest_to_qdrant.py` exists and is unit-tested. `ingestion_status = PENDING` × 449 |
+| **Vector DB instance** | 🔴 Does not exist | No local container, no Compose service, no cloud instance. `qdrant_url` defaults to `localhost:6333` |
+| **Search API (FastAPI)** | 🟡 Written, never run live | 3 endpoints, tested with `TestClient` and mocks |
+| **LangGraph agent** | 🟡 Written, never run live | analyze → retrieve → grade → synthesize; tests added Feb 24 |
+| **Streamlit frontend** | 🟡 Written, never run live | `frontend/app.py` + `api_client.py` |
+| **SLURM deployment** | ⚠️ Blocked on stale image | Otherwise sound — staging to node-local `/scratch`, sync-back, model cache persistence all work |
+| **GCP / Cloud Run** | 🟡 Idle | Job `etl-pipeline-job` exists, last run 2025-11-14. Not scheduled, not costing anything meaningful |
+| **Tests** | ✅ Healthy | **282 passed, 3 skipped** (integration deselected; was 279 before today's additions). `ruff check`, `ruff format --check`, `mypy` all clean — but only once the `service` extra is installed |
 
-**Total Codebase:** ~9,650 lines (ETL) + 7,072 lines (tests)
+### Repo hygiene
+
+- `main` is clean and pushed except one uncommitted file: `.github/workflows/python-checks.yml`, which adds `--extra service` to the CI dependency install. **This change is correct and necessary** — without it CI cannot even import the service tests (`fastembed`, `starlette` missing). It has been sitting uncommitted since Mar 2.
+- 15 stale remote branches (`fastapi-endpoint`, `embeddings`, `ocr_pipe`, `manifest-branch`, `feat/chunk-tagger`, …), most predating the February work.
+- Five audit documents (`audit_*.md`, `test_fixes_summary.md`, `test_strategy_rework_review.md`) are sitting at the repo root. They're valuable but belong in `docs/`.
 
 ---
 
-## Detailed Component Analysis
+## Data inventory
 
-### ✅ ETL Pipeline (COMPLETE)
+### Cluster — `/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search/`
 
-The ETL pipeline is **fully functional and production-ready**. It successfully processes documents from scraping to chunked text.
+| Item | State |
+|---|---|
+| `data/raw/documents/growthlab/` | **1.1 GB, 414 publication dirs** — intact |
+| `data/raw/lecture_transcripts/` | 24 `.txt` files — intact, never processed |
+| `data/etl_tracking.db` | 1.4 MB, 449 rows — intact |
+| `data/processed/` | **Missing** |
+| `reports/` | Empty |
+| `deployment/slurm/gl-pdf-processing.sif` | 4.6 GB — **stale, needs rebuild** |
+| `.model_cache/` | Present — Qwen3 + Marker weights cached, saves a re-download |
 
-#### Pipeline Flow
+**On the missing `processed/` directory:** the Feb 25 run log confirms it was written to `/app/data/processed/...` and that the sync-back to persistent storage completed. The sbatch cleanup uses `rsync -a` *without* `--delete`, so it could not have removed it. Most likely you cleared it manually between 14:55 and 20:51 to force a clean re-run with the new OpenAlex/lectures wiring. Worth a moment's thought before re-running — if it was moved rather than deleted, that's 13 GPU-hours recovered.
 
-```
-Growth Lab Website
-       ↓
-[Scraper] ✅
-  - Async web scraping with retry logic
-  - ~400 publications, ~1,000 document URLs
-  - Metadata extraction (title, authors, year, abstract)
-  - Content hashing for change detection
-  - Output: data/intermediate/growth_lab_publications.csv
-       ↓
-[File Downloader] ✅
-  - Concurrent downloads (configurable limits)
-  - File validation (1KB - 100MB)
-  - Resume capability
-  - User-agent rotation
-  - Output: data/raw/documents/growthlab/<pub_id>/*.pdf
-       ↓
-[PDF Processor] ✅
-  - OCR via unstructured library
-  - Multi-language support (configurable)
-  - Structure preservation (headers, tables, lists)
-  - Page number tracking
-  - Batch processing with error handling
-  - Output: data/processed/documents/growthlab/<pub_id>/file.txt
-       ↓
-[Text Chunker] ✅
-  - 4 chunking strategies: fixed, sentence, structure, hybrid
-  - Metadata preservation (page numbers, sections)
-  - Configurable chunk size/overlap (default: 1000/200)
-  - Output: data/processed/chunks/<pub_id>/chunks.json
-       ↓
-[Embeddings Generator] ✅
-  - OpenAI API integration (text-embedding-3-small)
-  - Batch processing (batch_size: 32)
-  - Retry logic with exponential backoff
-  - Resume capability
-  - Parquet + JSON output format
-  - Output: data/processed/embeddings/<pub_id>/embeddings.parquet
-       ↓
-[🔴 MISSING: Vector DB] ← PIPELINE STOPS HERE
-       ↓
-[🔴 MISSING: Search API]
-```
+### Tracking DB status counts (449 publications)
 
-#### Key Files
+| Stage | Done | Pending | Failed |
+|---|---|---|---|
+| Download | 379 | 35 | 35 |
+| PDF processing | 331 | 113 | 5 |
+| Embedding | 293 | 118 | 38 |
+| **Qdrant ingestion** | **0** | **449** | **0** |
 
-- **Orchestrator:** [backend/etl/orchestrator.py](backend/etl/orchestrator.py) (661 lines)
-  - Coordinates all ETL components
-  - Component isolation and error handling
-  - Dry-run mode
-  - JSON execution reports
+Note the DB is now out of sync with disk: it says 331 documents are `PROCESSED` and 293 `EMBEDDED`, but those artifacts no longer exist. Resume logic is **file-existence based**, not DB based, so a re-run will correctly redo the work — but the DB counts will read as stale until then.
 
-- **Scraper:** [backend/etl/scrapers/growthlab.py](backend/etl/scrapers/growthlab.py) (1,200 lines)
-  - Scrapes https://growthlab.hks.harvard.edu/publications-home/repository
-  - Pagination handling
-  - EndNote metadata enrichment
-  - Rate limiting (2.0s delay)
+### Local — `gl_deep_search/data/`
 
-- **Downloader:** [backend/etl/utils/gl_file_downloader.py](backend/etl/utils/gl_file_downloader.py) (896 lines)
-  - Async downloads with aiohttp
-  - Retry logic with exponential backoff
-  - File size validation
+393 MB raw, ~1 MB processed. Dev-scale only, from the March runs. Includes `data/processed/documents/openalex/` and lecture transcript output — the March local testing.
 
-- **PDF Processor:** [backend/etl/utils/pdf_processor.py](backend/etl/utils/pdf_processor.py) (330 lines)
-  - OCR with unstructured library
-  - Configurable OCR model (docling, marker, gemini_flash)
-  - Batch processing (max_concurrent: 4)
+### GCS — `gs://gl-deep-search-data/`
 
-- **Text Chunker:** [backend/etl/utils/text_chunker.py](backend/etl/utils/text_chunker.py) (985 lines)
-  - Fixed-size chunking (character-based)
-  - Sentence-based chunking (respects boundaries)
-  - Structure-based chunking (respects headers)
-  - Hybrid chunking (intelligent fallback)
-
-- **Embeddings Generator:** [backend/etl/utils/embeddings_generator.py](backend/etl/utils/embeddings_generator.py) (645 lines)
-  - OpenAI API integration (text-embedding-3-small, 1536 dimensions)
-  - Async batch processing (configurable batch size: 32)
-  - Retry logic with exponential backoff (max_retries: 3)
-  - Rate limiting and timeout handling
-  - Resume capability (skips existing embeddings)
-  - Parquet + JSON output format
-  - PublicationTracker integration for status tracking
-
-#### Configuration
-
-All ETL components are fully configured in [backend/etl/config.yaml](backend/etl/config.yaml):
-
-```yaml
-sources:
-  growth_lab:
-    base_url: "https://growthlab.hks.harvard.edu/publications-home/repository"
-    scrape_delay: 2.0
-    concurrency_limit: 2
-
-file_processing:
-  ocr:
-    default_model: "docling"
-    max_concurrent: 4
-
-  chunking:
-    enabled: true
-    strategy: "hybrid"
-    chunk_size: 1000
-    chunk_overlap: 200
-    min_chunk_size: 100
-    max_chunk_size: 2000
-```
-
-#### Test Coverage
-
-All ETL components have comprehensive test coverage:
-
-- [test_growthlab.py](backend/tests/etl/test_growthlab.py) (465 lines)
-- [test_gl_file_downloader.py](backend/tests/etl/test_gl_file_downloader.py) (506 lines)
-- [test_pdf_processor.py](backend/tests/etl/test_pdf_processor.py) (178 lines)
-- [test_text_chunker.py](backend/tests/etl/test_text_chunker.py) (972 lines)
-- [test_orchestrator.py](backend/tests/etl/test_orchestrator.py) (640 lines)
-- [test_embeddings_generator.py](backend/tests/etl/test_embeddings_generator.py) (499 lines)
-
-**Total Test Coverage:** 3,260 lines for ETL pipeline
+200 MB total, all from **2026-02-19** — an earlier pipeline vintage (different chunking config). Superseded, not reusable as a recovery source.
 
 ---
 
-### ✅ Storage & Tracking (PARTIAL)
+## Issues found
 
-#### File Storage System
+Ranked by what actually blocks progress. **Issues 1–3 were fixed on 2026-08-21** — see [Work done today](#work-done-2026-08-21) at the end. They're documented here in full because the diagnosis matters more than the diff.
 
-**Status:** ✅ Complete
+### 1. Embeddings generator OOMs on an 80 GB A100 — 38 documents lost (13%) — ✅ FIXED
 
-Implemented storage abstraction with local and cloud backends:
+Every one of the 38 failures was `torch.cuda.OutOfMemoryError`. From the logs:
 
-- [backend/storage/base.py](backend/storage/base.py) - Abstract base class
-- [backend/storage/local.py](backend/storage/local.py) - Local filesystem
-- [backend/storage/gcs.py](backend/storage/gcs.py) - Google Cloud Storage
-- [backend/storage/factory.py](backend/storage/factory.py) - Factory pattern
+> `Tried to allocate 11.72 GiB. GPU 0 has a total capacity of 79.25 GiB of which 1.35 GiB is free. This process has 77.89 GiB memory in use. Of the allocated memory 55.51 GiB is allocated by PyTorch, and 21.87 GiB is reserved by PyTorch but unallocated.`
 
-**Features:**
-- Runtime environment detection (local vs SLURM vs cloud)
-- Path management abstraction
-- GCS integration for production
+55 GB of resident allocation for an 8B embedding model is the tell. Four contributing causes, all in `backend/etl/utils/embeddings_generator.py`:
 
-#### Publication Tracking System
+- **Line 147 — the model is loaded without a dtype.** `SentenceTransformer(self.model_name, trust_remote_code=True)`. No `model_kwargs={"torch_dtype": torch.bfloat16}`. Qwen3-Embedding-8B in fp32 is ~32 GB of weights alone; in bf16 it is ~16 GB. This is almost certainly the main cause.
+- **Line 355 — the OOM retry can never reach a small enough batch.** `max_oom_retries = 3` halving from `batch_size=32` reaches 16 → 8 → 4, then gives up. It never gets near 1. Needs ~6 retries, or an explicit floor.
+- **`max_seq_length` is never set.** With `max_chunk_size: 8000` in `config.yaml`, outlier chunks push 8k-token sequences through an 8B model. `sentence-transformers` sorts by length internally and processes the longest batch *first*, which is why the failures cluster on the first batch (visible in the `.err` progress bars).
+- **`release_gpu_memory()` is only called inside the OOM handler**, not after each document. Fragmentation accumulates across 300+ documents.
 
-**Status:** ✅ Complete
+Concrete fix: load in bf16, cap `max_seq_length` at ~2048, lower `max_chunk_size` to ~2000 tokens (the chunker targets 500 anyway, so 8000 only ever applies to un-splittable outliers), raise the retry floor to batch size 1, and release memory per document.
 
-Sophisticated publication lifecycle tracking:
+### 2. Build/deploy skew has no guard — ✅ FIXED
 
-- [backend/etl/utils/publication_tracker.py](backend/etl/utils/publication_tracker.py) (623 lines)
-- [backend/storage/database.py](backend/storage/database.py) (260 lines)
-- [backend/etl/models/tracking.py](backend/etl/models/tracking.py)
+Nothing detects that the container's code is older than the repo's. This burned a submission, and it will do it again. Cheap fix: bake `git rev-parse HEAD` into the image as a label or `/app/GIT_SHA`, and have the sbatch script compare against the cluster checkout and refuse to run on mismatch.
 
-**Features:**
-- SQLite metadata database
-- Publication discovery and change detection
-- Processing plan generation
-- Status tracking through pipeline stages:
-  - ✅ Download status (PENDING, DOWNLOADING, DOWNLOADED, FAILED)
-  - ✅ Processing status (PENDING, PROCESSING, PROCESSED, FAILED)
-  - 🔴 Embedding status (TRACKED BUT NOT IMPLEMENTED)
-  - 🔴 Ingestion status (TRACKED BUT NOT IMPLEMENTED)
+### 3. sbatch time limit is shorter than the run it has to survive — ✅ FIXED
 
-**Test Coverage:** [test_publication_tracking.py](backend/tests/etl/test_publication_tracking.py) (1,877 lines) - Excellent coverage
+The sbatch requests `--mem=100G` and `--time=12:00:00`, but the successful run took **17h 14m**. It only completed because the job had a longer allocation than the current script grants — as written today, the same run would hit `TIMEOUT` five hours from the end, mid-embedding. Either raise `-t` to `1-00:00` or split PDF extraction and embedding into separate jobs. Check `jobstats 62012506` for the real memory profile before touching `--mem`.
 
-#### What's Missing
+### 4. Outstanding test-quality debt from the February audit
 
-- 🔴 **Vector Database:** No Qdrant integration despite qdrant-client being installed
-- 🔴 **Embeddings Storage:** No infrastructure to store/retrieve embeddings
-- 🔴 **Search Index:** No search index management
+The audits (`audit_summary.md` and the four detail files) were written Feb 24, and `test_fixes_summary.md` records that much of Tier 1 was subsequently addressed — the agent, `main.py`, `retry.py`, and `ingest_to_qdrant.py` all have tests now, and the suite is genuinely green. What appears **not** to have been resolved:
 
----
+- `_build_url()` in `openalex.py` — `lstrip('A')` strips *all* leading A's, so author ID `AAB123` becomes `B123` (audit item 19). Worth 5 minutes to confirm and fix.
+- Duplicate GCS implementations, `storage/cloud.py` vs `storage/gcs.py` — one is likely dead code (item 20).
+- Storage-layer tests (item 10) — `StorageFactory` auto-detection silently routing the whole pipeline to the wrong backend is a real risk given the local/cloud split.
 
-### ✅ Embeddings Generation (COMPLETE)
+### 5. 35 download failures + 5 extraction failures never triaged
 
-**Status:** ✅ Fully implemented and integrated
+8% of the corpus. Nobody has looked at whether these are dead links, paywalls, or a fixable bug in the downloader.
 
-**Implementation:**
-- **File:** [backend/etl/utils/embeddings_generator.py](backend/etl/utils/embeddings_generator.py) (645 lines)
-- **Script:** [backend/etl/scripts/run_embeddings_generator.py](backend/etl/scripts/run_embeddings_generator.py) (199 lines)
-- **Tests:** [backend/tests/etl/test_embeddings_generator.py](backend/tests/etl/test_embeddings_generator.py) (499 lines)
+### 6. Two container facts that bear on the rebuild and on Phase 3
 
-**Features:**
-- ✅ OpenAI API integration (text-embedding-3-small, 1536 dimensions)
-- ✅ Async batch processing (configurable batch_size: 32)
-- ✅ Retry logic with exponential backoff (max_retries: 3, delays: [1, 2, 4])
-- ✅ Rate limiting (rate_limit_delay: 0.1s between batches)
-- ✅ Timeout handling (timeout: 30s)
-- ✅ Resume capability (skips existing embeddings.parquet files)
-- ✅ Parquet + JSON output format
-  - `embeddings.parquet`: Efficient vector storage
-  - `metadata.json`: Full chunk metadata with text content
-- ✅ PublicationTracker integration (status tracking: PENDING → IN_PROGRESS → EMBEDDED/FAILED)
-- ✅ Orchestrator integration (runs as part of full ETL pipeline)
+- **The container installs only the `etl` extra** (`deployment/pdf-processing/Dockerfile:40` — `uv sync --locked --no-dev --extra etl`). `ingest_to_qdrant.py` imports `fastembed`, which lives in the `service` extra. **The ingestion step cannot run inside the current image.** Either add `--extra service` to that line, or run ingestion outside the container. Decide this before Phase 3 rather than discovering it mid-run.
+- **The builder base image is unpinned** — `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`, no version tag. Given that the whole February failure was a skew problem, pinning this is cheap insurance. Not urgent, but note that the next rebuild will pull a newer `uv` than the one that produced the current image.
 
-**Configuration:**
-```yaml
-file_processing:
-  embedding:
-    model: "openai"
-    dimensions: 1536
-    batch_size: 32
-    max_retries: 3
-    retry_delays: [1, 2, 4]
-    timeout: 30
-    rate_limit_delay: 0.1
-```
-
-**Output Structure:**
-```
-data/processed/embeddings/{content_type}/{source_type}/{doc_id}/
-├── embeddings.parquet    # Vector embeddings (chunk_id, embedding)
-└── metadata.json         # Full chunk metadata with text content
-```
-
-**Usage:**
-```bash
-# Standalone script
-uv run python backend/etl/scripts/run_embeddings_generator.py --config backend/etl/config.yaml
-
-# Via orchestrator
-python -m backend.etl.orchestrator --config backend/etl/config.yaml
-```
-
-**Test Coverage:**
-- Unit tests with mocked API (retry mechanism, format validation, resume capability)
-- Integration tests with real OpenAI API (end-to-end workflow, batch processing, tracker integration)
-- Total: 499 lines of test code
-
-**Status:** Production-ready. This component is fully functional and integrated into the ETL pipeline.
+> Minor: running `uv sync` today added an inert `[options]` block to `uv.lock` (a newer-`uv` metadata artifact). **No pinned versions changed** — verified. Keep it or revert it; it makes no functional difference.
 
 ---
 
-### 🔴 Vector Database (MISSING - CRITICAL BLOCKER)
+## What to do next
 
-**Status:** Does not exist
+Ordered so that each step de-risks the next. Steps 1–3 get you back to where you were in February; 4–6 are the actual new ground.
 
-**What's Needed:**
-- Create [backend/storage/vector_db.py](backend/storage/vector_db.py)
-- Qdrant integration (client library already installed)
-- Collection management for documents and chunks
-- Batch insertion for embeddings
-- Search interface (similarity search, filtering)
-- Local Qdrant setup for development
+### Phase 0 — Unblock (≈30 min, mostly waiting)
 
-**Configuration Ready:**
-```yaml
-storage:
-  vector_db:
-    name: "qdrant"
-    collections:
-      documents: "gl_documents"
-      chunks: "gl_chunks"
-```
-
-**Dependencies Installed:**
-- qdrant-client ✅
-
-**Expected Interface:**
-```python
-class VectorDatabase:
-    def __init__(self, config: dict):
-        self.client = QdrantClient(...)
-        self.collections = config["collections"]
-
-    async def create_collection(
-        self,
-        name: str,
-        vector_size: int
-    ):
-        """Create a new collection."""
-        pass
-
-    async def insert_embeddings(
-        self,
-        collection: str,
-        chunks: list[DocumentChunk],
-        embeddings: list[list[float]]
-    ):
-        """Insert embeddings with metadata."""
-        pass
-
-    async def search(
-        self,
-        collection: str,
-        query_embedding: list[float],
-        top_k: int = 10,
-        filters: dict = None
-    ) -> list[SearchResult]:
-        """Perform similarity search."""
-        pass
-```
-
-**Local Development Setup:**
-```bash
-# Run Qdrant locally with Docker
-docker run -p 6333:6333 qdrant/qdrant
-```
-
-**Impact:** Without this, embeddings cannot be stored or searched. This is the #2 blocker.
-
----
-
-### 🔴 Search API (MISSING - CRITICAL BLOCKER)
-
-**Status:** Skeleton directory only, no implementation
-
-**Current State:**
-```
-backend/service/
-├── __init__.py
-├── .env.example
-└── utils/
-```
-
-**What's Needed:**
-
-1. **FastAPI Application** - [backend/service/main.py](backend/service/main.py)
-   ```python
-   from fastapi import FastAPI
-
-   app = FastAPI(title="Growth Lab Deep Search API")
-
-   @app.post("/search")
-   async def search(query: str, top_k: int = 10):
-       # Query → Embedding → Vector Search → Response
-       pass
-
-   @app.get("/health")
-   async def health():
-       return {"status": "ok"}
-   ```
-
-2. **API Routes** - [backend/service/routes.py](backend/service/routes.py)
-   - `/search` - Semantic search endpoint
-   - `/documents/{doc_id}` - Retrieve specific document
-   - `/stats` - System statistics
-
-3. **Request/Response Models** - [backend/service/models.py](backend/service/models.py)
-   ```python
-   from pydantic import BaseModel
-
-   class SearchRequest(BaseModel):
-       query: str
-       top_k: int = 10
-       filters: dict = None
-
-   class SearchResult(BaseModel):
-       chunk_id: str
-       document_id: str
-       text: str
-       score: float
-       metadata: dict
-   ```
-
-4. **LangGraph Agent** - [backend/service/graph.py](backend/service/graph.py)
-   - Query understanding
-   - Result augmentation with LLM
-   - Agentic RAG patterns
-
-5. **Tools** - [backend/service/tools.py](backend/service/tools.py)
-   - Vector search tool
-   - Document retrieval tool
-   - LLM summarization tool
-
-**Dependencies Installed:**
-- FastAPI ✅
-- uvicorn ✅
-- LangGraph ✅
-- LangChain ✅
-- langchain-openai ✅
-- langchain-anthropic ✅
-
-**Impact:** Without this, users cannot query the system. This is the #3 blocker.
-
----
-
-### 🔴 Frontend (MISSING)
-
-**Status:** Directory structure only, no implementation
-
-**Current State:**
-```
-frontend/
-└── .env.example
-```
-
-**What's Needed:**
-
-1. **Streamlit Application** - [frontend/app.py](frontend/app.py)
-   - Search interface
-   - Results display
-   - Document viewer
-   - Filters (date, publication type, etc.)
-
-2. **Utilities** - [frontend/utils.py](frontend/utils.py)
-   - API client
-   - Result formatting
-   - State management
-
-**Dependencies Installed:**
-- streamlit ✅
-
-**Basic Structure:**
-```python
-import streamlit as st
-import requests
-
-st.title("Growth Lab Deep Search")
-
-query = st.text_input("Search research documents...")
-
-if st.button("Search"):
-    response = requests.post(
-        "http://localhost:8000/search",
-        json={"query": query}
-    )
-    results = response.json()
-
-    for result in results:
-        st.markdown(f"### {result['document_title']}")
-        st.write(result['text'])
-        st.write(f"Score: {result['score']}")
-```
-
-**Impact:** Without this, no user-friendly interface exists. Lower priority than API.
-
----
-
-## Configuration System
-
-**File:** [backend/etl/config.yaml](backend/etl/config.yaml)
-
-The configuration system is comprehensive and well-structured:
-
-```yaml
-environment: "development"
-
-sources:
-  growth_lab:
-    base_url: "https://growthlab.hks.harvard.edu/publications-home/repository"
-    scrape_delay: 2.0
-    concurrency_limit: 2
-
-  # OpenAlex integration paused
-  openalex:
-    enabled: false
-
-file_processing:
-  ocr:
-    default_model: "docling"  # docling, marker, gemini_flash
-    max_concurrent: 4
-    ocr_languages: ["eng"]
-    language_detection_pages: 5
-
-  embedding:
-    model: "openai"           # ← CONFIGURED BUT NOT IMPLEMENTED
-    dimensions: 1536
-    batch_size: 32
-
-  chunking:
-    enabled: true
-    strategy: "hybrid"        # fixed, sentence, structure, hybrid
-    chunk_size: 1000
-    chunk_overlap: 200
-    min_chunk_size: 100
-    max_chunk_size: 2000
-    preserve_structure: true
-
-storage:
-  vector_db:
-    name: "qdrant"           # ← CONFIGURED BUT NOT IMPLEMENTED
-    host: "localhost"
-    port: 6333
-    collections:
-      documents: "gl_documents"
-      chunks: "gl_chunks"
-
-  local:
-    base_path: "data/"
-
-  gcs:
-    bucket: "gl-deep-search"
-    project_id: "growth-lab-search"
-
-runtime:
-  detect_automatically: true
-  slurm_indicators: ["SLURM_JOB_ID", "SLURM_STEP_ID"]
-  local_storage_path: "data/"
-  sync_to_gcs: true
-
-llm:
-  provider: "openai"          # openai, anthropic
-  model: "gpt-4"
-  temperature: 0.1
-  max_tokens: 2000
-```
-
-**Status:** Configuration is complete and ready for all components, but many configured services are not implemented.
-
----
-
-## Test Coverage Summary
-
-**Total Test Code:** 6,573 lines
-
-### ETL Pipeline Tests ✅
-
-| Test File | Lines | Coverage | Status |
-|-----------|-------|----------|--------|
-| test_growthlab.py | 465 | Good | ✅ |
-| test_gl_file_downloader.py | 506 | Good | ✅ |
-| test_pdf_processor.py | 178 | Partial | ✅ |
-| test_text_chunker.py | 972 | Excellent | ✅ |
-| test_lecture_transcripts.py | 129 | Basic | ✅ |
-| test_orchestrator.py | 640 | Good | ✅ |
-| test_publication_tracking.py | 1,877 | Excellent | ✅ |
-
-**ETL Test Coverage:** Comprehensive - all major components well tested
-
-### Missing Test Coverage 🔴
-
-- Embeddings generation (component doesn't exist)
-- Vector database operations (component doesn't exist)
-- Search API (component doesn't exist)
-- Frontend (component doesn't exist)
-- End-to-end semantic search (impossible without above components)
-
----
-
-## Dependencies
-
-### Core Dependencies ✅
-
-```toml
-[project]
-name = "gl-deep-search"
-version = "0.1.0"
-requires-python = ">=3.12"
-
-dependencies = [
-    "pydantic>=2.0",
-    "loguru>=0.7.0",
-    "aiohttp>=3.9.0",
-    "sqlmodel>=0.0.14",
-]
-
-[project.optional-dependencies]
-etl = [
-    "beautifulsoup4>=4.12.0",
-    "unstructured[all-docs]>=0.10.0",
-    "openai>=1.0.0",
-    "sentence-transformers>=2.2.0",
-    "qdrant-client>=1.7.0",
-]
-
-service = [
-    "fastapi>=0.109.0",
-    "uvicorn[standard]>=0.27.0",
-    "langgraph>=0.0.20",
-    "langchain>=0.1.0",
-    "langchain-openai>=0.0.2",
-    "langchain-anthropic>=0.1.0",
-]
-
-frontend = [
-    "streamlit>=1.30.0",
-]
-
-dev = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "pytest-asyncio>=0.21.0",
-    "ruff>=0.1.0",
-    "mypy>=1.7.0",
-]
-```
-
-### Installation
-
-```bash
-# Install ETL dependencies
-uv sync --extra etl
-
-# Install all dependencies
-uv sync --extra etl --extra service --extra frontend --extra dev
-```
-
-### Dependency Usage Analysis
-
-| Dependency | Installed | Used | Purpose |
-|------------|-----------|------|---------|
-| unstructured | ✅ | ✅ | PDF processing |
-| openai | ✅ | ✅ | Lecture transcripts + Embeddings generation |
-| sentence-transformers | ✅ | 🟡 | Installed but not used (OpenAI preferred) |
-| qdrant-client | ✅ | 🔴 | Vector DB (unused) |
-| FastAPI | ✅ | 🔴 | API (unused) |
-| LangGraph | ✅ | 🔴 | Agentic RAG (unused) |
-| LangChain | ✅ | 🔴 | LLM framework (unused) |
-| anthropic | ✅ | 🔴 | Claude API (unused) |
-| Streamlit | ✅ | 🔴 | Frontend (unused) |
-
-**Observation:** Many dependencies are installed but completely unused, indicating the service and frontend layers are not implemented.
-
----
-
-## Data Flow & Current Output
-
-### What Actually Works Today
-
-1. **Scrape Publications** ✅
+1. ~~**Commit the CI fix.**~~ Still uncommitted, but verified: with `--extra service` the suite goes from 4 collection errors to fully green. Ready to commit alongside today's changes.
+2. **Decide the `data/processed/` question.** ⬅️ *Needs your memory — this is the one thing I can't determine.* Was it deleted or moved? If there's any chance it's recoverable, that's 13 GPU-hours saved.
+3. **Rebuild and redeploy the container:**
    ```bash
-   uv run python backend/etl/scripts/run_scraper.py
+   bash deployment/slurm/setup_env.sh build          # local — Cloud Build, ~20 min
+   ssh ody 'cd $PROJECT_DIR && git pull && bash deployment/slurm/setup_env.sh pull'
    ```
-   Output: `data/intermediate/growth_lab_publications.csv`
-   - ~400 publications
-   - ~1,000 document URLs
-
-2. **Download Files** ✅
+4. **Verify before submitting** — this is the check that would have saved February:
    ```bash
-   uv run python backend/etl/scripts/run_file_downloader.py
+   ssh ody 'cd $PROJECT_DIR && singularity exec deployment/slurm/gl-pdf-processing.sif \
+     python -m backend.etl.orchestrator --help | grep -- --sources'
    ```
-   Output: `data/raw/documents/growthlab/<pub_id>/*.pdf`
-   - Concurrent downloads
-   - Resume capability
 
-3. **Process PDFs** ✅
-   ```bash
-   uv run python backend/etl/scripts/run_pdf_processor.py
-   ```
-   Output: `data/processed/documents/growthlab/<pub_id>/file.txt`
-   - OCR extraction
-   - Structure preservation
+### Phase 1 — Fix the OOM before spending GPU hours — ✅ DONE
 
-4. **Chunk Text** ✅
-   ```bash
-   uv run python backend/etl/scripts/run_text_chunker.py
-   ```
-   Output: `data/processed/chunks/<pub_id>/chunks.json`
-   - Hybrid chunking strategy
-   - Metadata preservation
+5. ~~Apply the four fixes in Issue 1.~~ Done.
+6. ~~Add a regression test that asserts the OOM retry reaches batch size 1.~~ Done — three new tests, suite now at 282.
+7. **Still to do:** validate on a short job — `SCRAPER_LIMIT=20 DOWNLOAD_LIMIT=20 sbatch deployment/slurm/etl_pipeline.sbatch`. This is exactly the run that died in February, so it doubles as confirmation of both the OOM fix and the new staleness guard.
 
-5. **Generate Embeddings** ✅
-   ```bash
-   uv run python backend/etl/scripts/run_embeddings_generator.py --config backend/etl/config.yaml
-   ```
-   Output: `data/processed/embeddings/<pub_id>/embeddings.parquet` + `metadata.json`
-   - OpenAI API integration
-   - Batch processing with retry logic
-   - Resume capability
+### Phase 2 — Re-run production (≈18 h wall clock, mostly unattended)
 
-6. **Run Full Pipeline** ✅
-   ```bash
-   python -m backend.etl.orchestrator --config backend/etl/config.yaml
-   ```
-   - Runs all ETL components including embeddings generation
-   - Error isolation
-   - Execution reports
+8. Raise the sbatch time limit to `1-00:00` first (Issue 3).
+9. Full run with all three sources: `SOURCES=all sbatch deployment/slurm/etl_pipeline.sbatch`. Downloads will be skipped (raw PDFs intact); PDF extraction and embedding rerun. Lectures and OpenAlex process for the first time.
+10. Run `jobstats <JOBID>` afterwards and right-size `--mem` and `-c` in the script.
 
-### What Doesn't Work
+### Phase 3 — Close the loop to search (the actual new work)
 
-7. **Store in Vector DB** 🔴
-   ```bash
-   # DOES NOT EXIST
-   uv run python backend/etl/scripts/run_vector_ingestion.py
-   ```
-   Error: File not found
+11. **Stand up Qdrant.** Add a `qdrant` service to `docker-compose.yml` for local development. Decide the production target — Qdrant Cloud free tier is likely sufficient at 20k vectors × 1024 dims (~80 MB), and avoids running a VM.
+12. **Run `ingest_to_qdrant.py` for real.** It has never executed against real data. Expect schema friction on the first attempt — it merges parquet embeddings, chunk JSON, and tracker rows, and the parquet layout changed when embeddings moved to Qwen3.
+13. **Wire ingestion into the orchestrator** as a final component so `ingestion_status` stops being permanently `PENDING`.
+14. **Run the API against real data** — `uvicorn backend.service.main:app`, hit `/search/chunks`, then the agent, then Streamlit. First real end-to-end query.
 
-8. **Search API** 🔴
-   ```bash
-   # DOES NOT EXIST
-   uvicorn backend.service.main:app --reload
-   ```
-   Error: Module 'backend.service.main' has no attribute 'app'
+### Phase 4 — Cleanup, when convenient
 
-9. **Frontend** 🔴
-   ```bash
-   # DOES NOT EXIST
-   streamlit run frontend/app.py
-   ```
-   Error: File not found
+15. ~~Delete the stale `PROJECT_STATUS.md`.~~ Done — this file replaced it.
+16. Move `audit_*.md`, `test_fixes_summary.md`, `test_strategy_rework_review.md` into `docs/`.
+17. Prune the 15 stale remote branches.
+18. Triage the 35 download and 5 extraction failures.
+19. Fix the `lstrip('A')` bug in `openalex.py`.
 
 ---
 
-## Code Quality
-
-### Static Analysis ✅
+## Runbook
 
 ```bash
-# Linting
-uv run ruff check .
+# ── Local ────────────────────────────────────────────────────────────
+uv sync --extra etl --extra service --extra dev   # NOTE: service extra is required
+uv run pytest -m "not integration"                # 279 passed, 3 skipped, ~2 min
+uv run ruff check . && uv run ruff format --check . && uv run mypy .
 
-# Formatting
-uv run ruff format .
+uv run python -m backend.etl.orchestrator --dev --sources all --download-limit 3
 
-# Type checking
-uv run mypy .
+# ── Container ────────────────────────────────────────────────────────
+bash deployment/slurm/setup_env.sh build          # local: Cloud Build → Artifact Registry
+ssh ody 'cd /n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search \
+         && git pull && bash deployment/slurm/setup_env.sh pull'
+
+# ── Cluster ──────────────────────────────────────────────────────────
+ssh ody
+cd /n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search
+
+SCRAPER_LIMIT=20 DOWNLOAD_LIMIT=20 sbatch deployment/slurm/etl_pipeline.sbatch   # smoke
+SOURCES=all sbatch deployment/slurm/etl_pipeline.sbatch                          # full
+
+squeue --me
+tail -f logs/etl_pipeline_<JOBID>.out
+jobstats <JOBID>
 ```
 
-**Status:** All ETL code passes linting, formatting, and type checking.
+### Cluster reference
 
-### Code Standards ✅
+| | |
+|---|---|
+| Host | `ody` → `login.rc.fas.harvard.edu` |
+| Project dir | `/n/holystore01/LABS/hausmann_lab/users/shreyasgm/gl_deep_search/` |
+| Partition | `gpu` (A100 80 GB), `--gres=gpu:1` |
+| Image | `us-east4-docker.pkg.dev/cid-hks-1537286359734/etl-pipeline/gl-pdf-processing:latest` |
+| GCP project | `cid-hks-1537286359734` (`us-east4`) |
+| GCS bucket | `gs://gl-deep-search-data` |
 
-- Type hints throughout (Python 3.12+)
-- Google-style docstrings
-- PEP 8 compliance (line length: 88)
-- Async/await patterns for I/O operations
-- Comprehensive error handling
-- Structured logging with loguru
-- Configuration-driven design
-
-### Architecture Patterns ✅
-
-- Factory pattern for storage backends
-- Abstract base classes for extensibility
-- Dependency injection via configuration
-- Separation of concerns (ETL, storage, service)
-- Context managers for resource cleanup
-- Retry logic with exponential backoff
+> ⚠️ **Two cluster events are imminent — check both before starting an 18-hour job.** Per `~/ln_gl/openalex/src/fasrc_cluster_guide.md`:
+>
+> - **FASRC rolling OS upgrades, Aug 24–27 2026** — three days from now. Don't have a long job in flight across that window.
+> - **`/n/holystore01` migrates off legacy Tier 0 Lustre in late September 2026** (Storage Modernization Initiative, Phase 4) — roughly five weeks out. **Every path in this document lives on it**, and `PROJECT_DIR` is hardcoded at `deployment/slurm/etl_pipeline.sbatch:44`. Confirm destination paths and timing for `hausmann_lab` with `rdm@rc.fas.harvard.edu`.
+>
+> Practically: the Phase 2 re-run wants to happen either in the next three days or in the window between the OS upgrade and the storage migration. Paths verified working 2026-08-21.
 
 ---
 
-## Critical Gaps Analysis
+## Work done 2026-08-21
 
-### What's Blocking Semantic Search
+All local, all verified. Nothing has been committed, built, or submitted to the cluster.
 
-1. **Embeddings Generator** ✅
-   - Status: ✅ Complete and production-ready
-   - Impact: ~~Cannot convert text to vectors~~ → Now functional
-   - Priority: ~~CRITICAL~~ → ✅ RESOLVED
+| Change | Files |
+|---|---|
+| **bf16 model loading** — `SentenceTransformer` now receives `model_kwargs={"dtype": ...}`. Halves resident weights for the 8B model from ~32 GB to ~16 GB | `embeddings_generator.py`, `config.yaml` |
+| **Sequence cap** — `max_seq_length: 2048`, and `max_chunk_size` lowered 8000 → 2000 tokens so outlier chunks stop driving quadratic attention cost | `embeddings_generator.py`, `config.yaml` |
+| **OOM retry floor** — halving now continues to batch size 1 instead of stopping at 4 | `embeddings_generator.py` |
+| **Per-document memory release** — `release_gpu_memory()` after every document, not only on OOM | `embeddings_generator.py` |
+| **Safe defaults** — dtype/seq-length default to `None` so small CPU models are unaffected; production values live in `config.yaml`, dev overrides to `null` | `config.dev.yaml` |
+| **Git SHA provenance** — commit baked into the image at build time and passed through Cloud Build | `pdf-processing/Dockerfile`, `cloudbuild-slurm.yaml`, `setup_env.sh` |
+| **Staleness guard** — sbatch compares image SHA to checkout SHA and refuses to run on mismatch (`ALLOW_STALE_IMAGE=1` to override). Degrades to a warning when either SHA is unavailable | `etl_pipeline.sbatch` |
+| **Time limit** 12h → 24h, with the 17h14m evidence recorded in the comment | `etl_pipeline.sbatch` |
+| **3 regression tests** — retry reaches batch size 1; non-OOM `RuntimeError` propagates unretried; memory controls actually reach the model | `test_embeddings_generator.py` |
 
-2. **Vector Database** 🔴
-   - Status: Does not exist
-   - Impact: Cannot store or search embeddings
-   - Priority: CRITICAL
+Verification: **282 passed, 3 skipped**; `ruff check`, `ruff format --check`, `mypy` all clean; `--dev --sources all --dry-run` sequences all 8 components correctly.
 
-3. **Search API** 🔴
-   - Status: Does not exist
-   - Impact: No way to query the system
-   - Priority: CRITICAL
+Two notes worth keeping:
 
-### What's Blocking User Access
-
-4. **Frontend UI** 🔴
-   - Status: Does not exist
-   - Impact: No user interface
-   - Priority: Important (not critical)
-
-### What's Blocking Production Deployment
-
-5. **Docker Containerization** 🔴
-   - Status: No Dockerfile or docker-compose.yml
-   - Impact: Cannot deploy to production environments
-   - Priority: Important (post-MVP)
-
-6. **SLURM Integration** 🔴
-   - Status: Runtime detection exists, but untested
-   - Impact: Cannot run on HPC clusters
-   - Priority: Important (post-MVP)
-
-7. **Cloud Deployment** 🔴
-   - Status: GCS backend exists but not production-tested
-   - Impact: Cannot deploy to cloud
-   - Priority: Important (post-MVP)
+- The kwarg is **`dtype`, not `torch_dtype`** — transformers 4.57.6 (the pinned version) deprecates the latter with a `FutureWarning`.
+- The dry run confirms the pipeline ends at *Embeddings Generator*. **There is no ingestion component.** That is the missing link between ETL and search, and it is the real remaining work.
 
 ---
 
-## Risk Assessment
+## The one-paragraph version
 
-### Technical Risks
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| OpenAI API costs for embeddings | High | Medium | Use text-embedding-3-small, batch processing |
-| Qdrant performance at scale | Medium | High | Load testing, indexing optimization |
-| PDF OCR quality issues | Medium | High | Already mitigated with unstructured library |
-| SLURM environment issues | Low | Medium | Test before production deployment |
-
-### Project Risks
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Scope creep | Medium | High | Focus on core functionality first |
-| Integration complexity | Medium | Medium | Incremental integration with tests |
-
----
-
-## Current Data & Testing
-
-### Sample Data Available
-
-The project has **3 sample PDFs** already downloaded and processed:
-
-1. `data/raw/documents/growthlab/gl_url_39aabeaa471ae241/`
-   - 2019-09-cid-fellows-wp-117-tax-avoidance-buenos-aires.pdf
-
-2. `data/raw/documents/growthlab/gl_url_3e115487b5f521a6/`
-   - libro-hiper-15-05-19-paginas-185-207.pdf
-
-3. `data/raw/documents/growthlab/gl_url_71a29a74fc0321d5/`
-   - growth_diagnostic_paraguay.pdf
-
-These samples are sufficient for development and testing of embeddings and vector DB components.
-
-### Full Dataset Capability
-
-The scraper has identified **~400 publications with ~1,000 document URLs**. When the pipeline is complete, it can process the entire Growth Lab research corpus.
-
----
-
-## Development Commands
-
-### Setup
-
-```bash
-# Navigate to project
-cd "/Users/shg309/Dropbox (Personal)/Education/hks_cid_growth_lab/gl_deep_search"
-
-# Install dependencies
-uv sync --extra etl --extra service --extra frontend --extra dev
-```
-
-### ETL Pipeline
-
-```bash
-# Run individual components
-uv run python backend/etl/scripts/run_scraper.py
-uv run python backend/etl/scripts/run_file_downloader.py
-uv run python backend/etl/scripts/run_pdf_processor.py
-uv run python backend/etl/scripts/run_text_chunker.py
-uv run python backend/etl/scripts/run_embeddings_generator.py --config backend/etl/config.yaml
-
-# Run full pipeline
-python -m backend.etl.orchestrator --config backend/etl/config.yaml
-
-# Run with specific components
-python -m backend.etl.orchestrator --config backend/etl/config.yaml \
-    --component scraper --component downloader
-
-# Dry run
-python -m backend.etl.orchestrator --config backend/etl/config.yaml --dry-run
-```
-
-### Testing
-
-```bash
-# Run all tests
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov=backend
-
-# Run specific test file
-uv run pytest backend/tests/etl/test_text_chunker.py
-
-# Run specific test
-uv run pytest backend/tests/etl/test_text_chunker.py::test_hybrid_chunking
-```
-
-### Code Quality
-
-```bash
-# Linting
-uv run ruff check .
-
-# Formatting
-uv run ruff format .
-
-# Type checking
-uv run mypy .
-```
-
-### API (When Implemented)
-
-```bash
-# Run API server
-uvicorn backend.service.main:app --reload --port 8000
-```
-
-### Frontend (When Implemented)
-
-```bash
-# Run Streamlit app
-streamlit run frontend/app.py
-```
-
----
-
-## Project Statistics
-
-### Codebase Size
-
-- **ETL Pipeline:** ~5,445 lines (includes embeddings generator)
-- **Storage & Tracking:** ~1,600 lines
-- **Utilities & Models:** ~2,600 lines
-- **Tests:** 7,072 lines (includes embeddings tests)
-- **Configuration:** ~200 lines
-
-**Total:** ~16,917 lines of code
-
-### Components Status
-
-- ✅ Complete: 10 components (added Embeddings Generator)
-- 🟡 Partial: 3 components
-- 🔴 Missing: 4 components (removed Embeddings Generator)
-
-### Test Coverage
-
-- **Lines of test code:** 7,072
-- **Test files:** 10 (added test_embeddings_generator.py)
-- **ETL coverage:** Comprehensive (includes embeddings)
-- **Service coverage:** None (components don't exist)
-
----
-
-## Honest Assessment
-
-### What Works ✅
-
-The Growth Lab Deep Search project has **successfully built production-grade infrastructure** for ETL and deployment:
-
-1. **ETL Pipeline** - All components work end-to-end
-   - Scraper, Downloader, PDF Processor, Text Chunker, Embeddings Generator
-   - Tested on Phase 1 (10 publications, 5m 30s execution)
-   - Code quality is high with comprehensive error handling and good test coverage
-
-2. **GCP Deployment** - Production infrastructure validated
-   - Docker image builds successfully (~12 min)
-   - Cloud Run Job deployed and configured
-   - Runs on VMs with proper service account setup
-   - Cost monitoring active and working
-
-3. **Embeddings Generation** - Fully functional
-   - OpenAI API integration working
-   - Batch processing with retry logic
-   - Resume capability proven
-
-**If your goal is:** "Extract text from PDFs, chunk it, and generate embeddings on GCP"
-**Then:** ✅ This system works perfectly.
-
-### What Doesn't Work 🔴
-
-1. **CRITICAL BUG**: Text Chunker Token Limits
-   - Chunks exceed embedding model token limits (18K vs 8K max)
-   - Causes 33% embedding failure rate in Phase 1 testing
-   - Must be fixed before any phase progresses
-
-2. **Missing Components**: Vector DB + Search API
-   - No way to store embeddings in searchable format
-   - No API to query the system
-   - No user interface
-
-**If your goal is:** "Search Growth Lab documents semantically today"
-**Then:** 🔴 This system cannot do that yet.
-
-### The Reality
-
-**The project is ~70% complete:**
-- ETL Pipeline: 95% (bug fix needed) ⚠️
-- Deployment Infrastructure: 100% ✅
-- Embeddings Generation: 100% ✅
-- Vector Storage: 0% 🔴
-- Search API: 0% 🔴
-- Frontend: 0% 🔴
-
-**Critical Path:**
-1. ~~Embeddings generation~~ ✅ COMPLETE
-2. Fix text chunker token limits ← **IMMEDIATE PRIORITY**
-3. Vector database integration
-4. Search API
-5. Frontend
-
-### Recommendation
-
-**FIX THE BUG FIRST.** The token limit bug must be addressed before proceeding to Phase 2 testing. This is a blocker - 33% of documents fail in Phase 1.
-
-**After bug fix:**
-1. Re-run Phase 1 test (should see 3/3 documents embedded successfully)
-2. Run Phase 2 test (100 publications, $10 threshold)
-3. Then proceed to vector database implementation
-
-The infrastructure work is excellent. The ETL pipeline is solid. Only this one application-level bug stands between Phase 1 and Phase 2 validation.
-
----
-
-## Conclusion
-
-The Growth Lab Deep Search project has **successfully validated end-to-end ETL and deployment infrastructure on GCP**. All components work together on real infrastructure. The only thing standing between Phase 1 validation and Phase 2 testing is **one critical bug in the text chunker** - it creates chunks that exceed the embedding model's token limits.
-
-**Immediate Next Steps:**
-1. Fix text chunker token limits in `backend/etl/utils/text_chunker.py` (4-6 hours)
-2. Re-run Phase 1 test to validate fix
-3. If Phase 1 passes: Run Phase 2 test (100 publications)
-4. After Phase 2: Begin vector database and search API implementation
-
-**Key Files to Review:**
-- Bug details: `deployment/DEPLOYMENT_STATUS.md`
-- Chunker implementation: `backend/etl/utils/text_chunker.py`
-- Phase 1 test results: `deployment/TEST_RESULTS_PHASE1.md`
-- Deployment status: `deployment/DEPLOYMENT_STATUS.md`
-
----
-
-**Last Updated:** November 17, 2025
-**Repository:** `/Users/shg309/Dropbox (Personal)/Education/hks_cid_growth_lab/gl_deep_search`
-**Current Branch:** main
-**Commits ahead of origin/main:** 8
-**Recent Changes:**
-- Deployment infrastructure (Docker, Cloud Run, cost monitoring)
-- Phase 1 testing infrastructure
-- Critical bug identification (token limits in chunker)
+The February work was good and it is not lost. The ETL pipeline is proven at production scale, the test suite is green, and the search layer is written. What killed momentum was a stale container image producing a two-minute failure at 9 PM, followed by six months of not coming back to it. Rebuild the image, fix the embedding OOM before spending GPU hours, re-run the pipeline, and then do the one genuinely unfinished thing: stand up Qdrant and ingest. That is the shortest path from here to a system that can answer a question.

@@ -24,6 +24,8 @@ file_processing:
     dimensions: 384                  # Native output dimensions (no MRL truncation)
     max_tokens: 256                  # True effective limit (model truncates at 256)
     batch_size: 64                   # Small model can batch more
+    dtype: null                      # fp32 on CPU/MPS; bf16 buys nothing at 80MB
+    max_seq_length: null             # MiniLM already caps itself at 256
 
   chunking:
     chunk_size: 100                  # ~100 tokens — safe for 256 token limit

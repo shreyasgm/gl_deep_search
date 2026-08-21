@@ -4,15 +4,18 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=100G
-#SBATCH --time=12:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --output=logs/etl_pipeline_%j.out
 #SBATCH --error=logs/etl_pipeline_%j.err
 # Resource notes:
 #   --mem is CPU RAM only (not GPU VRAM). GPU VRAM is determined by hardware.
 #   On the gpu partition, all nodes have A100s (40-80GB VRAM), which is 3-5x
 #   what Marker needs (~8-14GB peak). No need to constrain GPU type.
-#   12h allows for full production runs (scraping + Marker + Qwen3 on hundreds
-#   of papers). For test runs, the job will finish much sooner.
+#   The 2026-02-25 full run (449 pubs, Marker on A100 + Qwen3-8B) took 17h14m,
+#   of which PDF extraction was 13.1h. 12h was not enough; 24h leaves headroom.
+#   For test runs the job finishes much sooner and the limit costs nothing but
+#   a slightly longer queue wait. If queue time becomes the bottleneck, split
+#   PDF extraction and embedding into two jobs rather than trimming this.
 
 # Growth Lab Deep Search - Full ETL Pipeline via Singularity
 #
@@ -25,6 +28,9 @@
 #
 #   # Test run with limits:
 #   SCRAPER_LIMIT=10 DOWNLOAD_LIMIT=10 sbatch deployment/slurm/etl_pipeline.sbatch
+#
+#   # Smoke test (also caps the PDFs processed, not just those downloaded):
+#   SCRAPER_LIMIT=5 DOWNLOAD_LIMIT=5 PDF_LIMIT=5 sbatch deployment/slurm/etl_pipeline.sbatch
 #
 #   # Run specific sources:
 #   SOURCES=lectures sbatch deployment/slurm/etl_pipeline.sbatch
@@ -48,6 +54,7 @@ CONFIG_FILE="backend/etl/config.yaml"
 SOURCES="${SOURCES:-all}"
 SCRAPER_LIMIT="${SCRAPER_LIMIT:-}"
 DOWNLOAD_LIMIT="${DOWNLOAD_LIMIT:-}"
+PDF_LIMIT="${PDF_LIMIT:-}"
 SKIP_SCRAPING="${SKIP_SCRAPING:-0}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
@@ -61,6 +68,7 @@ echo "Memory:        ${SLURM_MEM_PER_NODE:-unknown} MB"
 echo "Sources:       $SOURCES"
 echo "Scraper limit: ${SCRAPER_LIMIT:-unlimited}"
 echo "Download limit:${DOWNLOAD_LIMIT:-unlimited}"
+echo "PDF limit:     ${PDF_LIMIT:-unlimited}"
 echo "Skip scraping: $SKIP_SCRAPING"
 echo "Start:         $(date)"
 echo "========================"
@@ -99,6 +107,36 @@ if [[ ! -f "$SIF_IMAGE" ]]; then
     echo "ERROR: Container image not found at $SIF_IMAGE"
     echo "Run on the cluster: bash deployment/slurm/setup_env.sh pull"
     exit 1
+fi
+
+# ── Guard against a stale image ──────────────────────────────────────
+# On 2026-02-25 a job died two minutes in because the .sif predated the commit
+# that added --sources: the container's Python had never seen the flag. Compare
+# the commit baked into the image against the cluster checkout and stop early.
+# Override with ALLOW_STALE_IMAGE=1 when you knowingly want the older code.
+REPO_SHA="$(git -C "$PROJECT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
+IMAGE_SHA="$(singularity exec "$SIF_IMAGE" cat /app/GIT_SHA 2>/dev/null | tr -d '[:space:]' || echo unknown)"
+echo "Repo commit:   $REPO_SHA"
+echo "Image commit:  $IMAGE_SHA"
+
+if [[ "$IMAGE_SHA" == "unknown" || -z "$IMAGE_SHA" ]]; then
+    echo "WARNING: image carries no commit stamp (built before SHA provenance)."
+    echo "         Rebuild with 'setup_env.sh build' to enable this check."
+elif [[ "$REPO_SHA" == "unknown" ]]; then
+    echo "WARNING: could not read the repo commit (is git on PATH?). Skipping"
+    echo "         the staleness check rather than blocking the job."
+elif [[ "$IMAGE_SHA" != "$REPO_SHA" ]]; then
+    echo "ERROR: container image is out of sync with the repository."
+    echo "  Image was built from: $IMAGE_SHA"
+    echo "  Checkout is at:       $REPO_SHA"
+    echo ""
+    echo "Rebuild and re-pull:"
+    echo "  (local)   bash deployment/slurm/setup_env.sh build"
+    echo "  (cluster) bash deployment/slurm/setup_env.sh pull"
+    echo ""
+    echo "Set ALLOW_STALE_IMAGE=1 to run anyway."
+    [[ "${ALLOW_STALE_IMAGE:-0}" == "1" ]] || exit 1
+    echo "ALLOW_STALE_IMAGE=1 set — continuing with the stale image."
 fi
 
 # ── Stage to local scratch (avoids slow network filesystem I/O) ──────
@@ -148,6 +186,7 @@ CMD_ARGS=(
 
 if [[ -n "$SCRAPER_LIMIT" ]]; then CMD_ARGS+=(--scraper-limit "$SCRAPER_LIMIT"); fi
 if [[ -n "$DOWNLOAD_LIMIT" ]]; then CMD_ARGS+=(--download-limit "$DOWNLOAD_LIMIT"); fi
+if [[ -n "$PDF_LIMIT" ]]; then CMD_ARGS+=(--pdf-limit "$PDF_LIMIT"); fi
 
 if [[ "$SKIP_SCRAPING" == "1" ]]; then
     CMD_ARGS+=(--skip-scraping)
