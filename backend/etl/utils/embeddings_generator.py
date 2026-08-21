@@ -597,6 +597,22 @@ class EmbeddingsGenerator:
             pass
         return f"processed/embeddings/{document_id}"
 
+    def _chunked_document_ids(self, storage) -> set[str]:
+        """Return IDs of every document that has chunks on disk.
+
+        Args:
+            storage: Storage abstraction
+
+        Returns:
+            Set of document IDs with a ``chunks.json`` present.
+        """
+        ids: set[str] = set()
+        for rel in storage.glob("processed/chunks/**/chunks.json"):
+            parts = Path(rel).parts
+            if len(parts) >= 2:
+                ids.add(parts[-2])
+        return ids
+
     def _discover_documents_from_chunks(
         self,
         storage,
@@ -811,6 +827,18 @@ class EmbeddingsGenerator:
                 for doc_id in document_ids:
                     if doc_id not in seen:
                         logger.warning(f"Publication not found or not ready: {doc_id}")
+
+            # Only documents with chunks on disk can be embedded. The tracker
+            # can disagree with disk (e.g. after processed/ is cleared), and
+            # attempting those would mark healthy rows FAILED for no reason.
+            chunked = self._chunked_document_ids(storage)
+            missing = [doc_id for doc_id in work if doc_id not in chunked]
+            if missing:
+                work = [doc_id for doc_id in work if doc_id in chunked]
+                logger.info(
+                    f"Skipping {len(missing)} tracker-listed documents with no "
+                    f"chunks on disk (nothing to embed yet)"
+                )
 
             # Apply the limit once, to the merged list
             if limit:

@@ -1063,13 +1063,15 @@ runtime:
             status=EmbeddingGenerationStatus.SUCCESS,
         )
 
-    async def _run(self, generator, tracker, discovered, **kwargs):
+    async def _run(self, generator, tracker, discovered, chunked=None, **kwargs):
         """Run process_all_documents with disk scan and embedding mocked.
 
         Args:
             generator: EmbeddingsGenerator under test
             tracker: Mock tracker
             discovered: IDs the disk scan should return
+            chunked: IDs that have chunks on disk. Defaults to every ID in
+                play, so the chunk-presence filter is a no-op.
             **kwargs: Extra arguments for process_all_documents()
 
         Returns:
@@ -1080,6 +1082,18 @@ runtime:
         async def fake_embed(document_id, storage):
             embedded.append(document_id)
             return self._success_result(document_id)
+
+        tracked_ids = [
+            pub.publication_id
+            for pub in tracker.get_publications_for_embedding.return_value
+        ]
+        if chunked is None:
+            chunked = {*tracked_ids, *discovered}
+        storage = Mock()
+        storage.glob.return_value = [
+            f"processed/chunks/documents/src/{doc_id}/chunks.json"
+            for doc_id in sorted(chunked)
+        ]
 
         with (
             patch.object(
@@ -1094,7 +1108,7 @@ runtime:
             ),
         ):
             results = await generator.process_all_documents(
-                storage=Mock(), tracker=tracker, **kwargs
+                storage=storage, tracker=tracker, **kwargs
             )
 
         return embedded, results, mock_discover
@@ -1170,3 +1184,32 @@ runtime:
         assert mock_discover.call_count == 1
         assert "limit" not in mock_discover.call_args.kwargs
         assert len(mock_discover.call_args.args) == 1
+
+    async def test_tracker_rows_without_chunks_are_skipped_not_failed(self, generator):
+        """Tracker rows whose chunks no longer exist must be skipped silently.
+
+        Regression test for the production cluster state: the tracking DB
+        listed 118 documents as PROCESSED/PENDING after data/processed had
+        been cleared. Attempting them would mark healthy rows FAILED and
+        pollute the tracker, when the correct behaviour is to leave them
+        alone until their chunks are regenerated.
+        """
+        tracker = self._mock_tracker(["stale_1", "stale_2", "has_chunks"])
+
+        embedded, results, _ = await self._run(
+            generator,
+            tracker,
+            discovered=["oa_W999"],
+            chunked={"has_chunks", "oa_W999"},
+        )
+
+        assert embedded == ["has_chunks", "oa_W999"]
+        assert "stale_1" not in embedded
+        assert "stale_2" not in embedded
+        # The stale rows must not be touched at all — no FAILED writes.
+        updated = {
+            call.args[0] for call in tracker.update_embedding_status.call_args_list
+        }
+        assert "stale_1" not in updated
+        assert "stale_2" not in updated
+        assert len(results) == 2
