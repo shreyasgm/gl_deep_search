@@ -41,6 +41,14 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Copy project code and install
 COPY . /app
+# Normalise permissions from the build context. A repo checked out under a
+# 0700 home or Dropbox folder yields /app/backend as drwx------, and since
+# Singularity runs as the invoking user rather than root those directories
+# become untraversable at runtime: `python -m backend.etl.orchestrator` fails
+# with ModuleNotFoundError and relative --config paths cannot be read.
+# Done here, in the throwaway builder stage, so the fix costs no layer in the
+# final image (a chmod -R over the runtime /app would duplicate the ~4.6GB venv).
+RUN chmod -R a+rX /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --extra etl
 
