@@ -18,6 +18,8 @@ Three things are true right now:
 
 So the system still cannot answer a search query — the same headline as November — but the gap is now one integration step wide, not three components wide.
 
+**Update, end of 2026-08-21:** points 1 and 2 are being resolved right now — a full-corpus run (job `40971461`, ~24h) is in flight after a staged rollout that fixed six distinct blockers. Point 3 is untouched and is the real remaining work: **stand up Qdrant and ingest.** See [Staged rollout](#staged-rollout-2026-08-21) and [What to do next](#what-to-do-next).
+
 ---
 
 ## How it stopped
@@ -68,17 +70,17 @@ The baked-in orchestrator is 36 KB; current `main` is 46 KB. The sbatch script (
 |---|---|---|
 | **Growth Lab scraper** | ✅ Working | 449 publications, 452 file URLs |
 | **GL file downloader** | ✅ Working | 417/452 succeeded (92%) |
-| **OpenAlex scraper + downloader** | 🟡 Wired, never run at scale | Repaired Feb 25 (`d5651cf`), wired into orchestrator (`0944528`). Only exercised in local dev runs in March |
+| **OpenAlex scraper + downloader** | ✅ Ran on cluster 2026-08-21 | 332 publications scraped in the smoke test. Note the scraper ignores `--scraper-limit`; only the downloader honours a limit |
 | **PDF processor (Marker/CUDA)** | ✅ Working | 331/336 extracted. 13.1 hours on an A100 — the dominant cost |
-| **Lecture transcripts** | 🟡 Never run | Skipped in the Feb 25 run (transcripts weren't on the cluster yet). 24 files are there now |
+| **Lecture transcripts** | ✅ Ran on cluster 2026-08-21 | 1/1 in the smoke test; all 24 included in the production run. Each makes an LLM call — cap with `TRANSCRIPTS_LIMIT` |
 | **Text chunker** | ✅ Working | 24,039 chunks, 0 failures. The Nov token-limit bug is fixed |
-| **Embeddings (Qwen3-8B local)** | ⚠️ Working with a real defect | 266/304 documents. **All 38 failures were CUDA OOM** — see Issue 1 |
+| **Embeddings (Qwen3-8B local)** | ✅ Fixed 2026-08-21 | Feb: 266/304, all 38 failures CUDA OOM. Now loads in bf16 with a capped sequence length; work list is disk-driven so nothing is silently dropped |
 | **Qdrant ingestion** | 🔴 Never executed | `ingest_to_qdrant.py` exists and is unit-tested. `ingestion_status = PENDING` × 449 |
 | **Vector DB instance** | 🔴 Does not exist | No local container, no Compose service, no cloud instance. `qdrant_url` defaults to `localhost:6333` |
 | **Search API (FastAPI)** | 🟡 Written, never run live | 3 endpoints, tested with `TestClient` and mocks |
 | **LangGraph agent** | 🟡 Written, never run live | analyze → retrieve → grade → synthesize; tests added Feb 24 |
 | **Streamlit frontend** | 🟡 Written, never run live | `frontend/app.py` + `api_client.py` |
-| **SLURM deployment** | ⚠️ Blocked on stale image | Otherwise sound — staging to node-local `/scratch`, sync-back, model cache persistence all work |
+| **SLURM deployment** | ✅ Unblocked | Image rebuilt and verified; commit-stamped with a path-scoped staleness guard. 48h limit, `PDF_LIMIT`/`TRANSCRIPTS_LIMIT` for bounded test runs |
 | **GCP / Cloud Run** | 🟡 Idle | Job `etl-pipeline-job` exists, last run 2025-11-14. Not scheduled, not costing anything meaningful |
 | **Tests** | ✅ Healthy | **282 passed, 3 skipped** (integration deselected; was 279 before today's additions). `ruff check`, `ruff format --check`, `mypy` all clean — but only once the `service` extra is installed |
 
@@ -267,6 +269,58 @@ jobstats <JOBID>
 > - **`/n/holystore01` migrates off legacy Tier 0 Lustre in late September 2026** (Storage Modernization Initiative, Phase 4) — roughly five weeks out. **Every path in this document lives on it**, and `PROJECT_DIR` is hardcoded at `deployment/slurm/etl_pipeline.sbatch:44`. Confirm destination paths and timing for `hausmann_lab` with `rdm@rc.fas.harvard.edu`.
 >
 > Practically: the Phase 2 re-run wants to happen either in the next three days or in the window between the OS upgrade and the storage migration. Paths verified working 2026-08-21.
+
+---
+
+## Staged rollout, 2026-08-21
+
+Run as three gates, each of which caught something the previous one could not.
+
+### Gate 1 — rebuild the image (4 attempts)
+
+| # | Result | What it taught |
+|---|---|---|
+| 1 | FAILURE | `uv.lock`'s `[options]` block breaks `uv sync --locked` in the container |
+| 2 | SUCCESS (13m44s) | `--frozen` fixes it; but this image predated the chunk-filter commit |
+| 3 | SUCCESS (15m1s) | Image imported fine by `python -c`, yet **failed the real job invocation** |
+| 4 | SUCCESS | `chmod -R a+rX` in the builder; verified against the exact `singularity exec --pwd /app` path |
+
+### Gate 2 — cluster smoke test (job `40965304`)
+
+`SOURCES=all SCRAPER_LIMIT=5 DOWNLOAD_LIMIT=4 PDF_LIMIT=4 TRANSCRIPTS_LIMIT=1`
+
+**COMPLETED in 14m38s, 0 errors, all 8 components.** Two things ran on the cluster for the first time ever: the **OpenAlex path** (332 publications scraped, 2 OA files downloaded) and **lecture transcripts** (1/1). 5 documents → 347 chunks → 347 embeddings, all written back to persistent storage.
+
+The staleness guard printed exactly as designed:
+
+```
+Repo commit:   de66b652d697634ee1817f93a156be83d85a3ad7
+Image commit:  de66b652d697634ee1817f93a156be83d85a3ad7
+Image matches checkout.
+```
+
+**The smoke test also confirmed why the embedding fix is load-bearing.** The log read `Embedding 5 documents (0 from tracker, 5 discovered on disk)`. Querying the tracker explains the zero:
+
+| | count |
+|---|---|
+| `processing_status = PROCESSED` | 331 |
+| `embedding_status = PENDING` | 123 |
+| **intersection (what the tracker query returns)** | **0** |
+
+The 331 processed rows are exactly the 293 `EMBEDDED` + 38 `FAILED`. The tracker will *never* return them, so **only disk discovery can reach those 331 documents**. Without the union fix they would have been chunked and then silently dropped. Verified no rows were flipped to `FAILED` by the run (38 before, 38 after).
+
+### Gate 3 — full production run (job `40971461`)
+
+Submitted `SOURCES=all` with no limits, 48h limit, tracking DB backed up first. Sized from measured evidence:
+
+| Stage | Measured | Extrapolated |
+|---|---|---|
+| PDF extraction | 145s/PDF on A100 (142s in Feb, 168s incl. model load today) | ~520 PDFs → **~21h** |
+| Embeddings | 347 chunks in 23s (~15/s) | ~36,700 chunks → **~45min** |
+| OpenAlex downloads | 332 publications, ~50% OA hit rate | ~1–2h |
+| **Total** | | **~23–24h** |
+
+Hence 48h rather than 24h. `--mem` deliberately left at 100G despite a 4.96G MaxRSS: that evidence is from 4 small PDFs and is not representative, and on a 4-GPU-per-node partition the GPU count caps packing long before 4×100G does — so trimming it would buy nothing. Re-check with `jobstats` once a full run finishes.
 
 ---
 
