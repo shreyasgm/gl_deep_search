@@ -30,7 +30,8 @@
 #   SCRAPER_LIMIT=10 DOWNLOAD_LIMIT=10 sbatch deployment/slurm/etl_pipeline.sbatch
 #
 #   # Smoke test (also caps the PDFs processed, not just those downloaded):
-#   SCRAPER_LIMIT=5 DOWNLOAD_LIMIT=5 PDF_LIMIT=5 sbatch deployment/slurm/etl_pipeline.sbatch
+#   SCRAPER_LIMIT=5 DOWNLOAD_LIMIT=5 PDF_LIMIT=5 TRANSCRIPTS_LIMIT=1 \
+#       sbatch deployment/slurm/etl_pipeline.sbatch
 #
 #   # Run specific sources:
 #   SOURCES=lectures sbatch deployment/slurm/etl_pipeline.sbatch
@@ -55,6 +56,7 @@ SOURCES="${SOURCES:-all}"
 SCRAPER_LIMIT="${SCRAPER_LIMIT:-}"
 DOWNLOAD_LIMIT="${DOWNLOAD_LIMIT:-}"
 PDF_LIMIT="${PDF_LIMIT:-}"
+TRANSCRIPTS_LIMIT="${TRANSCRIPTS_LIMIT:-}"
 SKIP_SCRAPING="${SKIP_SCRAPING:-0}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
@@ -69,6 +71,7 @@ echo "Sources:       $SOURCES"
 echo "Scraper limit: ${SCRAPER_LIMIT:-unlimited}"
 echo "Download limit:${DOWNLOAD_LIMIT:-unlimited}"
 echo "PDF limit:     ${PDF_LIMIT:-unlimited}"
+echo "Transcripts:   ${TRANSCRIPTS_LIMIT:-unlimited}"
 echo "Skip scraping: $SKIP_SCRAPING"
 echo "Start:         $(date)"
 echo "========================"
@@ -125,18 +128,36 @@ if [[ "$IMAGE_SHA" == "unknown" || -z "$IMAGE_SHA" ]]; then
 elif [[ "$REPO_SHA" == "unknown" ]]; then
     echo "WARNING: could not read the repo commit (is git on PATH?). Skipping"
     echo "         the staleness check rather than blocking the job."
-elif [[ "$IMAGE_SHA" != "$REPO_SHA" ]]; then
-    echo "ERROR: container image is out of sync with the repository."
-    echo "  Image was built from: $IMAGE_SHA"
-    echo "  Checkout is at:       $REPO_SHA"
-    echo ""
-    echo "Rebuild and re-pull:"
-    echo "  (local)   bash deployment/slurm/setup_env.sh build"
-    echo "  (cluster) bash deployment/slurm/setup_env.sh pull"
-    echo ""
-    echo "Set ALLOW_STALE_IMAGE=1 to run anyway."
-    [[ "${ALLOW_STALE_IMAGE:-0}" == "1" ]] || exit 1
-    echo "ALLOW_STALE_IMAGE=1 set — continuing with the stale image."
+elif [[ "$IMAGE_SHA" == "$REPO_SHA" ]]; then
+    echo "Image matches checkout."
+elif ! git -C "$PROJECT_DIR" cat-file -e "${IMAGE_SHA}^{commit}" 2>/dev/null; then
+    echo "WARNING: the image's commit ($IMAGE_SHA) is not in this checkout's"
+    echo "         history — cannot tell whether the baked code is current."
+    echo "         Run 'git fetch', or rebuild the image."
+else
+    # Only the paths baked into the image matter. Changes to the sbatch script,
+    # READMEs or docs do not require a rebuild, so don't block on them.
+    IMAGE_PATHS=(backend pyproject.toml uv.lock deployment/pdf-processing)
+    if git -C "$PROJECT_DIR" diff --quiet "$IMAGE_SHA" "$REPO_SHA" -- "${IMAGE_PATHS[@]}"; then
+        echo "Image predates the checkout, but no image-relevant files changed."
+        echo "Differences are confined to scripts/docs — safe to run."
+    else
+        echo "ERROR: container image is out of sync with the repository."
+        echo "  Image was built from: $IMAGE_SHA"
+        echo "  Checkout is at:       $REPO_SHA"
+        echo ""
+        echo "Image-relevant files that differ:"
+        git -C "$PROJECT_DIR" diff --name-only "$IMAGE_SHA" "$REPO_SHA" \
+            -- "${IMAGE_PATHS[@]}" | sed 's/^/    /'
+        echo ""
+        echo "Rebuild and re-pull:"
+        echo "  (local)   bash deployment/slurm/setup_env.sh build"
+        echo "  (cluster) bash deployment/slurm/setup_env.sh pull"
+        echo ""
+        echo "Set ALLOW_STALE_IMAGE=1 to run anyway."
+        [[ "${ALLOW_STALE_IMAGE:-0}" == "1" ]] || exit 1
+        echo "ALLOW_STALE_IMAGE=1 set — continuing with the stale image."
+    fi
 fi
 
 # ── Stage to local scratch (avoids slow network filesystem I/O) ──────
@@ -187,6 +208,7 @@ CMD_ARGS=(
 if [[ -n "$SCRAPER_LIMIT" ]]; then CMD_ARGS+=(--scraper-limit "$SCRAPER_LIMIT"); fi
 if [[ -n "$DOWNLOAD_LIMIT" ]]; then CMD_ARGS+=(--download-limit "$DOWNLOAD_LIMIT"); fi
 if [[ -n "$PDF_LIMIT" ]]; then CMD_ARGS+=(--pdf-limit "$PDF_LIMIT"); fi
+if [[ -n "$TRANSCRIPTS_LIMIT" ]]; then CMD_ARGS+=(--transcripts-limit "$TRANSCRIPTS_LIMIT"); fi
 
 if [[ "$SKIP_SCRAPING" == "1" ]]; then
     CMD_ARGS+=(--skip-scraping)

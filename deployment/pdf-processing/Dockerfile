@@ -27,17 +27,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install dependencies (cached unless pyproject.toml/uv.lock change)
+# Install dependencies (cached unless pyproject.toml/uv.lock change).
+# --frozen, not --locked: install exactly what uv.lock pins without
+# re-validating it against pyproject.toml. A developer's global uv config
+# (e.g. exclude-newer) can add an [options] block to uv.lock that a config-less
+# uv inside the container rejects, which broke the build on 2026-08-21.
+# CI still runs `uv sync --locked`, so the lock is validated there.
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
-    uv sync --locked --no-dev --no-install-project --extra etl
+    uv sync --frozen --no-dev --no-install-project --extra etl
 
 # Copy project code and install
 COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --extra etl
+    uv sync --frozen --no-dev --extra etl
 
 # ==============================================================================
 # Stage 2: Runtime

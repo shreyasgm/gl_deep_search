@@ -735,79 +735,108 @@ class EmbeddingsGenerator:
         """
         Process all eligible documents for embedding generation.
 
+        The work list is disk-driven: documents discovered by scanning chunk
+        files are always merged with the publications the tracker considers
+        eligible. Sources that never register in the tracker (e.g. OpenAlex)
+        are therefore embedded too, and documents whose tracker row is stale
+        (FAILED, or EMBEDDED without embeddings on disk) are picked back up.
+        Idempotency is preserved because ``_discover_documents_from_chunks``
+        excludes documents that already have embeddings on disk and
+        ``generate_embeddings_for_document`` skips them as well.
+
         Args:
             storage: Storage abstraction
-            limit: Optional limit on number of documents to process
+            limit: Optional limit on number of documents to process, applied
+                once to the merged work list
             document_ids: Optional list of specific document IDs to process
             tracker: Optional PublicationTracker instance (for testing)
 
         Returns:
             List of EmbeddingResult objects
         """
+        from backend.etl.models.tracking import EmbeddingStatus
         from backend.etl.utils.publication_tracker import PublicationTracker
 
         if tracker is None:
             tracker = PublicationTracker()
         results: list[EmbeddingResult] = []
 
+        def update_status(
+            doc_id: str,
+            status: EmbeddingStatus,
+            error: str | None = None,
+        ) -> None:
+            """Update tracker status, tolerating documents with no tracker row.
+
+            Args:
+                doc_id: Document identifier
+                status: New embedding status
+                error: Optional error message
+            """
+            try:
+                tracker.update_embedding_status(doc_id, status, error=error)
+            except Exception as e:
+                logger.debug(f"Tracker status update skipped for {doc_id}: {e}")
+
         try:
+            # Disk scan always runs, so untracked documents are never dropped.
+            # No limit here: the limit applies to the merged list below.
+            discovered = self._discover_documents_from_chunks(storage)
+
             if document_ids:
-                # Process specific documents by ID
-                # Get publications for embedding and filter by document_ids
-                all_publications = tracker.get_publications_for_embedding()
-                publications = [
-                    pub
-                    for pub in all_publications
-                    if pub.publication_id in document_ids
+                # Restrict both sources to the explicitly requested documents
+                requested = set(document_ids)
+                tracked = [
+                    pub.publication_id
+                    for pub in tracker.get_publications_for_embedding()
+                    if pub.publication_id in requested
+                ]
+                discovered = [doc_id for doc_id in discovered if doc_id in requested]
+            else:
+                tracked = [
+                    pub.publication_id
+                    for pub in tracker.get_publications_for_embedding(limit=limit)
                 ]
 
-                # Warn about any missing documents
-                found_ids = {pub.publication_id for pub in publications}
+            # Merge, tracker-derived IDs first, dropping duplicates
+            seen: set[str] = set()
+            work: list[str] = []
+            for doc_id in [*tracked, *discovered]:
+                if doc_id in seen:
+                    continue
+                seen.add(doc_id)
+                work.append(doc_id)
+
+            if document_ids:
                 for doc_id in document_ids:
-                    if doc_id not in found_ids:
+                    if doc_id not in seen:
                         logger.warning(f"Publication not found or not ready: {doc_id}")
-            else:
-                # Get all documents ready for embedding
-                publications = tracker.get_publications_for_embedding(limit=limit)
 
-            if not publications:
-                # Fallback: discover document IDs from chunk files on disk.
-                # This handles sources (e.g. OpenAlex) that don't register
-                # publications in the tracker.
-                discovered = self._discover_documents_from_chunks(storage, limit=limit)
-                if not discovered:
-                    logger.info("No documents found for embedding generation")
-                    return results
+            # Apply the limit once, to the merged list
+            if limit:
+                work = work[:limit]
 
-                logger.info(
-                    f"Tracker had no eligible publications; discovered "
-                    f"{len(discovered)} documents from chunk files"
-                )
-                for doc_id in discovered:
-                    try:
-                        result = await self.generate_embeddings_for_document(
-                            document_id=doc_id, storage=storage
-                        )
-                        results.append(result)
-                    except Exception as e:
-                        logger.error(f"Error processing {doc_id}: {e}")
+            if not work:
+                logger.info("No documents found for embedding generation")
                 return results
 
-            logger.info(f"Processing {len(publications)} documents for embeddings")
+            tracked_ids = set(tracked)
+            from_tracker = sum(1 for doc_id in work if doc_id in tracked_ids)
+            discovered_only = len(work) - from_tracker
+            logger.info(
+                f"Embedding {len(work)} documents ({from_tracker} from tracker, "
+                f"{discovered_only} discovered on disk)"
+            )
 
-            for pub in publications:
+            for doc_id in work:
                 try:
-                    # Update status to IN_PROGRESS
-                    from backend.etl.models.tracking import EmbeddingStatus
-
-                    tracker.update_embedding_status(
-                        pub.publication_id,
-                        EmbeddingStatus.IN_PROGRESS,
-                    )
+                    # Tracker updates are best-effort: an untracked document
+                    # must still be embedded.
+                    update_status(doc_id, EmbeddingStatus.IN_PROGRESS)
 
                     # Generate embeddings
                     result = await self.generate_embeddings_for_document(
-                        document_id=pub.publication_id,
+                        document_id=doc_id,
                         storage=storage,
                     )
 
@@ -815,29 +844,21 @@ class EmbeddingsGenerator:
 
                     # Update status based on result
                     if result.status == EmbeddingGenerationStatus.SUCCESS:
-                        tracker.update_embedding_status(
-                            pub.publication_id,
-                            EmbeddingStatus.EMBEDDED,
-                        )
-                        logger.info(f"Successfully embedded {pub.publication_id}")
+                        update_status(doc_id, EmbeddingStatus.EMBEDDED)
+                        logger.info(f"Successfully embedded {doc_id}")
                     else:
-                        tracker.update_embedding_status(
-                            pub.publication_id,
+                        update_status(
+                            doc_id,
                             EmbeddingStatus.FAILED,
                             error=result.error_message,
                         )
                         logger.error(
-                            f"Failed to embed {pub.publication_id}: "
-                            f"{result.error_message}"
+                            f"Failed to embed {doc_id}: {result.error_message}"
                         )
 
                 except Exception as e:
-                    logger.error(f"Error processing {pub.publication_id}: {e}")
-                    tracker.update_embedding_status(
-                        pub.publication_id,
-                        EmbeddingStatus.FAILED,
-                        error=str(e),
-                    )
+                    logger.error(f"Error processing {doc_id}: {e}")
+                    update_status(doc_id, EmbeddingStatus.FAILED, error=str(e))
 
             return results
 

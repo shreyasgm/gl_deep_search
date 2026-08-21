@@ -26,6 +26,7 @@ from backend.etl.models.tracking import EmbeddingStatus, ProcessingStatus
 from backend.etl.utils.embeddings_generator import (
     ChunkEmbedding,
     EmbeddingGenerationStatus,
+    EmbeddingResult,
     EmbeddingsGenerator,
 )
 from backend.etl.utils.publication_tracker import PublicationTracker
@@ -989,3 +990,183 @@ runtime:
         assert len(embeddings) == 65
 
         shutil.rmtree(temp_dir)
+
+
+class TestProcessAllDocumentsWorkList:
+    """Tests for how process_all_documents() builds its work list."""
+
+    @pytest.fixture
+    def generator(self, test_storage):
+        """Create an EmbeddingsGenerator that loads no model and needs no key."""
+        temp_dir = Path(tempfile.mkdtemp())
+        storage_dir, _ = test_storage
+        config_path = temp_dir / "config.yaml"
+
+        config_content = f"""
+file_processing:
+  embedding:
+    model: "openrouter"
+    model_name: "qwen/qwen3-embedding-8b"
+    api_key: "unused-in-these-tests"
+    dimensions: 1024
+    batch_size: 32
+    max_retries: 1
+    retry_delays: [0]
+    timeout: 5
+    rate_limit_delay: 0
+
+runtime:
+  local_storage_path: "{storage_dir}/"
+"""
+        config_path.write_text(config_content)
+        yield EmbeddingsGenerator(config_path=config_path)
+        shutil.rmtree(temp_dir)
+
+    @staticmethod
+    def _mock_tracker(publication_ids: list[str], strict: bool = False) -> Mock:
+        """Build a mock tracker returning the given eligible publication IDs.
+
+        Args:
+            publication_ids: IDs returned by get_publications_for_embedding()
+            strict: If True, status updates raise for any other ID, mimicking
+                a tracker that holds no row for that document.
+
+        Returns:
+            Mock tracker instance
+        """
+        tracker = Mock()
+        tracker.get_publications_for_embedding.return_value = [
+            Mock(publication_id=pub_id) for pub_id in publication_ids
+        ]
+        if strict:
+            known = set(publication_ids)
+
+            def update(doc_id, status, error=None):
+                if doc_id not in known:
+                    raise ValueError(f"No tracker row for {doc_id}")
+                return True
+
+            tracker.update_embedding_status.side_effect = update
+        return tracker
+
+    @staticmethod
+    def _success_result(document_id: str):
+        """Build a successful EmbeddingResult for a document."""
+        return EmbeddingResult(
+            document_id=document_id,
+            source_path=Path("chunks.json"),
+            embeddings=[],
+            total_embeddings=1,
+            processing_time=0.0,
+            api_calls=0,
+            total_tokens=0,
+            status=EmbeddingGenerationStatus.SUCCESS,
+        )
+
+    async def _run(self, generator, tracker, discovered, **kwargs):
+        """Run process_all_documents with disk scan and embedding mocked.
+
+        Args:
+            generator: EmbeddingsGenerator under test
+            tracker: Mock tracker
+            discovered: IDs the disk scan should return
+            **kwargs: Extra arguments for process_all_documents()
+
+        Returns:
+            Tuple of (embedded document IDs, results, disk scan mock)
+        """
+        embedded: list[str] = []
+
+        async def fake_embed(document_id, storage):
+            embedded.append(document_id)
+            return self._success_result(document_id)
+
+        with (
+            patch.object(
+                generator,
+                "_discover_documents_from_chunks",
+                return_value=list(discovered),
+            ) as mock_discover,
+            patch.object(
+                generator,
+                "generate_embeddings_for_document",
+                new=AsyncMock(side_effect=fake_embed),
+            ),
+        ):
+            results = await generator.process_all_documents(
+                storage=Mock(), tracker=tracker, **kwargs
+            )
+
+        return embedded, results, mock_discover
+
+    @pytest.mark.asyncio
+    async def test_untracked_disk_document_embedded_alongside_tracked(self, generator):
+        """Regression: an OpenAlex-style document that exists only on disk is
+        still embedded when the tracker also returns eligible publications.
+
+        The old code treated the tracker list and the disk scan as an
+        either/or, so a single tracker hit suppressed disk discovery entirely
+        and every untracked (OpenAlex) document was silently skipped.
+        """
+        tracker = self._mock_tracker(["gl_doc_1", "gl_doc_2"], strict=True)
+
+        embedded, results, _ = await self._run(
+            generator, tracker, discovered=["oa_W12345"]
+        )
+
+        assert embedded == ["gl_doc_1", "gl_doc_2", "oa_W12345"]
+        assert len(results) == 3
+        assert all(r.status == EmbeddingGenerationStatus.SUCCESS for r in results)
+        # Tracked documents still get their status updated...
+        tracker.update_embedding_status.assert_any_call(
+            "gl_doc_1", EmbeddingStatus.EMBEDDED, error=None
+        )
+        # ...and the untracked one is embedded even though every tracker
+        # update for it raises.
+        assert "oa_W12345" in embedded
+
+    @pytest.mark.asyncio
+    async def test_disk_documents_embedded_when_tracker_empty(self, generator):
+        """Old fallback behaviour must not regress: with nothing eligible in
+        the tracker, documents found on disk are still embedded."""
+        tracker = self._mock_tracker([], strict=True)
+
+        embedded, results, _ = await self._run(
+            generator, tracker, discovered=["oa_A", "oa_B"]
+        )
+
+        assert embedded == ["oa_A", "oa_B"]
+        assert len(results) == 2
+
+    @pytest.mark.asyncio
+    async def test_document_in_both_sources_embedded_once(self, generator):
+        """A document present in both the tracker list and the disk scan is
+        embedded exactly once, with tracker-derived order preserved."""
+        tracker = self._mock_tracker(["dup_doc", "gl_doc_2"])
+
+        embedded, results, _ = await self._run(
+            generator, tracker, discovered=["dup_doc", "oa_W999"]
+        )
+
+        assert embedded == ["dup_doc", "gl_doc_2", "oa_W999"]
+        assert embedded.count("dup_doc") == 1
+        assert len(results) == 3
+
+    @pytest.mark.asyncio
+    async def test_limit_applies_to_merged_work_list(self, generator):
+        """limit caps the merged list, not each source separately."""
+        tracker = self._mock_tracker(["gl_doc_1", "gl_doc_2"])
+
+        embedded, results, mock_discover = await self._run(
+            generator,
+            tracker,
+            discovered=["oa_A", "oa_B"],
+            limit=3,
+        )
+
+        assert embedded == ["gl_doc_1", "gl_doc_2", "oa_A"]
+        assert len(results) == 3
+        # The disk scan itself is never limited; the merged list is.
+        assert mock_discover.call_count == 1
+        assert "limit" not in mock_discover.call_args.kwargs
+        assert len(mock_discover.call_args.args) == 1

@@ -94,6 +94,7 @@ SKIP_SCRAPING=1 sbatch deployment/slurm/etl_pipeline.sbatch
 | `SCRAPER_LIMIT` | unlimited | Max publications to scrape |
 | `DOWNLOAD_LIMIT` | unlimited | Max publications to download files for |
 | `PDF_LIMIT` | unlimited | Max PDFs to process. **Set this for any test run** — the PDF processor otherwise globs every PDF already on disk, so limiting downloads alone does not bound the job |
+| `TRANSCRIPTS_LIMIT` | unlimited | Max lecture transcripts to process. Each one makes an LLM call, so cap this for test runs |
 | `SKIP_SCRAPING` | 0 | Set to `1` to skip scraping and use existing CSV |
 | `LOG_LEVEL` | INFO | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `ALLOW_STALE_IMAGE` | 0 | Set to `1` to run even when the container image's commit differs from the checkout |
