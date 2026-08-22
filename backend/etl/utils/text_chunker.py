@@ -345,17 +345,33 @@ class TextChunker:
             return results
 
         # Discover text files via storage glob
-        text_relatives = storage.glob("processed/documents/**/*.txt")
+        text_relatives = sorted(storage.glob("processed/documents/**/*.txt"))
         logger.info(f"Found {len(text_relatives)} text files to process")
+
+        # document_id and the chunks output path are both derived from the
+        # PARENT directory, so two text files in the same directory collide on
+        # one chunks.json and all but one are silently lost. That cost 23 of 24
+        # lecture transcripts in the 2026-08-22 run. Fail loudly instead.
+        seen_chunk_paths: dict[str, str] = {}
 
         for rel in text_relatives:
             try:
+                chunks_rel = self._chunks_relative_for(rel)
+                if chunks_rel in seen_chunk_paths:
+                    logger.error(
+                        f"Chunk path collision: '{rel}' and "
+                        f"'{seen_chunk_paths[chunks_rel]}' both map to "
+                        f"'{chunks_rel}'. document_id is derived from the parent "
+                        f"directory, so each document needs its own directory. "
+                        f"Skipping '{rel}' — it will NOT be chunked or embedded."
+                    )
+                    continue
+                seen_chunk_paths[chunks_rel] = rel
+
                 # Download to local cache so we can open() the file
                 text_file = storage.download(rel)
 
                 # Skip if chunks already exist for this document
-                # Derive the expected chunks output relative path
-                chunks_rel = self._chunks_relative_for(rel)
                 if storage.exists(chunks_rel):
                     logger.info(f"Chunks already exist for {rel}, skipping")
                     continue
@@ -489,12 +505,8 @@ class TextChunker:
                 self._save_chunks(result, storage=None)
             except Exception as save_error:
                 logger.warning(
-                    (
-                        "Failed to save chunks for %s during single-document "
-                        "processing: %s"
-                    ),
-                    document_id,
-                    save_error,
+                    f"Failed to save chunks for {document_id} during "
+                    f"single-document processing: {save_error}"
                 )
 
             logger.info(
@@ -1339,9 +1351,8 @@ class TextChunker:
         # Resume capability: if chunks already exist locally, skip writing
         if output_file.exists():
             logger.info(
-                ("Chunks already exist for %s at %s. Skipping save."),
-                result.document_id,
-                output_file,
+                f"Chunks already exist for {result.document_id} at "
+                f"{output_file}. Skipping save."
             )
             return
 

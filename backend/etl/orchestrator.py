@@ -708,25 +708,28 @@ class ETLOrchestrator:
                 )
                 if ok:
                     successful += 1
-                    # Copy cleaned text to processed/documents/ so chunker finds it
+                    # Copy cleaned text to processed/documents/ so chunker finds it.
                     stem = transcript_path.stem
-                    cleaned_path = (
-                        Path(intermediate_dir) / f"lecture_{stem}_cleaned.txt"
+                    cleaned_path = self._cleaned_transcript_path(
+                        Path(intermediate_dir), stem
                     )
-                    # Fallback: try extracting lecture number like the script does
-                    if not cleaned_path.exists():
-                        try:
-                            num = int("".join(filter(str.isdigit, stem)))
-                            cleaned_path = (
-                                Path(intermediate_dir)
-                                / f"lecture_{num:02d}_cleaned.txt"
-                            )
-                        except (ValueError, TypeError):
-                            pass
-                    if cleaned_path.exists():
-                        dest = docs_output / f"{stem}.txt"
-                        dest.write_text(cleaned_path.read_text(encoding="utf-8"))
-                        logger.debug(f"Copied cleaned transcript to {dest}")
+                    if cleaned_path is None:
+                        logger.warning(
+                            f"No cleaned transcript found for {stem}; it will not "
+                            f"be chunked or embedded"
+                        )
+                        continue
+
+                    # One directory per transcript. The chunker derives
+                    # document_id from the PARENT directory name, so writing
+                    # these flat would collapse every transcript onto a single
+                    # id and a single chunks.json — which silently lost 23 of
+                    # 24 transcripts in the 2026-08-22 production run.
+                    dest_dir = docs_output / stem
+                    self.storage.ensure_dir(dest_dir)
+                    dest = dest_dir / f"{stem}.txt"
+                    dest.write_text(cleaned_path.read_text(encoding="utf-8"))
+                    logger.debug(f"Copied cleaned transcript to {dest}")
             except Exception as e:
                 logger.error(f"Error processing transcript {transcript_path.name}: {e}")
 
@@ -740,6 +743,33 @@ class ETLOrchestrator:
             f"Processed {successful}/{len(transcript_files)} lecture transcripts"
         )
         log_component_metrics("Lecture Transcripts", result.metrics)
+
+    @staticmethod
+    def _cleaned_transcript_path(intermediate_dir: Path, stem: str) -> Path | None:
+        """Locate the cleaned transcript that the transcript script wrote.
+
+        The script names its output by zero-padded lecture number, e.g.
+        ``lecture_07_cleaned.txt``. Fall back to the raw stem for transcripts
+        whose filename carries no number.
+
+        Args:
+            intermediate_dir: Directory the script writes cleaned text into
+            stem: Stem of the raw transcript filename
+
+        Returns:
+            Path to the cleaned transcript, or None if it does not exist.
+        """
+        candidates = []
+        digits = "".join(filter(str.isdigit, stem))
+        if digits:
+            candidates.append(
+                intermediate_dir / f"lecture_{int(digits):02d}_cleaned.txt"
+            )
+        candidates.append(intermediate_dir / f"lecture_{stem}_cleaned.txt")
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return None
 
     async def _run_text_chunker(self, result: ComponentResult) -> None:
         """Execute the text chunker component."""

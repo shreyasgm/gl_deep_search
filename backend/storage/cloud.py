@@ -107,10 +107,7 @@ class CloudStorage(StorageBase):
                 local_path.parent.mkdir(parents=True, exist_ok=True)
                 blob.download_to_filename(str(local_path))
                 logger.debug(
-                    "Downloaded gs://%s/%s -> %s",
-                    self.bucket.name,
-                    blob_name,
-                    local_path,
+                    f"Downloaded gs://{self.bucket.name}/{blob_name} -> {local_path}"
                 )
             return local_path
 
@@ -131,10 +128,7 @@ class CloudStorage(StorageBase):
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     b.download_to_filename(str(dest))
                     logger.debug(
-                        "Downloaded gs://%s/%s -> %s",
-                        self.bucket.name,
-                        b.name,
-                        dest,
+                        f"Downloaded gs://{self.bucket.name}/{b.name} -> {dest}"
                     )
             return local_path
 

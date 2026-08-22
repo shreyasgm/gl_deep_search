@@ -1214,3 +1214,92 @@ class TestDetectSentencesAdversarial:
         result = chunker._detect_sentences("... !!! ???")
         # Should not crash; may return empty or contain punctuation
         assert isinstance(result, list)
+
+
+class TestChunkPathCollisions:
+    """Documents sharing a parent directory must not silently overwrite."""
+
+    @pytest.fixture
+    def chunker_env(self):
+        """Build a TextChunker over an isolated LocalStorage tree."""
+        temp_dir = Path(tempfile.mkdtemp())
+        config_path = temp_dir / "config.yaml"
+        config_path.write_text(
+            "file_processing:\n"
+            "  chunking:\n"
+            "    enabled: true\n"
+            "    strategy: fixed\n"
+            "    chunk_size: 50\n"
+            "    chunk_overlap: 10\n"
+            "    min_chunk_size: 10\n"
+            "    max_chunk_size: 200\n"
+        )
+        storage_root = temp_dir / "store"
+        (storage_root / "processed" / "documents").mkdir(parents=True, exist_ok=True)
+        try:
+            yield (
+                TextChunker(config_path),
+                LocalStorage(base_path=storage_root),
+                (storage_root),
+            )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @staticmethod
+    def _write(root: Path, relative: str, body: str) -> None:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body)
+
+    def test_one_directory_per_document_keeps_every_document(self, chunker_env):
+        """The lecture-transcript layout: each document in its own directory.
+
+        Regression test for the 2026-08-22 production run, where 24 lecture
+        transcripts were written flat into a single directory, collapsed onto
+        one document_id, and 23 were silently discarded.
+        """
+        chunker, storage, root = chunker_env
+        body = "Growth diagnostics is a framework. " * 30
+        for stem in ("0_intro", "1_malthusian", "2_growth_theories"):
+            self._write(
+                root, f"processed/documents/lecture_transcripts/{stem}/{stem}.txt", body
+            )
+
+        results = chunker.process_all_documents(storage=storage)
+
+        assert len(results) == 3
+        assert {r.document_id for r in results} == {
+            "0_intro",
+            "1_malthusian",
+            "2_growth_theories",
+        }
+        written = sorted(
+            p.parent.name for p in (root / "processed" / "chunks").rglob("chunks.json")
+        )
+        assert written == ["0_intro", "1_malthusian", "2_growth_theories"]
+
+    def test_flat_layout_is_reported_not_silently_dropped(self, chunker_env):
+        """Two documents in one directory must produce a loud ERROR.
+
+        The project logs through loguru, which does not propagate to the
+        stdlib logging that pytest's caplog captures, so attach a sink.
+        """
+        chunker, storage, root = chunker_env
+        body = "Growth diagnostics is a framework. " * 30
+        for stem in ("0_intro", "1_malthusian"):
+            self._write(
+                root, f"processed/documents/lecture_transcripts/{stem}.txt", body
+            )
+
+        from loguru import logger
+
+        errors: list[str] = []
+        sink_id = logger.add(lambda m: errors.append(str(m)), level="ERROR")
+        try:
+            results = chunker.process_all_documents(storage=storage)
+        finally:
+            logger.remove(sink_id)
+
+        # Only one can win, but the loss must be visible rather than silent.
+        assert len(results) == 1
+        assert any("collision" in e.lower() for e in errors), errors
