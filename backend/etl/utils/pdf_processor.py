@@ -464,6 +464,8 @@ def process_growth_lab_pdfs(
     storage: StorageBase | None = None,
     force_reprocess: bool = False,
     config_path: Path | None = None,
+    max_pdfs: int | None = None,
+    show_progress: bool = True,
 ) -> dict[Path, Path | None]:
     """
     Process all Growth Lab PDF files to extract text.
@@ -472,6 +474,8 @@ def process_growth_lab_pdfs(
         storage: Storage backend to use
         force_reprocess: Whether to reprocess even if output already exists
         config_path: Path to configuration file
+        max_pdfs: Maximum number of PDFs to process (None = process all)
+        show_progress: Whether to show a progress bar
 
     Returns:
         Dictionary mapping input PDF paths to output text paths (None for failures)
@@ -481,6 +485,36 @@ def process_growth_lab_pdfs(
 
     # Find all PDF files
     pdf_files = find_growth_lab_pdfs(storage)
+
+    # Resolve optional processing limit from config when not provided explicitly
+    effective_max_pdfs = max_pdfs
+    if effective_max_pdfs is None and config_path:
+        try:
+            with open(config_path) as config_file:
+                full_config = yaml.safe_load(config_file) or {}
+            ocr_config = full_config.get("file_processing", {}).get("ocr", {})
+            config_max_pdfs = ocr_config.get("max_pdfs")
+            if isinstance(config_max_pdfs, int):
+                effective_max_pdfs = config_max_pdfs
+        except Exception as e:
+            logger.warning(
+                f"Error loading max_pdfs from config {config_path}: {e}. "
+                "Processing all PDFs."
+            )
+
+    if effective_max_pdfs is not None:
+        if effective_max_pdfs <= 0:
+            logger.warning(
+                f"Invalid max_pdfs={effective_max_pdfs}. "
+                "Value must be > 0. Processing all PDFs."
+            )
+        else:
+            original_count = len(pdf_files)
+            pdf_files = pdf_files[:effective_max_pdfs]
+            logger.info(
+                f"Limiting PDF processing to {len(pdf_files)} "
+                f"of {original_count} files (max_pdfs={effective_max_pdfs})"
+            )
 
     if not pdf_files:
         logger.warning("No Growth Lab PDF files found to process")
@@ -495,7 +529,7 @@ def process_growth_lab_pdfs(
     results = processor.process_pdfs(
         pdf_files,
         force_reprocess=force_reprocess,
-        show_progress=True,
+        show_progress=show_progress,
     )
 
     return results

@@ -13,6 +13,7 @@
 file_processing:
   ocr:
     default_model: "unstructured"
+    max_pdfs: 10
 
     unstructured:
       strategy: "fast"          # pdfminer text extraction only, no ML models
