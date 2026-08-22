@@ -191,6 +191,33 @@ the project owner, not an incidental infrastructure fix. Options:
 Recovery is incremental: resume is file-existence based, so a later run
 downloads only the missing PDFs and extracts only those.
 
+### 4c. MEASURED: the OpenAlex corpus is largely unobtainable — recommend dropping scidownl
+
+Three successive estimates of how many of the 315 missing OpenAlex papers were recoverable — "most of them", then 165 (52%), then a host-level guess — were **all too optimistic**. Measured results:
+
+| Route | Tested | PDFs actually retrieved |
+|---|---|---|
+| scidownl / Sci-Hub | 50 sampled papers we had no PDF for | **0** |
+| OpenAlex OA links | all 165 papers with an `oa_url`/`best_oa_location.pdf_url` | **18 (11%)** |
+
+**Realistic recovery is ~18-20 papers of 315 (~6%)**, not "most".
+
+**Sci-Hub is structurally unreachable**, independent of the container fix (verified directly, not inferred):
+- `sci-hub.se` → `NXDOMAIN`; the domain no longer resolves.
+- `sci-hub.ru`, `sci-hub.st` → behind DDoS-Guard serving a **self-signed certificate** (`subject=C=EU, ST=*, O=ddos-guard`, issuer identical). Any certifi-verifying client — including `requests`, which scidownl uses — fails the handshake. `http://` 301s to the same endpoint.
+- Control: `arxiv.org/pdf/...` returns HTTP 200 / 6.8 MB, so the network is fine.
+
+The container fix (4b) moves the failure from "cannot write the SQLite DB" to "cannot complete the TLS handshake". It is correct, but it yields nothing.
+
+**The OA route is bot-blocked.** Probing all 165 OA URLs with a browser User-Agent: 117 returned **HTTP 403** (Cloudflare), 24 returned HTML landing pages, 18 returned real PDFs. 98 of the 165 `oa_url` values are bare `doi.org` links that redirect to publishers, so they inherit the publisher's blocking. Confirmed hostile hosts include `pnas.org`, `sciencedirect.com`, `publications.iadb.org`, `papers.ssrn.com`.
+
+**Two real bugs found while measuring**, both worth fixing regardless:
+
+1. **A scidownl success would be silently discarded.** `_get_file_path` derives the file extension from the DOI path (`10.2139/ssrn.1817191` → suffix `.1817191`), but scidownl appends `.pdf` when the requested name doesn't end in pdf. `_download_file_with_scidownl` then calls `.stat()` on the un-suffixed path and gets `FileNotFoundError`, reporting `success=False` even though a valid PDF was written. Demonstrated empirically with scidownl's network calls stubbed. **This is the source of the odd `.0900943106`-style filenames**, and it means the Sci-Hub path would yield 0 even if Sci-Hub were reachable.
+2. **`--concurrency` is a no-op.** `download_publications` (~lines 1025-1049) awaits bare coroutines in a loop rather than wrapping them in `asyncio.create_task`, so the semaphore never has more than one holder. Downloads are strictly sequential. (Separately, `--output-dir` in the entrypoint is parsed but never used.)
+
+**Recommendation: drop scidownl.** It yields zero, cannot work without solving a TLS-level block, emits ~250 error lines per run, carries legal exposure, and has a path bug that would discard any success anyway. Then decide separately whether the OpenAlex corpus is worth pursuing via a route that can actually work: a real browser engine (Playwright) to get past Cloudflare, or Harvard institutional access via EZproxy/library APIs. **Also fix `openalex.py:192`** (`file_urls = [doi] if doi else []`), which discards OpenAlex's own OA URLs — that is what feeds the 18 retrievable PDFs.
+
 ### 5. 35 download failures + 5 extraction failures never triaged
 
 8% of the corpus. Nobody has looked at whether these are dead links, paywalls, or a fixable bug in the downloader.
