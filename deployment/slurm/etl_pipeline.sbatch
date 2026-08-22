@@ -7,6 +7,9 @@
 #SBATCH --time=2-00:00:00
 #SBATCH --output=logs/etl_pipeline_%j.out
 #SBATCH --error=logs/etl_pipeline_%j.err
+# Send USR1 to the batch script 15 min before the time limit so results
+# can be synced off node-local scratch before SLURM kills the job.
+#SBATCH --signal=B:USR1@900
 # Resource notes:
 #   --mem is CPU RAM only (not GPU VRAM). GPU VRAM is determined by hardware.
 #   On the gpu partition, all nodes have A100s (40-80GB VRAM), which is 3-5x
@@ -189,19 +192,56 @@ else
 fi
 echo "Staging complete. Local scratch usage: $(du -sh "$LOCAL_WORK" | cut -f1)"
 
-# Copy results back to persistent storage on exit (success or failure)
+# ── Getting results off node-local scratch ───────────────────────────
+# Scratch is fast but disappears with the job. Syncing only on exit means a
+# TIMEOUT, scancel, node failure or OOM-kill discards everything — the
+# 2026-08-22 run would have lost 17 hours of GPU time. So: sync incrementally
+# while running, and sync again on any exit path, including signals.
+SYNC_INTERVAL="${SYNC_INTERVAL:-900}"
+
+sync_back() {
+    # Never let a sync failure abort the job or mask the pipeline's exit code.
+    rsync -a "$LOCAL_WORK/data/" "${PROJECT_DIR}/data/" || true
+    rsync -a "$LOCAL_WORK/logs/" "${PROJECT_DIR}/logs/" || true
+    rsync -a "$LOCAL_WORK/reports/" "${PROJECT_DIR}/reports/" || true
+}
+
+periodic_sync() {
+    while true; do
+        sleep "$SYNC_INTERVAL"
+        sync_back
+        echo "[$(date +%H:%M:%S)] incremental sync to persistent storage complete"
+    done
+}
+
+CLEANUP_DONE=""
 cleanup() {
+    # EXIT fires after a signal trap has already run; only do this once.
+    [[ -n "$CLEANUP_DONE" ]] && return 0
+    CLEANUP_DONE=1
+    if [[ -n "${SYNC_PID:-}" ]]; then kill "$SYNC_PID" 2>/dev/null || true; fi
     echo ""
     echo "=== Syncing results back to persistent storage ==="
-    rsync -a "$LOCAL_WORK/data/" "${PROJECT_DIR}/data/"
-    rsync -a "$LOCAL_WORK/logs/" "${PROJECT_DIR}/logs/"
-    rsync -a "$LOCAL_WORK/reports/" "${PROJECT_DIR}/reports/"
+    sync_back
     # Persist model cache so next job doesn't re-download
-    rsync -a "$LOCAL_WORK/.model_cache/" "$MODEL_CACHE/"
+    rsync -a "$LOCAL_WORK/.model_cache/" "$MODEL_CACHE/" || true
     rm -rf "$LOCAL_WORK"
     echo "Scratch cleanup complete."
 }
+
+on_signal() {
+    echo ""
+    echo "!!! Termination signal received at $(date) - syncing before exit !!!"
+    cleanup
+    exit 143
+}
+
 trap cleanup EXIT
+trap on_signal USR1 SIGTERM SIGINT
+
+periodic_sync &
+SYNC_PID=$!
+echo "Incremental sync every ${SYNC_INTERVAL}s (pid $SYNC_PID)"
 
 # ── Build command args ───────────────────────────────────────────────
 CMD_ARGS=(
@@ -240,8 +280,19 @@ singularity exec --nv --writable-tmpfs --pwd /app \
     --env MKL_NUM_THREADS=2 \
     --env OPENBLAS_NUM_THREADS=2 \
     "$LOCAL_SIF" \
-    "${CMD_ARGS[@]}"
+    "${CMD_ARGS[@]}" &
+PIPELINE_PID=$!
+
+# `wait` is interruptible by traps; a foreground command is not, so signals
+# would otherwise be handled only after the pipeline had already exited.
+set +e
+wait "$PIPELINE_PID"
+PIPELINE_RC=$?
+set -e
+echo "Pipeline exited with code $PIPELINE_RC"
 
 echo ""
-echo "=== ETL Pipeline completed: $(date) ==="
+echo "=== ETL Pipeline finished: $(date) (exit $PIPELINE_RC) ==="
 echo "Report: ${PROJECT_DIR}/data/reports/etl_execution_report.json"
+
+exit "$PIPELINE_RC"

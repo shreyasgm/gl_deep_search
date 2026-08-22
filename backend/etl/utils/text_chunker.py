@@ -23,6 +23,7 @@ import yaml
 from loguru import logger
 
 from backend.etl.models.tracking import ProcessingStatus
+from backend.etl.utils.atomic_io import atomic_writer
 from backend.etl.utils.publication_tracker import PublicationTracker
 
 # Fallback defaults if not specified in config
@@ -1359,7 +1360,9 @@ class TextChunker:
         try:
             chunks_data = [chunk.to_dict() for chunk in result.chunks]
 
-            with open(output_file, "w", encoding="utf-8") as f:
+            # Atomic: the resume check above accepts any existing chunks.json,
+            # so a truncated file would be trusted forever.
+            with atomic_writer(output_file, "w", encoding="utf-8") as f:
                 json.dump(chunks_data, f, indent=2, ensure_ascii=False)
 
             logger.info(f"Saved {len(result.chunks)} chunks to {output_file}")

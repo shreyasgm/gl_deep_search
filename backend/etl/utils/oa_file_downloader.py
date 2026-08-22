@@ -10,6 +10,7 @@ import asyncio
 import hashlib
 import logging
 import mimetypes
+import os
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ import tqdm.asyncio
 
 from backend.etl.models.publications import OpenAlexPublication
 from backend.etl.scrapers.openalex import OpenAlexClient
+from backend.etl.utils.atomic_io import partial_path_for, remove_partial
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
 from backend.storage.factory import get_storage
@@ -35,6 +37,26 @@ logger = logging.getLogger(__name__)
 
 # Type variable for generic functions
 T = TypeVar("T")
+
+
+def _parse_content_length(raw_value: str | None) -> int | None:
+    """Parse a ``Content-Length`` header into a byte count.
+
+    Args:
+        raw_value: Raw header value, or ``None`` when the server omitted it.
+
+    Returns:
+        The advertised body size, or ``None`` when the header is absent or not
+        a usable integer (in which case no size check can be made).
+    """
+    if not raw_value:
+        return None
+    try:
+        length = int(raw_value)
+    except (TypeError, ValueError):
+        logger.debug(f"Ignoring unparseable Content-Length header: {raw_value!r}")
+        return None
+    return length if length >= 0 else None
 
 
 @dataclass
@@ -397,12 +419,20 @@ class OpenAlexFileDownloader:
         """
         Download file using aiohttp.
 
+        The response body is streamed into ``<destination>.part`` and only
+        renamed onto ``destination`` once the transfer is complete and its
+        length agrees with ``Content-Length``.  A job killed mid-transfer
+        therefore leaves a ``.part`` file that no resume check accepts, rather
+        than a truncated file at the destination that looks complete forever.
+
         Args:
             session: aiohttp session to use
             url: URL to download
             destination: Where to save the file
             referer: Optional referer header
-            resume: Whether to attempt resuming partial downloads
+            resume: Whether to attempt resuming partial downloads.  When
+                enabled an existing ``.part`` file is the resume base; when
+                disabled it is discarded and the transfer restarts.
 
         Returns:
             DownloadResult with information about the download
@@ -439,17 +469,23 @@ class OpenAlexFileDownloader:
                 source="http",
             )
 
-        # Check if file already exists and get its size for resume
+        part_path = partial_path_for(destination)
+
+        # Resume against the .part file, never the final path: appending to a
+        # complete file at the destination is what corrupted downloads before.
         file_size = 0
-        if destination.exists() and resume:
-            file_size = destination.stat().st_size
+        if resume and part_path.exists():
+            file_size = part_path.stat().st_size
+        else:
+            # Discard any .part left behind by a previous crash
+            remove_partial(part_path)
 
         # Set up headers with range request if resuming
         headers = {}
         if referer:
             headers["Referer"] = referer
 
-        if file_size > 0 and resume:
+        if file_size > 0:
             headers["Range"] = f"bytes={file_size}-"
             logger.info(f"Resuming download of {url} from byte {file_size}")
 
@@ -462,7 +498,27 @@ class OpenAlexFileDownloader:
             async with session.get(final_url, headers=headers) as response:
                 # Handle response
                 if response.status == 416:  # Range Not Satisfiable
-                    # File is already complete
+                    if part_path.exists():
+                        # Our partial file is at or past the resource length, so
+                        # it is unusable as a resume base.  Drop it so the next
+                        # attempt starts from scratch instead of splicing bad
+                        # bytes.
+                        remove_partial(part_path)
+                        error_msg = (
+                            f"Server rejected resume range for {url} (HTTP 416); "
+                            f"discarded stale partial file {part_path.name}"
+                        )
+                        logger.warning(error_msg)
+                        return DownloadResult(
+                            url=url,
+                            success=False,
+                            file_path=destination,
+                            error=error_msg,
+                            open_access=True,
+                            source="http",
+                        )
+
+                    # No partial file: the destination is already complete
                     logger.info(f"File {destination} appears to be already complete")
 
                     # Validate the existing file
@@ -475,7 +531,7 @@ class OpenAlexFileDownloader:
                         url=url,
                         success=validation_result["is_valid"],
                         file_path=destination,
-                        file_size=file_size,
+                        file_size=validation_result["file_size"],
                         content_type=response.headers.get(
                             "Content-Type"
                         ),  # Use reported content type
@@ -486,15 +542,12 @@ class OpenAlexFileDownloader:
                     )
 
                 elif response.status == 206:  # Partial Content (for range requests)
-                    # Resume download
-                    content_length = int(response.headers.get("Content-Length", "0"))
-                    total_size = file_size + content_length
+                    # Resume download.  Content-Length is the remaining range
+                    # here, not the size of the whole resource.
                     mode = "ab"  # Append binary
 
                 elif response.status == 200:  # OK
                     # New download or server doesn't support range requests
-                    content_length = int(response.headers.get("Content-Length", "0"))
-                    total_size = content_length
                     file_size = 0  # Start from beginning
                     mode = "wb"  # Write binary
 
@@ -516,17 +569,25 @@ class OpenAlexFileDownloader:
                     "Content-Type", "application/octet-stream"
                 )
 
-                # Download the file with progress tracking
+                # How many bytes the server says this response body carries
+                expected_length = _parse_content_length(
+                    response.headers.get("Content-Length")
+                )
+
+                # Download the file with progress tracking, into the .part
+                # sidecar rather than the final destination
+                bytes_written = 0
                 try:
-                    async with aiofiles.open(destination, mode) as f:
-                        downloaded = file_size  # Bytes already downloaded
+                    async with aiofiles.open(part_path, mode) as f:
                         chunk_size = 64 * 1024  # 64KB chunks
 
                         async for chunk in response.content.iter_chunked(chunk_size):
                             await f.write(chunk)
-                            downloaded += len(chunk)
+                            bytes_written += len(chunk)
+                        await f.flush()
+                        os.fsync(f.fileno())
                 except Exception as e:
-                    logger.error(f"Error writing to file {destination}: {e}")
+                    logger.error(f"Error writing to file {part_path}: {e}")
                     return DownloadResult(
                         url=url,
                         success=False,
@@ -535,6 +596,29 @@ class OpenAlexFileDownloader:
                         open_access=True,
                         source="http",
                     )
+
+                # A body shorter (or longer) than advertised means the transfer
+                # was cut off.  Never promote such a file to the destination.
+                if expected_length is not None and bytes_written != expected_length:
+                    error_msg = (
+                        f"Incomplete download for {url}: wrote {bytes_written} "
+                        f"bytes but Content-Length advertised {expected_length} bytes"
+                    )
+                    logger.error(error_msg)
+                    remove_partial(part_path)
+                    return DownloadResult(
+                        url=url,
+                        success=False,
+                        file_path=destination,
+                        error=error_msg,
+                        file_size=bytes_written,
+                        content_type=content_type,
+                        open_access=True,
+                        source="http",
+                    )
+
+                # Publish the completed .part file atomically
+                os.replace(part_path, destination)
 
                 # Get final file size
                 if destination.exists():

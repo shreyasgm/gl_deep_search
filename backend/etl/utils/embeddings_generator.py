@@ -25,6 +25,8 @@ import yaml
 from loguru import logger
 from openai import AsyncOpenAI, OpenAIError, RateLimitError
 
+from backend.etl.utils.atomic_io import atomic_writer
+
 
 class EmbeddingGenerationStatus(Enum):
     """Status of embedding generation operation."""
@@ -543,9 +545,12 @@ class EmbeddingsGenerator:
                 }
             )
 
-            # Save embeddings to Parquet
+            # Save embeddings to Parquet.  Written atomically, and before
+            # metadata.json, because the resume check above requires both files:
+            # metadata.json is the commit marker for the pair.
             table = pa.Table.from_pandas(embeddings_df)
-            pq.write_table(table, embeddings_file, compression="snappy")
+            with atomic_writer(embeddings_file, "wb") as f:
+                pq.write_table(table, f, compression="snappy")
 
             logger.info(
                 f"Saved {len(chunk_embeddings)} embeddings to {embeddings_file}"
@@ -561,7 +566,9 @@ class EmbeddingsGenerator:
                 "chunks": chunks_data,  # Full chunk metadata
             }
 
-            with open(metadata_file, "w", encoding="utf-8") as f:
+            # Written last and atomically: metadata.json appearing is what makes
+            # the resume check treat this document as done.
+            with atomic_writer(metadata_file, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
 
             logger.info(f"Saved metadata to {metadata_file}")

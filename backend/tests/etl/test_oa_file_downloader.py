@@ -11,7 +11,9 @@ have been replaced with targeted coverage of:
 import pytest
 
 from backend.etl.models.publications import OpenAlexPublication
+from backend.etl.utils.atomic_io import partial_path_for
 from backend.etl.utils.oa_file_downloader import (
+    DownloadResult,
     OpenAlexFileDownloader,
 )
 from backend.storage.local import LocalStorage
@@ -594,16 +596,16 @@ class TestDownloadFileWithAiohttp:
 
     @pytest.mark.asyncio
     async def test_aiohttp_resume_206(self, downloader, tmp_path):
-        """Partial file exists → 206 response appends remaining bytes."""
+        """Partial .part file exists → 206 response appends remaining bytes."""
         from unittest.mock import MagicMock
 
         session = MagicMock()
         partial = b"%PDF-1.5\n"
         remainder = b"\x00" * 100
 
-        # Pre-create partial file
+        # Pre-create the .part sidecar; resume never appends to the final path
         dest = tmp_path / "partial.pdf"
-        dest.write_bytes(partial)
+        partial_path_for(dest).write_bytes(partial)
 
         head_resp = _make_mock_response(
             status=200,
@@ -627,6 +629,116 @@ class TestDownloadFileWithAiohttp:
 
         assert result.success is True
         assert dest.read_bytes() == partial + remainder
+        assert not partial_path_for(dest).exists()
+
+    @pytest.mark.asyncio
+    async def test_aiohttp_interrupted_stream_leaves_no_destination_file(
+        self, downloader, tmp_path
+    ):
+        """A transfer cut off mid-stream must not leave a file at the target."""
+        from unittest.mock import MagicMock
+
+        session = MagicMock()
+
+        head_resp = _make_mock_response(
+            status=200,
+            headers={"Content-Type": "application/pdf"},
+        )
+        get_resp = _make_mock_response(
+            status=200,
+            headers={
+                "Content-Type": "application/pdf",
+                "Content-Length": "4009",
+            },
+        )
+
+        async def _dying_stream(chunk_size):
+            yield b"%PDF-1.5\n" + b"\x00" * 2000
+            raise ConnectionResetError("connection reset by peer")
+
+        get_resp.content.iter_chunked = _dying_stream
+
+        session.head = MagicMock(return_value=AsyncContextManagerMock(head_resp))
+        session.get = MagicMock(return_value=AsyncContextManagerMock(get_resp))
+
+        dest = tmp_path / "interrupted.pdf"
+        result = await downloader._download_file_with_aiohttp(
+            session, "https://example.com/paper.pdf", dest
+        )
+
+        assert result.success is False
+        assert not dest.exists(), (
+            "a truncated download must never reach the destination"
+        )
+        # Only the .part sidecar may survive the crash
+        assert {p.name for p in tmp_path.iterdir()} <= {"interrupted.pdf.part"}
+
+    @pytest.mark.asyncio
+    async def test_aiohttp_content_length_mismatch_fails(self, downloader, tmp_path):
+        """A body shorter than Content-Length is reported as a failure."""
+        from unittest.mock import MagicMock
+
+        session = MagicMock()
+        body = b"%PDF-1.5\n" + b"\x00" * 2000
+
+        head_resp = _make_mock_response(
+            status=200,
+            headers={"Content-Type": "application/pdf"},
+        )
+        get_resp = _make_mock_response(
+            status=200,
+            headers={
+                "Content-Type": "application/pdf",
+                "Content-Length": str(len(body) + 500),
+            },
+            content=body,
+        )
+
+        session.head = MagicMock(return_value=AsyncContextManagerMock(head_resp))
+        session.get = MagicMock(return_value=AsyncContextManagerMock(get_resp))
+
+        dest = tmp_path / "truncated.pdf"
+        result = await downloader._download_file_with_aiohttp(
+            session, "https://example.com/paper.pdf", dest
+        )
+
+        assert result.success is False
+        assert str(len(body)) in result.error
+        assert str(len(body) + 500) in result.error
+        assert not dest.exists()
+        assert not partial_path_for(dest).exists()
+
+    @pytest.mark.asyncio
+    async def test_leftover_part_file_is_not_cached(self, downloader, tmp_path):
+        """A leftover .part file must not satisfy the resume/cache check."""
+        from unittest.mock import AsyncMock, patch
+
+        dest = tmp_path / "resume_me.pdf"
+        downloader.download_delay = 0.0
+        # Well over min_file_size, so a size-only check would call it complete
+        partial_path_for(dest).write_bytes(b"%PDF-1.5\n" + b"\x00" * 5000)
+
+        calls = []
+
+        async def fake_impl(session, url_, destination, referer=None, resume=True):
+            calls.append(destination)
+            return DownloadResult(
+                url=url_,
+                success=True,
+                file_path=destination,
+                file_size=10,
+                content_type="application/pdf",
+            )
+
+        with patch.object(downloader, "_download_file_with_aiohttp", fake_impl):
+            with patch.object(downloader, "_get_session", return_value=AsyncMock()):
+                result = await downloader.download_file(
+                    "https://example.com/paper.pdf", dest, resume=True
+                )
+
+        assert calls, "a .part file must not short-circuit the download as cached"
+        assert result.cached is False
+        assert downloader.download_stats["cached"] == 0
 
 
 # ---------------------------------------------------------------------------

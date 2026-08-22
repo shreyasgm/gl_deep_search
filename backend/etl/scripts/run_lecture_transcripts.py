@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel
 
+from backend.etl.utils.atomic_io import atomic_write
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -239,8 +241,9 @@ def process_single_transcript(
                 clean_file_path = (
                     Path(intermediate_dir) / f"lecture_{lecture_num:02d}_cleaned.txt"
                 )
-                with open(clean_file_path, "w", encoding="utf-8") as f:
-                    f.write(cleaned_transcript)
+                # Atomic: the resume check above reuses any existing cleaned
+                # transcript, so a truncated one would be reused forever.
+                atomic_write(clean_file_path, cleaned_transcript)
                 logger.info(f"Saved cleaned transcript to: {clean_file_path}")
 
         # Extract metadata using the cleaned transcript
@@ -249,12 +252,9 @@ def process_single_transcript(
 
         # Save as JSON
         output_file = Path(output_dir) / f"lecture_{lecture_num:02d}_processed.json"
-        with open(output_file, "w", encoding="utf-8") as f:
-            # Convert Pydantic model to dict first
-            model_dict = structured_data.model_dump()
-
-            # Serialize the dict to JSON
-            f.write(json.dumps(model_dict, indent=2, ensure_ascii=False))
+        # Convert Pydantic model to dict first, then serialize the dict to JSON
+        model_dict = structured_data.model_dump()
+        atomic_write(output_file, json.dumps(model_dict, indent=2, ensure_ascii=False))
 
         logger.info(f"Successfully processed and saved: {output_file}")
 

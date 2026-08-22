@@ -14,6 +14,7 @@ import yaml
 from tqdm import tqdm
 
 from backend.etl.models.tracking import ProcessingStatus
+from backend.etl.utils.atomic_io import PARTIAL_SUFFIX, atomic_write
 from backend.etl.utils.pdf_backends import get_backend
 from backend.etl.utils.pdf_backends.base import PDFBackend
 from backend.etl.utils.publication_tracker import PublicationTracker
@@ -272,9 +273,9 @@ class PDFProcessor:
                 )
                 return None
 
-            # Write extracted text to file
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(full_text)
+            # Write extracted text to file (atomic: a killed job must not leave
+            # a truncated .txt behind, since resume treats it as complete)
+            atomic_write(output_path, full_text)
 
             # Upload to remote storage (no-op for local)
             self.storage.upload(output_relative)
@@ -398,6 +399,9 @@ def find_pdfs(
     for rel in all_relatives:
         if rel in pdf_rel_set or rel.lower().endswith(".pdf"):
             continue
+        if rel.endswith(PARTIAL_SUFFIX):
+            # In-flight or abandoned download, not a complete document
+            continue
         local_path = storage.download(rel)
         if local_path.is_file():
             try:
@@ -445,6 +449,9 @@ def find_growth_lab_pdfs(storage: StorageBase | None = None) -> list[Path]:
     pdf_rel_set = set(pdf_relatives)
     for rel in all_relatives:
         if rel in pdf_rel_set or rel.lower().endswith(".pdf"):
+            continue
+        if rel.endswith(PARTIAL_SUFFIX):
+            # In-flight or abandoned download, not a complete document
             continue
         local_path = storage.download(rel)
         if local_path.is_file():

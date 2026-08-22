@@ -9,6 +9,7 @@ import pytest
 from curl_cffi.requests import AsyncSession
 
 from backend.etl.scrapers.growthlab import GrowthLabPublication
+from backend.etl.utils.atomic_io import partial_path_for
 from backend.etl.utils.gl_file_downloader import DownloadResult, FileDownloader
 from backend.storage.local import LocalStorage
 
@@ -177,10 +178,11 @@ async def test_download_file_impl_status_codes(file_downloader, tmp_path):
     assert result.file_path.exists()
     assert result.file_size > 0
 
-    # --- 206 Partial Content: resume ---
+    # --- 206 Partial Content: resume from the .part sidecar ---
     dest_206 = tmp_path / "download_206.pdf"
-    # Write initial partial content
-    dest_206.write_bytes(b"%PDF-1.5\n")
+    # Partial content lives in the .part file, never at the destination
+    part_206 = partial_path_for(dest_206)
+    part_206.write_bytes(b"%PDF-1.5\n")
     remaining = b"\x00" * 100
     mock_session.get = AsyncMock(
         return_value=_make_mock_response(206, content=remaining)
@@ -191,6 +193,7 @@ async def test_download_file_impl_status_codes(file_downloader, tmp_path):
     assert result.success is True
     # File should contain original + remaining
     assert dest_206.stat().st_size == len(b"%PDF-1.5\n") + len(remaining)
+    assert not part_206.exists(), "the .part sidecar must be consumed by the rename"
 
     # --- 416 Range Not Satisfiable: file already complete ---
     dest_416 = tmp_path / "download_416.pdf"
@@ -255,6 +258,149 @@ async def test_cached_file(file_downloader, tmp_path):
 
     # Session.get should not have been called (no download)
     mock_get.assert_not_called()
+
+
+def _streaming_response(status_code=200, chunks=(), headers=None, fail_after=None):
+    """Build a mock curl_cffi response that streams ``chunks``.
+
+    Args:
+        status_code: HTTP status to report.
+        chunks: Body chunks to yield.
+        headers: Response headers.
+        fail_after: Raise a connection error after this many chunks, simulating
+            a transfer that is cut off mid-stream.
+
+    Returns:
+        A mock response object usable by ``_download_file_impl``.
+    """
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.headers = headers or {"Content-Type": "application/pdf"}
+
+    async def _aiter():
+        for index, chunk in enumerate(chunks):
+            if fail_after is not None and index == fail_after:
+                raise ConnectionResetError("connection reset by peer")
+            yield chunk
+
+    resp.aiter_content = _aiter
+    return resp
+
+
+@pytest.mark.asyncio
+async def test_interrupted_download_leaves_nothing_at_destination(
+    file_downloader, tmp_path
+):
+    """A transfer cut off mid-stream must not leave a file at the destination."""
+    url = "https://example.com/interrupted.pdf"
+    dest = tmp_path / "interrupted.pdf"
+
+    mock_session = MagicMock(spec=AsyncSession)
+    mock_session.get = AsyncMock(
+        return_value=_streaming_response(
+            200,
+            chunks=[b"%PDF-1.5\n" + b"\x00" * 2000, b"\x00" * 2000],
+            headers={"Content-Type": "application/pdf", "Content-Length": "4009"},
+            fail_after=1,
+        )
+    )
+
+    result = await file_downloader._download_file_impl(
+        mock_session, url, dest, resume=False
+    )
+
+    assert result.success is False
+    assert not dest.exists(), "a truncated download must never reach the destination"
+    # Only the .part sidecar may survive the crash
+    assert {p.name for p in tmp_path.iterdir()} <= {"interrupted.pdf.part"}
+
+
+@pytest.mark.asyncio
+async def test_leftover_part_file_is_not_cached(file_downloader, tmp_path):
+    """A leftover .part file must not satisfy the resume/cache check."""
+    url = "https://example.com/resume_me.pdf"
+    dest = tmp_path / "resume_me.pdf"
+    file_downloader.download_delay = 0.0
+    # Well over min_file_size, so a size-only check would call this complete
+    partial_path_for(dest).write_bytes(b"%PDF-1.5\n" + b"\x00" * 5000)
+
+    calls = []
+
+    async def fake_impl(session, url_, destination, referer=None, resume=True):
+        calls.append(destination)
+        return DownloadResult(
+            url=url_,
+            success=True,
+            file_path=destination,
+            file_size=10,
+            content_type="application/pdf",
+        )
+
+    with patch.object(file_downloader, "_download_file_impl", fake_impl):
+        with patch.object(file_downloader, "_get_session", return_value=AsyncMock()):
+            result = await file_downloader.download_file(url, dest, resume=True)
+
+    assert calls, "a .part file must not short-circuit the download as cached"
+    assert result.cached is False
+    assert file_downloader.download_stats["cached"] == 0
+
+
+@pytest.mark.asyncio
+async def test_content_length_mismatch_fails_download(file_downloader, tmp_path):
+    """A body shorter than Content-Length is a failure, not a cached success."""
+    url = "https://example.com/truncated.pdf"
+    dest = tmp_path / "truncated.pdf"
+    body = b"%PDF-1.5\n" + b"\x00" * 2000
+
+    mock_session = MagicMock(spec=AsyncSession)
+    mock_session.get = AsyncMock(
+        return_value=_streaming_response(
+            200,
+            chunks=[body],
+            headers={
+                "Content-Type": "application/pdf",
+                "Content-Length": str(len(body) + 500),
+            },
+        )
+    )
+
+    result = await file_downloader._download_file_impl(
+        mock_session, url, dest, resume=False
+    )
+
+    assert result.success is False
+    assert str(len(body)) in result.error
+    assert str(len(body) + 500) in result.error
+    assert not dest.exists()
+    assert not partial_path_for(dest).exists()
+
+
+@pytest.mark.asyncio
+async def test_content_length_match_succeeds(file_downloader, tmp_path):
+    """A body matching Content-Length is promoted to the destination."""
+    url = "https://example.com/complete.pdf"
+    dest = tmp_path / "complete.pdf"
+    body = b"%PDF-1.5\n" + b"\x00" * 2000
+
+    mock_session = MagicMock(spec=AsyncSession)
+    mock_session.get = AsyncMock(
+        return_value=_streaming_response(
+            200,
+            chunks=[body],
+            headers={
+                "Content-Type": "application/pdf",
+                "Content-Length": str(len(body)),
+            },
+        )
+    )
+
+    result = await file_downloader._download_file_impl(
+        mock_session, url, dest, resume=False
+    )
+
+    assert result.success is True
+    assert dest.read_bytes() == body
+    assert not partial_path_for(dest).exists()
 
 
 @pytest.mark.asyncio

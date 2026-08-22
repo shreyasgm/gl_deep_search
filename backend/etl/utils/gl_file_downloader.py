@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import logging
 import mimetypes
+import os
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -28,6 +29,7 @@ from curl_cffi.requests.errors import RequestsError
 from backend.etl.models.publications import GrowthLabPublication
 from backend.etl.models.tracking import DownloadStatus
 from backend.etl.scrapers.growthlab import GrowthLabScraper
+from backend.etl.utils.atomic_io import partial_path_for, remove_partial
 from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.base import StorageBase
@@ -41,6 +43,26 @@ T = TypeVar("T")
 
 # Browser to impersonate for Cloudflare bypass
 BROWSER_IMPERSONATE = "chrome120"
+
+
+def _parse_content_length(raw_value: str | None) -> int | None:
+    """Parse a ``Content-Length`` header into a byte count.
+
+    Args:
+        raw_value: Raw header value, or ``None`` when the server omitted it.
+
+    Returns:
+        The advertised body size, or ``None`` when the header is absent or not
+        a usable integer (in which case no size check can be made).
+    """
+    if not raw_value:
+        return None
+    try:
+        length = int(raw_value)
+    except (TypeError, ValueError):
+        logger.debug(f"Ignoring unparseable Content-Length header: {raw_value!r}")
+        return None
+    return length if length >= 0 else None
 
 
 @dataclass
@@ -228,23 +250,21 @@ class FileDownloader:
 
         return self.storage.get_path(relative_path)
 
-    def _correct_file_extension(self, file_path: Path, content_type: str) -> Path:
+    def _corrected_destination(self, file_path: Path, content_type: str) -> Path:
         """
-        Rename file to match actual Content-Type if extension is wrong.
+        Compute the path a file should have given the server's Content-Type.
 
-        Many Growth Lab publication URLs are DOI links or landing pages that
-        don't end in .pdf, so the initial filename gets a .bin extension.
-        After download, we know the real Content-Type from the server response
-        and can fix the extension.
+        Pure path arithmetic: nothing on disk is touched.  This lets a download
+        pick its final name before the ``.part`` file is renamed into place.
 
         Args:
-            file_path: Current path of the downloaded file
+            file_path: Intended path of the downloaded file
             content_type: Content-Type header from the server response
 
         Returns:
-            The (possibly renamed) file path
+            The path with a corrected extension, or ``file_path`` unchanged
         """
-        if not content_type or not file_path.exists():
+        if not content_type:
             return file_path
 
         # Map Content-Type to expected extension
@@ -264,14 +284,38 @@ class FileDownloader:
         expected_ext = ct_to_ext.get(base_ct)
 
         if expected_ext and file_path.suffix.lower() != expected_ext:
-            new_path = file_path.with_suffix(expected_ext)
+            return file_path.with_suffix(expected_ext)
+
+        return file_path
+
+    def _correct_file_extension(self, file_path: Path, content_type: str) -> Path:
+        """
+        Rename file to match actual Content-Type if extension is wrong.
+
+        Many Growth Lab publication URLs are DOI links or landing pages that
+        don't end in .pdf, so the initial filename gets a .bin extension.
+        After download, we know the real Content-Type from the server response
+        and can fix the extension.
+
+        Args:
+            file_path: Current path of the downloaded file
+            content_type: Content-Type header from the server response
+
+        Returns:
+            The (possibly renamed) file path
+        """
+        if not content_type or not file_path.exists():
+            return file_path
+
+        new_path = self._corrected_destination(file_path, content_type)
+        if new_path != file_path:
             file_path.rename(new_path)
+            base_ct = content_type.split(";")[0].strip().lower()
             logger.info(
                 f"Renamed {file_path.name} -> {new_path.name} (Content-Type: {base_ct})"
             )
-            return new_path
 
-        return file_path
+        return new_path
 
     async def _download_file_impl(
         self,
@@ -287,12 +331,20 @@ class FileDownloader:
         Uses curl_cffi with browser impersonation to bypass Cloudflare TLS
         fingerprinting.
 
+        The response body is streamed into ``<destination>.part`` and only
+        renamed onto ``destination`` once the transfer is complete and its
+        length agrees with ``Content-Length``.  A job killed mid-transfer
+        therefore leaves a ``.part`` file that no resume check accepts, rather
+        than a truncated file at the destination that looks complete forever.
+
         Args:
             session: curl_cffi async session to use
             url: URL to download
             destination: Where to save the file
             referer: Optional referer header
-            resume: Whether to attempt resuming partial downloads
+            resume: Whether to attempt resuming partial downloads.  When
+                enabled an existing ``.part`` file is the resume base; when
+                disabled it is discarded and the transfer restarts.
 
         Returns:
             DownloadResult with information about the download
@@ -301,17 +353,23 @@ class FileDownloader:
         if not isinstance(url, str):
             url = str(url)
 
-        # Check if file already exists and get its size for resume
+        part_path = partial_path_for(destination)
+
+        # Resume against the .part file, never the final path: appending to a
+        # complete file at the destination is what corrupted downloads before.
         file_size = 0
-        if destination.exists() and resume:
-            file_size = destination.stat().st_size
+        if resume and part_path.exists():
+            file_size = part_path.stat().st_size
+        else:
+            # Discard any .part left behind by a previous crash
+            remove_partial(part_path)
 
         # Set up headers with range request if resuming
         headers = {}
         if referer:
             headers["Referer"] = referer
 
-        if file_size > 0 and resume:
+        if file_size > 0:
             headers["Range"] = f"bytes={file_size}-"
             logger.info(f"Resuming download of {url} from byte {file_size}")
 
@@ -324,7 +382,24 @@ class FileDownloader:
 
             # Handle response
             if response.status_code == 416:  # Range Not Satisfiable
-                # File is already complete
+                if part_path.exists():
+                    # Our partial file is at or past the resource length, so it
+                    # is unusable as a resume base.  Drop it so the next attempt
+                    # starts from scratch instead of splicing bad bytes.
+                    remove_partial(part_path)
+                    error_msg = (
+                        f"Server rejected resume range for {url} (HTTP 416); "
+                        f"discarded stale partial file {part_path.name}"
+                    )
+                    logger.warning(error_msg)
+                    return DownloadResult(
+                        url=url,
+                        success=False,
+                        file_path=destination,
+                        error=error_msg,
+                    )
+
+                # No partial file: the destination is already complete
                 logger.info(f"File {destination} appears to be already complete")
 
                 # Validate the existing file
@@ -337,7 +412,7 @@ class FileDownloader:
                     url=url,
                     success=validation_result["is_valid"],
                     file_path=destination,
-                    file_size=file_size,
+                    file_size=validation_result["file_size"],
                     content_type=response.headers.get("Content-Type"),
                     cached=True,
                     validation_info=validation_result,
@@ -368,13 +443,23 @@ class FileDownloader:
                 "Content-Type", "application/octet-stream"
             )
 
-            # Download the file using streaming
+            # How many bytes the server says this response body carries.  For a
+            # 206 this is the remaining range, not the whole resource.
+            expected_length = _parse_content_length(
+                response.headers.get("Content-Length")
+            )
+
+            # Download the file using streaming, into the .part sidecar
+            bytes_written = 0
             try:
-                async with aiofiles.open(destination, mode) as f:
+                async with aiofiles.open(part_path, mode) as f:
                     async for chunk in response.aiter_content():
                         await f.write(chunk)
+                        bytes_written += len(chunk)
+                    await f.flush()
+                    os.fsync(f.fileno())
             except Exception as e:
-                logger.error(f"Error writing to file {destination}: {e}")
+                logger.error(f"Error writing to file {part_path}: {e}")
                 return DownloadResult(
                     url=url,
                     success=False,
@@ -382,8 +467,28 @@ class FileDownloader:
                     error=f"Failed to write file: {str(e)}",
                 )
 
-            # Fix file extension based on actual Content-Type from server
-            destination = self._correct_file_extension(destination, content_type)
+            # A body shorter (or longer) than advertised means the transfer was
+            # cut off.  Never promote such a file to the destination.
+            if expected_length is not None and bytes_written != expected_length:
+                error_msg = (
+                    f"Incomplete download for {url}: wrote {bytes_written} bytes "
+                    f"but Content-Length advertised {expected_length} bytes"
+                )
+                logger.error(error_msg)
+                remove_partial(part_path)
+                return DownloadResult(
+                    url=url,
+                    success=False,
+                    file_path=destination,
+                    error=error_msg,
+                    file_size=bytes_written,
+                    content_type=content_type,
+                )
+
+            # Pick the final name from the server's Content-Type, then publish
+            # the completed .part file atomically.
+            destination = self._corrected_destination(destination, content_type)
+            os.replace(part_path, destination)
 
             # Get final file size
             if destination.exists():

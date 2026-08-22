@@ -15,6 +15,7 @@ import yaml
 from tqdm.asyncio import tqdm as async_tqdm
 
 from backend.etl.models.publications import OpenAlexPublication
+from backend.etl.utils.atomic_io import atomic_writer
 from backend.storage.factory import get_storage
 
 logger = logging.getLogger(__name__)
@@ -245,7 +246,10 @@ class OpenAlexClient:
             pub_dicts.append(pub_dict)
 
         df = pd.DataFrame(pub_dicts)
-        df.to_csv(output_path, index=False)
+        # Atomic: downstream stages read this CSV as the authoritative
+        # publication list, so a truncated file would silently drop rows.
+        with atomic_writer(output_path, "w", encoding="utf-8", newline="") as f:
+            df.to_csv(f, index=False)
         logger.info(f"Saved {len(publications)} publications to {output_path}")
 
     def load_from_csv(self, input_path: Path) -> list[OpenAlexPublication]:

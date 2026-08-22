@@ -24,8 +24,10 @@ import yaml
 from loguru import logger
 
 from backend.etl.scrapers.growthlab import GrowthLabScraper
+from backend.etl.utils.atomic_io import atomic_writer
 from backend.etl.utils.embeddings_generator import EmbeddingsGenerator
 from backend.etl.utils.gl_file_downloader import FileDownloader
+from backend.etl.utils.logging_bridge import install_stdlib_bridge
 from backend.etl.utils.pdf_processor import PDFProcessor, find_pdfs
 from backend.etl.utils.profiling import log_component_metrics, profile_operation
 from backend.etl.utils.publication_tracker import PublicationTracker
@@ -156,6 +158,10 @@ class ETLOrchestrator:
             level=self.config.log_level,
             format=self._log_format,
         )
+        # Several ETL modules log via the standard library. Without this
+        # bridge their records are discarded, which is why PDF extraction ran
+        # silently for 16 hours on 2026-08-22.
+        install_stdlib_bridge()
 
     def _load_etl_config(self) -> dict[str, Any]:
         """Load ETL configuration from YAML file.
@@ -1024,7 +1030,7 @@ class ETLOrchestrator:
             ],
         }
 
-        with open(report_path, "w") as f:
+        with atomic_writer(report_path, "w", encoding="utf-8") as f:
             json.dump(report_data, f, indent=2)
 
         logger.info(f"Detailed report saved to: {report_path}")

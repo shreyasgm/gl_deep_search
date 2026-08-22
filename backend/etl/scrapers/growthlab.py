@@ -21,6 +21,7 @@ from curl_cffi.requests.errors import RequestsError
 from tqdm.asyncio import tqdm as async_tqdm
 
 from backend.etl.models.publications import GrowthLabPublication
+from backend.etl.utils.atomic_io import atomic_writer
 from backend.etl.utils.publication_tracker import PublicationTracker
 from backend.etl.utils.retry import retry_with_backoff
 from backend.storage.factory import get_storage
@@ -976,7 +977,10 @@ class GrowthLabScraper:
             pub_dicts.append(pub_dict)
 
         df = pd.DataFrame(pub_dicts)
-        df.to_csv(output_path, index=False)
+        # Atomic: downstream stages read this CSV as the authoritative
+        # publication list, so a truncated file would silently drop rows.
+        with atomic_writer(output_path, "w", encoding="utf-8", newline="") as f:
+            df.to_csv(f, index=False)
         logger.info(f"Saved {len(publications)} publications to {output_path}")
 
     def load_from_csv(self, input_path: Path) -> list[GrowthLabPublication]:
