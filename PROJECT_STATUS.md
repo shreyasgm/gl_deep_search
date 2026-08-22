@@ -166,6 +166,8 @@ The audits (`audit_summary.md` and the four detail files) were written Feb 24, a
 
 ### 4b. scidownl (Sci-Hub) fallback cannot work inside the container — needs a decision
 
+> **Superseded — scidownl was removed from the project on 2026-08-22.** The dependency, the `_download_file_with_scidownl` code path and its counters, its tests, and the sbatch staging block described below are all gone; only the open-access route (Unpaywall + direct URL resolution) remains. Everything below is kept as a historical record of the investigation.
+
 Observed live in the production run: **all 250 scidownl attempts failed**, every one with
 
 ```
@@ -216,7 +218,7 @@ The container fix (4b) moves the failure from "cannot write the SQLite DB" to "c
 1. **A scidownl success would be silently discarded.** `_get_file_path` derives the file extension from the DOI path (`10.2139/ssrn.1817191` → suffix `.1817191`), but scidownl appends `.pdf` when the requested name doesn't end in pdf. `_download_file_with_scidownl` then calls `.stat()` on the un-suffixed path and gets `FileNotFoundError`, reporting `success=False` even though a valid PDF was written. Demonstrated empirically with scidownl's network calls stubbed. **This is the source of the odd `.0900943106`-style filenames**, and it means the Sci-Hub path would yield 0 even if Sci-Hub were reachable.
 2. **`--concurrency` is a no-op.** `download_publications` (~lines 1025-1049) awaits bare coroutines in a loop rather than wrapping them in `asyncio.create_task`, so the semaphore never has more than one holder. Downloads are strictly sequential. (Separately, `--output-dir` in the entrypoint is parsed but never used.)
 
-**Recommendation: drop scidownl.** It yields zero, cannot work without solving a TLS-level block, emits ~250 error lines per run, carries legal exposure, and has a path bug that would discard any success anyway. Then decide separately whether the OpenAlex corpus is worth pursuing via a route that can actually work: a real browser engine (Playwright) to get past Cloudflare, or Harvard institutional access via EZproxy/library APIs. **Also fix `openalex.py:192`** (`file_urls = [doi] if doi else []`), which discards OpenAlex's own OA URLs — that is what feeds the 18 retrievable PDFs.
+**Recommendation: drop scidownl.** *(Acted on 2026-08-22 — removed from the codebase, dependencies, sbatch, and tests.)* It yields zero, cannot work without solving a TLS-level block, emits ~250 error lines per run, carries legal exposure, and has a path bug that would discard any success anyway. Then decide separately whether the OpenAlex corpus is worth pursuing via a route that can actually work: a real browser engine (Playwright) to get past Cloudflare, or Harvard institutional access via EZproxy/library APIs. **Also fix `openalex.py:192`** (`file_urls = [doi] if doi else []`), which discards OpenAlex's own OA URLs — that is what feeds the 18 retrievable PDFs.
 
 ### 5. 35 download failures + 5 extraction failures never triaged
 

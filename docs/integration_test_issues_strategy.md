@@ -1,5 +1,7 @@
 # Plan: Restore and Add Integration Tests
 
+> **Historical plan.** The scidownl/Sci-Hub items below are obsolete: scidownl was removed from the project on 2026-08-22 (see `PROJECT_STATUS.md` §4b-4c). The DOI path now ends at the open-access route.
+
 ## Context
 
 The test suite rewrite deleted 26 tests from `test_oa_file_downloader.py` (previously globally skipped) and replaced them with 16 focused unit tests. While the unit tests are better quality (real file validation, no self-mocking), 16 of the old tests covering critical control flow paths were lost with no replacement — the entire OA check → download → scidownl fallback chain, HTTP download mechanics, download orchestration, retry logic, and the top-level entry point. Additionally, `test_agent.py` and `test_main.py` only test happy paths. The user values integration tests that exercise actual control flow paths over mock-heavy unit tests.

@@ -148,8 +148,8 @@ class ETLOrchestrator:
 
     def _configure_logger(self) -> None:
         """Configure loguru. Called on init and after components that may
-        import third-party libraries which reset the global logger
-        (e.g. scidownl calls logger.remove() at import time)."""
+        import third-party libraries which reset the global logger by
+        calling logger.remove() at import time."""
         logger.remove()
         logger.add(
             sys.stdout,
@@ -261,7 +261,7 @@ class ETLOrchestrator:
             self.results.append(result)
 
             # Re-configure logger after each component in case a third-party
-            # library (e.g. scidownl) called logger.remove() during import
+            # library called logger.remove() during import
             self._configure_logger()
 
             # Stop on critical failures (scrapers)

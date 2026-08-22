@@ -4,7 +4,7 @@ Script to download files from OpenAlex publication DOIs.
 This script will:
 1. Load publications data from a CSV file
 2. Try to find open access versions of the papers
-3. Fall back to scidownl for downloading non-open access papers
+3. Download the open access versions that are available
 """
 
 import argparse
@@ -128,7 +128,6 @@ async def main():
         # Count successes and failures
         successes = sum(1 for r in results if r["success"])
         oa_downloads = sum(1 for r in results if r.get("open_access", False))
-        scidownl_downloads = sum(1 for r in results if r.get("source") == "scidownl")
         cached = sum(1 for r in results if r.get("cached", False))
         failures = sum(1 for r in results if not r["success"])
 
@@ -138,7 +137,6 @@ async def main():
         logger.info(f"Total files processed: {len(results)}")
         logger.info(f"Successfully downloaded: {successes}")
         logger.info(f"  - Via open access: {oa_downloads}")
-        logger.info(f"  - Via scidownl: {scidownl_downloads}")
         logger.info(f"Used cached files: {cached}")
         logger.info(f"Failed: {failures}")
         logger.info("=" * 50)

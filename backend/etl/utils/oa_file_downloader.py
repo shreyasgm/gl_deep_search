@@ -3,8 +3,7 @@ OpenAlex file downloader module for Deep Search.
 
 Handles downloading of files from OpenAlex publication DOIs, with features like:
 1. Checking for open access versions
-2. Using scidownl as a fallback for closed-access papers
-3. Retrying, rate limiting, and validation
+2. Retrying, rate limiting, and validation
 """
 
 import asyncio
@@ -60,7 +59,6 @@ class OpenAlexFileDownloader:
 
     Features:
     - Open access verification and download
-    - Scidownl fallback for closed-access papers
     - Asynchronous downloads with concurrency limits
     - Rate limiting and retry logic
     - Downloaded file validation
@@ -111,7 +109,6 @@ class OpenAlexFileDownloader:
             "cached": 0,
             "total_bytes": 0,
             "open_access": 0,
-            "scidownl": 0,
         }
 
         # Session cache
@@ -619,86 +616,6 @@ class OpenAlexFileDownloader:
                 source="http",
             )
 
-    async def _download_file_with_scidownl(
-        self, doi: str, destination: Path
-    ) -> DownloadResult:
-        """
-        Download file using scidownl library.
-
-        Args:
-            doi: DOI URL to download
-            destination: Where to save the file
-
-        Returns:
-            DownloadResult with information about the download
-        """
-        # Ensure destination directory exists
-        self.storage.ensure_dir(destination.parent)
-
-        # Make sure DOI is formatted correctly for scidownl
-        if not doi.startswith("https://doi.org/"):
-            doi = f"https://doi.org/{doi.lstrip('doi:').strip()}"
-
-        try:
-            # Configure proxies if needed
-            proxies = self.config.get("proxies", None)
-
-            # Download the paper (import deferred to avoid scidownl
-            # calling logger.remove() at module level)
-            from scidownl import scihub_download
-
-            logger.info(f"Downloading paper with scidownl: {doi}")
-            scihub_download(
-                keyword=doi, paper_type="doi", out=str(destination), proxies=proxies
-            )
-
-            # Validate the file
-            file_size = destination.stat().st_size
-            content_type = (
-                mimetypes.guess_type(str(destination))[0] or "application/pdf"
-            )
-
-            # Validate the file
-            validation_result = await self._validate_downloaded_file(
-                destination, expected_content_type=content_type
-            )
-
-            if not validation_result["is_valid"]:
-                logger.error(f"scidownl file validation failed: {validation_result}")
-                if destination.exists():
-                    destination.unlink()
-                return DownloadResult(
-                    url=doi,
-                    success=False,
-                    file_path=destination,
-                    error=f"Validation failed: {validation_result}",
-                    file_size=file_size,
-                    content_type=content_type,
-                    validation_info=validation_result,
-                    source="scidownl",
-                )
-
-            return DownloadResult(
-                url=doi,
-                success=True,
-                file_path=destination,
-                file_size=file_size,
-                content_type=content_type,
-                validation_info=validation_result,
-                source="scidownl",
-            )
-
-        except Exception as e:
-            error_msg = f"Error using scidownl: {str(e)}"
-            logger.error(error_msg)
-            return DownloadResult(
-                url=doi,
-                success=False,
-                file_path=destination,
-                error=error_msg,
-                source="scidownl",
-            )
-
     async def _validate_downloaded_file(
         self, file_path: Path, expected_content_type: str | None = None
     ) -> dict[str, Any]:
@@ -911,30 +828,28 @@ class OpenAlexFileDownloader:
                             self.download_stats["total_bytes"] += (
                                 download_result.file_size
                             )
-                        return download_result
+                    else:
+                        self.download_stats["failed"] += 1
 
-                # Step 2: If open access failed or not available, try scidownl
-                logger.info(
-                    "No open access version found or download failed, "
-                    f"trying scidownl for {url}"
+                    # Add a small random delay to avoid overwhelming servers
+                    await asyncio.sleep(self.download_delay * (0.5 + random.random()))
+
+                    return download_result
+
+                # Step 2: No open access version is available. There is no other
+                # legitimate route for this DOI, so record the download as failed.
+                error_msg = f"No open access version available for {url}"
+                logger.info(error_msg)
+                self.download_stats["failed"] += 1
+
+                return DownloadResult(
+                    url=url,
+                    success=False,
+                    file_path=destination,
+                    error=error_msg,
+                    open_access=False,
+                    source="open_access",
                 )
-                scidownl_result = await self._download_file_with_scidownl(
-                    url, destination
-                )
-
-                # Update statistics
-                if scidownl_result.success:
-                    self.download_stats["scidownl"] += 1
-                    self.download_stats["successful"] += 1
-                    if scidownl_result.file_size:
-                        self.download_stats["total_bytes"] += scidownl_result.file_size
-                else:
-                    self.download_stats["failed"] += 1
-
-                # Add small delay after scidownl use
-                await asyncio.sleep(self.download_delay * (0.5 + random.random()))
-
-                return scidownl_result
 
             else:
                 # Standard URL download (non-DOI)
@@ -1116,7 +1031,6 @@ class OpenAlexFileDownloader:
         failed = self.download_stats["failed"]
         bytes_downloaded = self.download_stats["total_bytes"]
         open_access = self.download_stats["open_access"]
-        scidownl = self.download_stats["scidownl"]
 
         # Convert bytes to human-readable format
         if bytes_downloaded < 1024:
@@ -1134,7 +1048,6 @@ class OpenAlexFileDownloader:
             f"({successful / total * 100:.1f}%)"
         )
         logger.info(f"    - Via open access: {open_access}")
-        logger.info(f"    - Via scidownl: {scidownl}")
         logger.info(f"  - Used cached files: {cached} ({cached / total * 100:.1f}%)")
         logger.info(f"  - Failed: {failed} ({failed / total * 100:.1f}%)")
         logger.info(f"Total data downloaded: {size_str}")

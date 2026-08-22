@@ -8,8 +8,6 @@ have been replaced with targeted coverage of:
   - Integration test for URL resolution of a known open-access paper
 """
 
-from pathlib import Path
-
 import pytest
 
 from backend.etl.models.publications import OpenAlexPublication
@@ -736,60 +734,12 @@ class TestCheckOpenAccess:
 
 
 # ---------------------------------------------------------------------------
-# TestDownloadWithScidownl
-# ---------------------------------------------------------------------------
-
-
-class TestDownloadWithScidownl:
-    """Tests for _download_file_with_scidownl — scidownl library boundary."""
-
-    @pytest.mark.asyncio
-    async def test_scidownl_success(self, downloader, tmp_path):
-        """scidownl writes a valid PDF → success=True, source='scidownl'."""
-        from unittest.mock import patch
-
-        dest = tmp_path / "paper.pdf"
-
-        def fake_scihub_download(keyword, paper_type, out, proxies=None):
-            Path(out).write_bytes(b"%PDF-1.5\n" + b"\x00" * 100)
-
-        with patch(
-            "scidownl.scihub_download",
-            side_effect=fake_scihub_download,
-        ):
-            result = await downloader._download_file_with_scidownl(
-                "https://doi.org/10.1234/test", dest
-            )
-
-        assert result.success is True
-        assert result.source == "scidownl"
-
-    @pytest.mark.asyncio
-    async def test_scidownl_failure(self, downloader, tmp_path):
-        """scidownl raises → success=False."""
-        from unittest.mock import patch
-
-        dest = tmp_path / "paper.pdf"
-
-        with patch(
-            "scidownl.scihub_download",
-            side_effect=RuntimeError("SciHub unavailable"),
-        ):
-            result = await downloader._download_file_with_scidownl(
-                "https://doi.org/10.1234/test", dest
-            )
-
-        assert result.success is False
-        assert "scidownl" in result.error.lower() or "scihub" in result.error.lower()
-
-
-# ---------------------------------------------------------------------------
 # TestDownloadFileOrchestration
 # ---------------------------------------------------------------------------
 
 
 class TestDownloadFileOrchestration:
-    """Tests for download_file() — routing logic between OA, aiohttp, scidownl."""
+    """Tests for download_file() — routing logic between DOI/OA and aiohttp."""
 
     @pytest.mark.asyncio
     async def test_cached_file_skips_download(self, downloader, tmp_path):
@@ -855,23 +805,15 @@ class TestDownloadFileOrchestration:
         downloader._session = None
 
     @pytest.mark.asyncio
-    async def test_doi_oa_fails_scidownl_fallback(self, downloader, tmp_path):
-        """DOI → OA returns (False, None) → scidownl succeeds."""
+    async def test_doi_without_open_access_version_fails(self, downloader, tmp_path):
+        """DOI → OA returns (False, None) → recorded as failed, nothing written."""
         from unittest.mock import AsyncMock, patch
 
         dest = tmp_path / "sci.pdf"
-        pdf_bytes = b"%PDF-1.5\n" + b"\x00" * 100
 
         downloader._check_open_access = AsyncMock(return_value=(False, None))
 
-        def fake_scihub(keyword, paper_type, out, proxies=None):
-            Path(out).write_bytes(pdf_bytes)
-
         with (
-            patch(
-                "scidownl.scihub_download",
-                side_effect=fake_scihub,
-            ),
             patch(
                 "backend.etl.utils.oa_file_downloader.asyncio.sleep",
                 new_callable=AsyncMock,
@@ -887,8 +829,14 @@ class TestDownloadFileOrchestration:
                 is_doi=True,
             )
 
-        assert result.success is True
-        assert downloader.download_stats["scidownl"] == 1
+        assert result.success is False
+        assert result.open_access is False
+        assert result.source == "open_access"
+        assert "no open access version" in result.error.lower()
+        assert dest.exists() is False
+        assert downloader.download_stats["failed"] == 1
+        assert downloader.download_stats["successful"] == 0
+        assert downloader.download_stats["open_access"] == 0
 
     @pytest.mark.asyncio
     async def test_non_doi_direct_download(self, downloader, tmp_path):
@@ -941,12 +889,11 @@ class TestDownloadFileOrchestration:
         downloader._session = None
 
     @pytest.mark.asyncio
-    async def test_doi_oa_download_fails_falls_to_scidownl(self, downloader, tmp_path):
-        """OA returns URL but aiohttp download fails → scidownl succeeds."""
+    async def test_doi_oa_download_failure_is_reported(self, downloader, tmp_path):
+        """OA returns a URL but the aiohttp download fails → failure is surfaced."""
         from unittest.mock import AsyncMock, MagicMock, patch
 
         dest = tmp_path / "fallback.pdf"
-        pdf_bytes = b"%PDF-1.5\n" + b"\x00" * 100
 
         downloader._check_open_access = AsyncMock(
             return_value=(True, "https://publisher.com/paper.pdf")
@@ -962,14 +909,7 @@ class TestDownloadFileOrchestration:
         mock_session.get = MagicMock(return_value=AsyncContextManagerMock(head_resp))
         downloader._session = mock_session
 
-        def fake_scihub(keyword, paper_type, out, proxies=None):
-            Path(out).write_bytes(pdf_bytes)
-
         with (
-            patch(
-                "scidownl.scihub_download",
-                side_effect=fake_scihub,
-            ),
             patch(
                 "backend.etl.utils.oa_file_downloader.asyncio.sleep",
                 new_callable=AsyncMock,
@@ -985,9 +925,12 @@ class TestDownloadFileOrchestration:
                 is_doi=True,
             )
 
-        # The OA download failed, so it should fall through to scidownl
-        assert result.success is True
-        assert result.source == "scidownl"
+        # The OA download failed and there is no other route.
+        assert result.success is False
+        assert result.source == "http"
+        assert result.error
+        assert downloader.download_stats["failed"] == 1
+        assert downloader.download_stats["open_access"] == 0
 
         downloader._session = None
 

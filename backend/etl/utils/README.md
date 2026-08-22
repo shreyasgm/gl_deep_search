@@ -131,7 +131,6 @@ The OpenAlex file downloader is designed to download academic papers from DOIs, 
 ### Key Features <a name="oa-key-features"></a>
 
 - **Open access verification** to find freely available versions of papers
-- **Fallback to scidownl** for closed-access papers
 - **Asynchronous downloads** with configurable concurrency
 - **Intelligent retry logic** with exponential backoff
 - **DOI-specific handling** for academic papers
@@ -152,7 +151,7 @@ The OpenAlex file downloader follows a more complex process than the GrowthLab d
    - Creates a configurable storage backend
    - Sets up concurrency controls with semaphores
    - Configures retry parameters and file validation thresholds
-   - Initializes download statistics including open access and scidownl counters
+   - Initializes download statistics including an open access counter
 
 2. **For each publication**:
    - Extracts file URLs (typically DOIs) from publication metadata
@@ -163,7 +162,7 @@ The OpenAlex file downloader follows a more complex process than the GrowthLab d
    - Checks if the file already exists (caching)
    - For DOIs, follows a two-step process:
      a. **Check for open access versions** using services like Unpaywall and CORE
-     b. **Fall back to scidownl** if no open access version is found or download fails
+     b. **Download the open access version**, or record the download as failed if no open access version is available
 
 4. **Open Access Check**:
    - Queries the Unpaywall API to find open access versions of papers
@@ -172,10 +171,7 @@ The OpenAlex file downloader follows a more complex process than the GrowthLab d
 
 5. **Download methods**:
    - **HTTP download** for open access papers using aiohttp
-   - **scidownl download** for papers not available through open access
-     - Directly uses the scidownl library through imported function
-     - Configures appropriate parameters like DOI format and output path
-     - Handles validation and error checking of the downloaded file
+   - Papers with no open access version are not downloaded: there is no closed-access route, and they are reported as failures with an explicit reason
 
 6. **File validation**:
    - Checks file size (minimum and maximum thresholds)
@@ -185,7 +181,7 @@ The OpenAlex file downloader follows a more complex process than the GrowthLab d
 
 7. **Reporting**:
    - Tracks statistics on successful, failed, and cached downloads
-   - Additionally tracks open access vs scidownl downloads
+   - Additionally tracks how many downloads came via open access
    - Logs a detailed summary with success rates, methods used, and total data downloaded
 
 ### Configuration <a name="oa-configuration"></a>
