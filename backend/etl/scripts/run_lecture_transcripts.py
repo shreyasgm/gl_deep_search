@@ -33,7 +33,36 @@ client = OpenAI()
 
 # Dated model snapshot: an unpinned alias silently changes the cleaned text
 # (and therefore every downstream chunk and embedding) between runs.
-OPENAI_MODEL = "gpt-4.1-nano-2025-04-14"
+OPENAI_MODEL = "gpt-5.6-luna"
+
+# A cleaned transcript below this fraction of the raw length means the model
+# summarised instead of cleaning. Filler removal on a lecture transcript
+# typically retains well over half the characters.
+MIN_CLEANED_RATIO = 0.5
+
+# Raw transcript tokens handed to the model per call. A lecture runs roughly
+# 14-16k tokens, so this is 2-3 calls each rather than one call that the model
+# answers by summarising.
+#
+# Measured on 18_fiscal_policy (53k chars), retention and detail preservation:
+#   whole transcript, gpt-4.1-nano  -> 22% length, 22% of numbers kept
+#   6000-token segments, this model -> 84% length, 83% of numbers kept, 2 calls
+#   3000-token segments, this model -> 83% length, 83% of numbers kept, 4 calls
+# Halving the segment bought nothing but doubled the call count, so 6000 it is.
+CLEANING_SEGMENT_TOKENS = 6000
+
+# Tail of the previously cleaned segment, passed as read-only context so the
+# next segment continues mid-thought instead of restarting. Overlapping the
+# raw text instead would duplicate content at every seam.
+CLEANING_CONTEXT_CHARS = 1200
+
+# Best-effort determinism. The model does not accept temperature=0.
+CLEANING_SEED = 20260822
+
+
+class TranscriptFidelityError(RuntimeError):
+    """Raised when transcript cleaning loses too much of the source text."""
+
 
 # Characters that are not safe in an artifact filename
 _SLUG_UNSAFE_PATTERN = re.compile(r"[^A-Za-z0-9]+")
@@ -50,62 +79,190 @@ class LectureTranscript(BaseModel):
     transcript: str
 
 
-def clean_transcript(transcript_text: str) -> str:
-    """
-    Clean and improve the raw lecture transcript using OpenAI API.
+_CLEANING_INSTRUCTIONS = """
+You are producing a faithful, readable transcript of a lecture from the
+'Development Policy Strategy' class taught by Ricardo Hausmann, Director of
+Harvard's Growth Lab.
+
+You will be given ONE SEGMENT of a longer raw transcript. Segments arrive in
+order. Rewrite the segment you are given as clean lecture prose.
+
+This is a REFORMATTING task, not a summarization task:
+- Preserve every substantive point, argument, example, figure, country, and
+  name. Nothing may be dropped for brevity.
+- Your output should be comparable in length to the segment you were given.
+  If it is dramatically shorter, you have summarised, which is wrong.
+- Remove only disfluencies: filler words, false starts, stutters, verbatim
+  self-repetition, and obvious transcription artifacts.
+- Keep the speaker's first-person voice and the order ideas are presented in.
+  Do not reorder, editorialise, or add analysis of your own.
+- Include only the main speaker. Drop audience questions, but keep the
+  speaker's answer and phrase it so it stands on its own.
+- Fix clear transcription errors, especially misheard technical terms, place
+  names, and people's names.
+- Organise into paragraphs. Add no headings, bullet lists, titles, segment
+  markers, or commentary.
+
+If a CONTEXT block is supplied, it is the end of the previously cleaned
+segment. It exists only so your output continues seamlessly from it. Do not
+repeat it, summarise it, or refer to it. Begin exactly where it leaves off,
+even if that is mid-argument.
+
+Return only the cleaned prose for the current segment.
+"""
+
+
+def _split_into_segments(text: str, max_tokens: int) -> list[str]:
+    """Split a transcript into segments of at most ``max_tokens`` tokens.
+
+    Splits on paragraph breaks where possible and sentence boundaries
+    otherwise, so a segment rarely starts mid-sentence.
 
     Args:
-        transcript_text (str): The raw transcript text to be processed.
+        text: Raw transcript text.
+        max_tokens: Maximum tokens per segment.
 
     Returns:
-        str: A cleaned and improved version of the transcript.
+        Ordered list of segments. A short transcript yields a single segment.
     """
+    encoding = tiktoken.get_encoding("cl100k_base")
+    if len(encoding.encode(text)) <= max_tokens:
+        return [text]
 
-    # Define paramenters to pass to messages
-    instructions = """
-    You are an expert assistant helping to clean up lecture transcripts from the
-    'Development Policy Strategy' class taught by Ricardo Hausmann
-    (Director of Harvard's Growth Lab).
+    # Prefer paragraph boundaries; fall back to sentence boundaries for any
+    # paragraph that is itself too long to fit in a segment.
+    blocks: list[str] = []
+    for para in re.split(r"\n\s*\n", text):
+        para = para.strip()
+        if not para:
+            continue
+        if len(encoding.encode(para)) <= max_tokens:
+            blocks.append(para)
+        else:
+            sentences = re.split(r"(?<=[.!?])\s+", para)
+            buf = ""
+            for sentence in sentences:
+                candidate = f"{buf} {sentence}".strip()
+                if buf and len(encoding.encode(candidate)) > max_tokens:
+                    blocks.append(buf)
+                    buf = sentence
+                else:
+                    buf = candidate
+            if buf:
+                blocks.append(buf)
 
-    Your task is to create a cleaned lecture transcript with the following improvements:
-    - Remove filler words, false starts, and repetitions
-    - Only preserve the content of the main speaker,
-    excluding questions from the audience
-    - Organize content into logical paragraphs
-    - Fix any obvious transcription errors
-    - Maintain the full content and detail of the lecture
+    segments: list[str] = []
+    current = ""
+    for block in blocks:
+        candidate = f"{current}\n\n{block}".strip()
+        if current and len(encoding.encode(candidate)) > max_tokens:
+            segments.append(current)
+            current = block
+        else:
+            current = candidate
+    if current:
+        segments.append(current)
+    return segments
 
-    Return only the cleaned transcript text with no additional commentary.
+
+def _clean_segment(segment: str, index: int, total: int, context: str | None) -> str:
+    """Clean a single transcript segment.
+
+    Args:
+        segment: Raw text of this segment.
+        index: Zero-based position of this segment.
+        total: Total number of segments.
+        context: Tail of the previously cleaned segment, or None for the first.
+
+    Returns:
+        Cleaned prose for this segment.
+
+    Raises:
+        TranscriptFidelityError: If the model truncated its own output.
     """
-
-    prompt = f"""
-    Here is a raw lecture transcript from the Development Policy Strategy class.
-    Please clean it according to the instructions:\n\n{transcript_text}
-    """
-
-    try:
-        response = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": instructions,
-                },
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
-            # Deterministic: re-cleaning a transcript must reproduce the same
-            # text, or its chunks and embeddings change on every run.
-            temperature=0,
+    parts: list[str] = []
+    if total > 1:
+        parts.append(f"This is segment {index + 1} of {total}.")
+    if context:
+        parts.append(
+            "CONTEXT (end of the previous cleaned segment - do not repeat "
+            f"any of it):\n{context}"
         )
+    parts.append(f"SEGMENT TO CLEAN:\n{segment}")
 
-        return response.choices[0].message.content
+    response = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": _CLEANING_INSTRUCTIONS},
+            {"role": "user", "content": "\n\n".join(parts)},
+        ],
+        # gpt-5.6-luna rejects temperature=0 ("only the default (1) is
+        # supported"), so pin a seed instead. OpenAI treats seed as
+        # best-effort rather than a guarantee, but cleaned transcripts are
+        # cached on disk and reused, so a corpus stays stable once built.
+        seed=CLEANING_SEED,
+    )
 
+    choice = response.choices[0]
+    if getattr(choice, "finish_reason", None) == "length":
+        raise TranscriptFidelityError(
+            f"Segment {index + 1}/{total} hit the model output limit "
+            f"(finish_reason='length'); reduce CLEANING_SEGMENT_TOKENS"
+        )
+    return (choice.message.content or "").strip()
+
+
+def clean_transcript(transcript_text: str) -> str:
+    """Clean a raw lecture transcript, segment by segment.
+
+    A whole 60KB transcript handed to the model in one call comes back
+    summarised - on 2026-08-22 every lecture returned at roughly 18% of its
+    raw length, so the index held summaries rather than lectures. Splitting
+    the transcript keeps each call small enough that the model reformats
+    instead of compressing, and passing the tail of the previous cleaned
+    segment keeps the seams continuous without duplicating text.
+
+    Args:
+        transcript_text: The raw transcript text to be processed.
+
+    Returns:
+        A cleaned and reformatted version of the transcript.
+
+    Raises:
+        TranscriptFidelityError: If the output is truncated or so much
+            shorter than the input that content was clearly dropped.
+    """
+    segments = _split_into_segments(transcript_text, CLEANING_SEGMENT_TOKENS)
+    logger.info(
+        f"Cleaning transcript in {len(segments)} segment(s) "
+        f"({len(transcript_text)} chars)"
+    )
+
+    cleaned_parts: list[str] = []
+    try:
+        for index, segment in enumerate(segments):
+            context = (
+                cleaned_parts[-1][-CLEANING_CONTEXT_CHARS:] if cleaned_parts else None
+            )
+            cleaned_parts.append(_clean_segment(segment, index, len(segments), context))
+    except TranscriptFidelityError:
+        raise
     except Exception as e:
         logger.error(f"Error cleaning transcript: {str(e)}")
         raise
+
+    cleaned = "\n\n".join(part for part in cleaned_parts if part)
+
+    ratio = len(cleaned) / len(transcript_text) if transcript_text else 1.0
+    if ratio < MIN_CLEANED_RATIO:
+        raise TranscriptFidelityError(
+            f"Cleaned transcript is {ratio:.0%} of the raw length "
+            f"({len(cleaned)} vs {len(transcript_text)} chars), below the "
+            f"{MIN_CLEANED_RATIO:.0%} floor. The model summarised rather than "
+            f"reformatted. Lower CLEANING_SEGMENT_TOKENS or revisit the prompt."
+        )
+    logger.info(f"Cleaned transcript retains {ratio:.0%} of raw length")
+    return cleaned
 
 
 def extract_lecture_metadata(
@@ -151,7 +308,7 @@ def extract_lecture_metadata(
                 },
             ],
             response_format=LectureTranscript,
-            temperature=0,
+            seed=CLEANING_SEED,
         )
 
         # Get the parsed data directly as a LectureTranscript object

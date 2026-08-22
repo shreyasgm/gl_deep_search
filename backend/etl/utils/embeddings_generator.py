@@ -97,6 +97,11 @@ class EmbeddingsGenerator:
         - processed/chunks/documents/growthlab/gl_url_123/chunks.json
         - processed/chunks/documents/openalex/oa_work_456/chunks.json
 
+        A publication directory holding more than one text file gets one extra
+        level for every file after the first, with the id suffixed to match:
+        - processed/chunks/documents/growthlab/gl_url_123/report_v2/chunks.json
+          → document_id ``gl_url_123__report_v2``
+
     Output (embeddings):
         processed/embeddings/{content_type}/{source_type}/{doc_id}/embeddings.parquet
         processed/embeddings/{content_type}/{source_type}/{doc_id}/metadata.json
@@ -603,27 +608,51 @@ class EmbeddingsGenerator:
             logger.error(f"Failed to save embeddings for {document_id}: {e}")
             raise
 
+    @staticmethod
+    def _chunks_search_patterns(document_id: str) -> list[str]:
+        """Glob patterns, relative to ``processed/chunks``, for a document.
+
+        A document that was first in its directory sits directly under a
+        directory named after it. A document the chunker had to disambiguate
+        (because its directory held another text file) sits one level deeper,
+        under ``<pub_dir>/<stem>/``, and carries the id ``<pub_dir>__<stem>``.
+
+        Args:
+            document_id: Document identifier.
+
+        Returns:
+            Patterns to try, in order; the legacy layout comes first.
+        """
+        from backend.etl.utils.text_chunker import DOCUMENT_ID_SEPARATOR
+
+        patterns = [f"**/{document_id}/chunks.json"]
+        head, _, stem = document_id.rpartition(DOCUMENT_ID_SEPARATOR)
+        if head and stem:
+            patterns.append(f"**/{head}/{stem}/chunks.json")
+        return patterns
+
     def _resolve_output_relative(self, document_id: str, storage) -> str | None:
         """Resolve the storage-relative output directory for embeddings."""
         if not storage or not hasattr(storage, "glob"):
             return None
         try:
-            pattern = f"processed/chunks/**/{document_id}/chunks.json"
-            # Sorted: glob order is not guaranteed, and an output path that
-            # varies between runs breaks resume.
-            matches = sorted(storage.glob(pattern))
-            if matches:
+            for pattern in self._chunks_search_patterns(document_id):
+                # Sorted: glob order is not guaranteed, and an output path that
+                # varies between runs breaks resume.
+                matches = sorted(storage.glob(f"processed/chunks/{pattern}"))
+                if not matches:
+                    continue
                 chunks_rel = matches[0]
                 # Replace "chunks" segment with "embeddings" and drop "chunks.json"
                 parts = Path(chunks_rel).parts
                 try:
                     idx = list(parts).index("chunks")
-                    new_parts = (
-                        list(parts[:idx]) + ["embeddings"] + list(parts[idx + 1 : -1])
-                    )
-                    return str(Path(*new_parts))
                 except ValueError:
-                    pass
+                    continue
+                new_parts = (
+                    list(parts[:idx]) + ["embeddings"] + list(parts[idx + 1 : -1])
+                )
+                return str(Path(*new_parts))
         except Exception:
             pass
         return f"processed/embeddings/{document_id}"
@@ -637,12 +666,10 @@ class EmbeddingsGenerator:
         Returns:
             Set of document IDs with a ``chunks.json`` present.
         """
-        ids: set[str] = set()
-        for rel in sorted(storage.glob("processed/chunks/**/chunks.json")):
-            parts = Path(rel).parts
-            if len(parts) >= 2:
-                ids.add(parts[-2])
-        return ids
+        from backend.etl.utils.text_chunker import document_ids_for_artifacts
+
+        relatives = sorted(storage.glob("processed/chunks/**/chunks.json"))
+        return set(document_ids_for_artifacts(relatives).values())
 
     def _discover_documents_from_chunks(
         self,
@@ -653,30 +680,32 @@ class EmbeddingsGenerator:
 
         Returns document IDs that have chunks but no existing embeddings.
         """
+        from backend.etl.utils.text_chunker import document_ids_for_artifacts
+
         # Sorted: glob order is not guaranteed, so an unsorted work list makes
         # a limited run process a different subset of documents each time.
         chunk_relatives = sorted(storage.glob("processed/chunks/**/chunks.json"))
+        # Ids come from the chunker's own path scheme rather than the parent
+        # directory name, so documents that had to be disambiguated
+        # (<pub_dir>/<stem>/chunks.json → <pub_dir>__<stem>) resolve back to
+        # the id their chunk_ids were built from.
+        chunk_ids = document_ids_for_artifacts(chunk_relatives)
 
         # Build set of already-embedded document IDs from parquet paths
-        embedded_ids: set[str] = set()
-        for rel in sorted(storage.glob("processed/embeddings/**/embeddings.parquet")):
-            parts = Path(rel).parts
-            if len(parts) >= 2:
-                embedded_ids.add(parts[-2])
+        embedded_relatives = sorted(
+            storage.glob("processed/embeddings/**/embeddings.parquet")
+        )
+        embedded_ids = set(document_ids_for_artifacts(embedded_relatives).values())
 
         seen: set[str] = set()
         doc_ids: list[str] = []
         for rel in chunk_relatives:
-            # Extract the document_id from the path
-            # e.g. processed/chunks/documents/openalex/W123/chunks.json → W123
-            parts = Path(rel).parts
-            if len(parts) >= 2:
-                doc_id = parts[-2]  # parent directory of chunks.json
-                if doc_id in seen:
-                    continue
-                seen.add(doc_id)
-                if doc_id not in embedded_ids:
-                    doc_ids.append(doc_id)
+            doc_id = chunk_ids[rel]
+            if doc_id in seen:
+                continue
+            seen.add(doc_id)
+            if doc_id not in embedded_ids:
+                doc_ids.append(doc_id)
 
         if limit:
             doc_ids = doc_ids[:limit]
@@ -691,10 +720,11 @@ class EmbeddingsGenerator:
         """
         if storage and hasattr(storage, "glob") and callable(storage.glob):
             try:
-                pattern = f"processed/chunks/**/{document_id}/chunks.json"
-                # Sorted so the same file is picked on every run.
-                matches = sorted(storage.glob(pattern))
-                if matches:
+                for pattern in self._chunks_search_patterns(document_id):
+                    # Sorted so the same file is picked on every run.
+                    matches = sorted(storage.glob(f"processed/chunks/{pattern}"))
+                    if not matches:
+                        continue
                     if len(matches) > 1:
                         # Two documents sharing an id is a bug upstream, not a
                         # situation to resolve silently.
@@ -715,9 +745,10 @@ class EmbeddingsGenerator:
 
         chunks_base = base_path / "processed" / "chunks"
         if chunks_base.exists():
-            pattern = f"**/{document_id}/chunks.json"
-            matches = sorted(chunks_base.glob(pattern))
-            if matches:
+            for pattern in self._chunks_search_patterns(document_id):
+                matches = sorted(chunks_base.glob(pattern))
+                if not matches:
+                    continue
                 if len(matches) > 1:
                     logger.error(
                         f"Multiple chunks found for {document_id}: {matches}, "

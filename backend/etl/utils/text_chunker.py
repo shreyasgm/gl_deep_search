@@ -12,7 +12,7 @@ has a 32,768 token context window).
 import json
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
@@ -28,6 +28,11 @@ from backend.etl.utils.publication_tracker import PublicationTracker
 
 # Fallback defaults if not specified in config
 DEFAULT_EMBEDDING_MAX_TOKENS = 8192
+
+# Joins a publication directory name to a file stem when one directory holds
+# more than one text file. Must not appear in the "first file" id, which stays
+# the bare directory name so already-chunked documents keep their identity.
+DOCUMENT_ID_SEPARATOR = "__"
 
 
 class _HFTokenizerAdapter:
@@ -77,6 +82,55 @@ class DocumentChunk:
         # Convert datetime to ISO string
         result["created_at"] = self.created_at.isoformat()
         return result
+
+
+@dataclass(frozen=True)
+class ChunkTarget:
+    """Destination assigned to one processed text file.
+
+    Attributes:
+        text_relative: Storage-relative path of the source ``.txt`` file.
+        chunks_relative: Storage-relative path of the ``chunks.json`` to write.
+        document_id: Identifier for the document; seeds every ``chunk_id``.
+        output_subdir: Extra directory below the chunks directory that mirrors
+            the text file's parent, or ``None`` for the legacy layout.
+    """
+
+    text_relative: str
+    chunks_relative: str
+    document_id: str
+    output_subdir: str | None
+
+
+def document_ids_for_artifacts(artifact_relatives: Iterable[str]) -> dict[str, str]:
+    """Recover the document id behind each chunk/embedding artifact path.
+
+    Inverse of :meth:`TextChunker.assign_chunk_targets`. A document that was
+    first in its directory lives at ``<pub_dir>/<artifact>`` and is identified
+    by the directory name. A disambiguated document lives one level deeper, at
+    ``<pub_dir>/<stem>/<artifact>``, and is recognisable because ``<pub_dir>``
+    holds an artifact of its own — the chunker only ever creates the deeper
+    directory for the second and later files of a directory, and the first file
+    always writes the shallower artifact.
+
+    Args:
+        artifact_relatives: Paths that all share one file name — either all
+            ``chunks.json`` or all ``embeddings.parquet``, never a mix.
+
+    Returns:
+        Mapping from each input path to its document id.
+    """
+    relatives = list(artifact_relatives)
+    directories = {str(Path(rel).parent) for rel in relatives}
+
+    ids: dict[str, str] = {}
+    for rel in relatives:
+        parent = Path(rel).parent
+        if str(parent.parent) in directories:
+            ids[rel] = f"{parent.parent.name}{DOCUMENT_ID_SEPARATOR}{parent.name}"
+        else:
+            ids[rel] = parent.name
+    return ids
 
 
 @dataclass
@@ -349,44 +403,59 @@ class TextChunker:
         text_relatives = sorted(storage.glob("processed/documents/**/*.txt"))
         logger.info(f"Found {len(text_relatives)} text files to process")
 
-        # document_id and the chunks output path are both derived from the
-        # PARENT directory, so two text files in the same directory collide on
-        # one chunks.json and all but one are silently lost. That cost 23 of 24
-        # lecture transcripts in the 2026-08-22 run. Fail loudly instead.
-        seen_chunk_paths: dict[str, str] = {}
+        # Both the chunks path and document_id used to come from the PARENT
+        # directory alone, so two text files in one directory collided on a
+        # single chunks.json and all but one were lost. assign_chunk_targets
+        # gives every extra file its own destination; a collision surviving
+        # that is a genuine layout bug and still gets shouted about.
+        targets = self.assign_chunk_targets(text_relatives)
+        claimed_paths: dict[str, str] = {}
+        claimed_ids: dict[str, str] = {}
 
-        for rel in text_relatives:
+        for target in targets:
+            rel = target.text_relative
             try:
-                chunks_rel = self._chunks_relative_for(rel)
-                if chunks_rel in seen_chunk_paths:
+                clash = claimed_paths.get(target.chunks_relative)
+                if clash is not None:
                     logger.error(
-                        f"Chunk path collision: '{rel}' and "
-                        f"'{seen_chunk_paths[chunks_rel]}' both map to "
-                        f"'{chunks_rel}'. document_id is derived from the parent "
-                        f"directory, so each document needs its own directory. "
-                        f"Skipping '{rel}' — it will NOT be chunked or embedded."
+                        f"Chunk path collision: '{rel}' and '{clash}' both map "
+                        f"to '{target.chunks_relative}'. Skipping '{rel}' — it "
+                        f"will NOT be chunked or embedded."
                     )
                     continue
-                seen_chunk_paths[chunks_rel] = rel
+                clash = claimed_ids.get(target.document_id)
+                if clash is not None:
+                    logger.error(
+                        f"Document id collision: '{rel}' and '{clash}' both map "
+                        f"to document_id '{target.document_id}', which would "
+                        f"make their chunk ids overwrite each other. Skipping "
+                        f"'{rel}' — it will NOT be chunked or embedded."
+                    )
+                    continue
+                claimed_paths[target.chunks_relative] = rel
+                claimed_ids[target.document_id] = rel
 
                 # Download to local cache so we can open() the file
                 text_file = storage.download(rel)
 
                 # Skip if chunks already exist for this document
-                if storage.exists(chunks_rel):
+                if storage.exists(target.chunks_relative):
                     logger.info(f"Chunks already exist for {rel}, skipping")
                     continue
 
-                result = self.process_single_document(text_file)
+                result = self.process_single_document(
+                    text_file,
+                    document_id=target.document_id,
+                    output_subdir=target.output_subdir,
+                )
                 results.append(result)
 
                 # Save chunks to JSON file
-                self._save_chunks(result, storage)
+                self._save_chunks(result, storage, output_subdir=target.output_subdir)
 
                 # Upload chunks to remote storage (no-op for local)
                 if result.status == ChunkingStatus.SUCCESS:
-                    chunks_output_rel = self._chunks_relative_for(rel)
-                    storage.upload(chunks_output_rel)
+                    storage.upload(target.chunks_relative)
 
                 # Update tracker status based on result
                 if self.tracker:
@@ -417,9 +486,8 @@ class TextChunker:
 
             except Exception as e:
                 logger.error(f"Failed to process {rel}: {e}")
-                doc_id = Path(rel).parent.name or Path(rel).stem
                 error_result = ChunkingResult(
-                    document_id=doc_id,
+                    document_id=target.document_id,
                     source_path=Path(rel),
                     chunks=[],
                     total_chunks=0,
@@ -463,16 +531,96 @@ class TextChunker:
             new_parts = ["processed", "chunks"] + parts[:-1] + ["chunks.json"]
         return str(Path(*new_parts))
 
-    def process_single_document(self, text_file_path: Path) -> ChunkingResult:
-        """Process a single document and return chunking result."""
+    @staticmethod
+    def assign_chunk_targets(text_relatives: Iterable[str]) -> list[ChunkTarget]:
+        """Assign a chunks.json path and a document id to every text file.
+
+        A publication directory almost always holds a single ``.txt`` file, and
+        that file keeps the historical destination: ``<pub_dir>/chunks.json``
+        with ``document_id`` equal to the directory name. Every already-chunked
+        and already-embedded document on disk was keyed that way, so the first
+        file in a directory must not move.
+
+        Directories holding more than one text file used to collapse onto that
+        single destination and lose every file but one, so each additional file
+        is given its own subdirectory (``<pub_dir>/<stem>/chunks.json``) and a
+        suffixed id (``<pub_dir>__<stem>``) instead.
+
+        Assignment sorts the input first, so a given file receives the same
+        destination and id on every run regardless of glob ordering.
+
+        Args:
+            text_relatives: Storage-relative paths of processed text files.
+
+        Returns:
+            One ChunkTarget per input path, ordered by path.
+        """
+        targets: list[ChunkTarget] = []
+        seen_per_directory: dict[str, int] = {}
+
+        for rel in sorted(text_relatives):
+            path = Path(rel)
+            directory = str(path.parent)
+            position = seen_per_directory.get(directory, 0)
+            seen_per_directory[directory] = position + 1
+
+            legacy_relative = TextChunker._chunks_relative_for(rel)
+            legacy_id = path.parent.name or path.stem
+
+            if position == 0:
+                targets.append(
+                    ChunkTarget(
+                        text_relative=rel,
+                        chunks_relative=legacy_relative,
+                        document_id=legacy_id,
+                        output_subdir=None,
+                    )
+                )
+                continue
+
+            stem = path.stem
+            targets.append(
+                ChunkTarget(
+                    text_relative=rel,
+                    chunks_relative=str(
+                        Path(legacy_relative).parent / stem / "chunks.json"
+                    ),
+                    document_id=f"{legacy_id}{DOCUMENT_ID_SEPARATOR}{stem}",
+                    output_subdir=stem,
+                )
+            )
+
+        return targets
+
+    def process_single_document(
+        self,
+        text_file_path: Path,
+        document_id: str | None = None,
+        output_subdir: str | None = None,
+    ) -> ChunkingResult:
+        """Process a single document and return chunking result.
+
+        Args:
+            text_file_path: Local path to the processed text file.
+            document_id: Identifier for the document, seeding every
+                ``chunk_id``. Defaults to the parent directory name, which is
+                how every already-chunked document on disk is keyed.
+            output_subdir: Extra directory to write ``chunks.json`` into, below
+                the directory mirroring ``text_file_path``'s parent. Set only
+                for files that share a directory with another text file.
+
+        Returns:
+            ChunkingResult describing the chunks produced.
+        """
         start_time = time.time()
         # Prefer directory name as document ID
         # (e.g., processed/documents/<doc_id>/file.txt)
-        try:
-            parent_name = text_file_path.parent.name
-        except Exception:
-            parent_name = ""
-        document_id = parent_name if parent_name else text_file_path.stem
+        if document_id is None:
+            try:
+                parent_name = text_file_path.parent.name
+            except Exception:
+                parent_name = ""
+            document_id = parent_name if parent_name else text_file_path.stem
 
         logger.info(f"Processing document: {document_id}")
 
@@ -503,7 +651,7 @@ class TextChunker:
 
             # Persist chunks to disk for single-document processing as well
             try:
-                self._save_chunks(result, storage=None)
+                self._save_chunks(result, storage=None, output_subdir=output_subdir)
             except Exception as save_error:
                 logger.warning(
                     f"Failed to save chunks for {document_id} during "
@@ -1336,14 +1484,29 @@ class TextChunker:
 
         return chunks
 
-    def _save_chunks(self, result: ChunkingResult, storage) -> None:
-        """Save chunking result to JSON file."""
+    def _save_chunks(
+        self,
+        result: ChunkingResult,
+        storage,
+        output_subdir: str | None = None,
+    ) -> None:
+        """Save chunking result to JSON file.
+
+        Args:
+            result: Chunking result to persist.
+            storage: Storage abstraction, or ``None`` to resolve from the
+                source path.
+            output_subdir: Extra directory below the mirrored chunks directory,
+                for documents that share a directory with another text file.
+        """
         if result.status != ChunkingStatus.SUCCESS or not result.chunks:
             logger.warning(f"Skipping save for failed result: {result.document_id}")
             return
 
         # Create output directory structure
         output_dir = self._resolve_output_dir(result, storage)
+        if output_subdir:
+            output_dir = output_dir / output_subdir
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Save chunks as JSON (array of DocumentChunk dicts per requirements)

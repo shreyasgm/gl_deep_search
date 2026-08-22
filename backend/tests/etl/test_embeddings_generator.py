@@ -1240,3 +1240,118 @@ runtime:
         assert "stale_1" not in updated
         assert "stale_2" not in updated
         assert len(results) == 2
+
+
+class TestDisambiguatedDocumentPaths:
+    """Documents the chunker had to disambiguate must flow through unchanged.
+
+    A publication directory holding two text files produces
+    ``<pub_id>/chunks.json`` for the first file and
+    ``<pub_id>/<stem>/chunks.json`` (document id ``<pub_id>__<stem>``) for the
+    second. Discovery, chunk lookup and output placement all have to agree on
+    that, or the recovered document is embedded under the wrong id or not at
+    all.
+    """
+
+    @pytest.fixture
+    def generator(self, test_storage):
+        """Create an EmbeddingsGenerator that loads no model and needs no key."""
+        temp_dir = Path(tempfile.mkdtemp())
+        storage_dir, _ = test_storage
+        config_path = temp_dir / "config.yaml"
+        config_path.write_text(
+            "file_processing:\n"
+            "  embedding:\n"
+            '    model: "openrouter"\n'
+            '    api_key: "unused-in-these-tests"\n'
+            "    dimensions: 1024\n"
+            "\n"
+            "runtime:\n"
+            f'  local_storage_path: "{storage_dir}/"\n'
+        )
+        yield EmbeddingsGenerator(config_path=config_path)
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @staticmethod
+    def _write_chunks(root: Path, relative: str, document_id: str) -> None:
+        """Write a minimal chunks.json at *relative* under *root*."""
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                [
+                    {
+                        "chunk_id": f"{document_id}_chunk_0000",
+                        "source_document_id": document_id,
+                        "text_content": "Growth diagnostics.",
+                    }
+                ]
+            )
+        )
+
+    def test_discovery_recovers_the_suffixed_document_id(self, generator, test_storage):
+        """Both documents of a shared directory must be discovered separately."""
+        root, storage = test_storage
+        base = "processed/chunks/documents/growthlab/gl_url_abc"
+        self._write_chunks(root, f"{base}/chunks.json", "gl_url_abc")
+        self._write_chunks(
+            root, f"{base}/report_v2/chunks.json", "gl_url_abc__report_v2"
+        )
+        self._write_chunks(
+            root,
+            "processed/chunks/documents/lecture_transcripts/0_intro/chunks.json",
+            "0_intro",
+        )
+
+        discovered = generator._discover_documents_from_chunks(storage)
+
+        assert sorted(discovered) == [
+            "0_intro",
+            "gl_url_abc",
+            "gl_url_abc__report_v2",
+        ]
+        assert generator._chunked_document_ids(storage) == set(discovered)
+
+    def test_chunks_and_output_paths_resolve_for_both_layouts(
+        self, generator, test_storage
+    ):
+        """The suffixed id must find its own chunks.json and its own output dir."""
+        root, storage = test_storage
+        base = "processed/chunks/documents/growthlab/gl_url_abc"
+        self._write_chunks(root, f"{base}/chunks.json", "gl_url_abc")
+        self._write_chunks(
+            root, f"{base}/report_v2/chunks.json", "gl_url_abc__report_v2"
+        )
+
+        legacy = generator._resolve_chunks_path("gl_url_abc", storage)
+        nested = generator._resolve_chunks_path("gl_url_abc__report_v2", storage)
+        assert legacy == root / f"{base}/chunks.json"
+        assert nested == root / f"{base}/report_v2/chunks.json"
+
+        assert generator._resolve_output_relative("gl_url_abc", storage) == str(
+            Path("processed/embeddings/documents/growthlab/gl_url_abc")
+        )
+        assert generator._resolve_output_relative(
+            "gl_url_abc__report_v2", storage
+        ) == str(Path("processed/embeddings/documents/growthlab/gl_url_abc/report_v2"))
+        assert generator._resolve_output_dir("gl_url_abc__report_v2", storage) == (
+            root / "processed/embeddings/documents/growthlab/gl_url_abc/report_v2"
+        )
+
+    def test_existing_nested_embeddings_are_not_regenerated(
+        self, generator, test_storage
+    ):
+        """Resume must recognise a nested embeddings.parquet as already done."""
+        root, storage = test_storage
+        base = "processed/chunks/documents/growthlab/gl_url_abc"
+        self._write_chunks(root, f"{base}/chunks.json", "gl_url_abc")
+        self._write_chunks(
+            root, f"{base}/report_v2/chunks.json", "gl_url_abc__report_v2"
+        )
+
+        embedded = root / "processed/embeddings/documents/growthlab/gl_url_abc"
+        (embedded / "report_v2").mkdir(parents=True, exist_ok=True)
+        (embedded / "embeddings.parquet").write_bytes(b"")
+        (embedded / "report_v2" / "embeddings.parquet").write_bytes(b"")
+
+        assert generator._discover_documents_from_chunks(storage) == []

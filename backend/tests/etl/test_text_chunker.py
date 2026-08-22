@@ -1278,12 +1278,127 @@ class TestChunkPathCollisions:
         )
         assert written == ["0_intro", "1_malthusian", "2_growth_theories"]
 
-    def test_flat_layout_is_reported_not_silently_dropped(self, chunker_env):
-        """Two documents in one directory must produce a loud ERROR.
+    def test_single_file_directory_keeps_legacy_path_and_id(self, chunker_env):
+        """One text file per directory must behave exactly as it always has.
+
+        358 growthlab documents are already chunked and embedded under the
+        bare ``<pub_id>/chunks.json`` scheme. Moving them would orphan every
+        one of those artifacts.
+        """
+        chunker, storage, root = chunker_env
+        self._write(
+            root,
+            "processed/documents/growthlab/gl_url_abc/report.txt",
+            "Growth diagnostics is a framework. " * 30,
+        )
+
+        results = chunker.process_all_documents(storage=storage)
+
+        assert [r.document_id for r in results] == ["gl_url_abc"]
+        assert (
+            root / "processed/chunks/documents/growthlab/gl_url_abc/chunks.json"
+        ).exists()
+        assert all(
+            chunk.chunk_id.startswith("gl_url_abc_chunk_")
+            for chunk in results[0].chunks
+        )
+
+    def test_two_files_in_one_directory_are_both_chunked(self, chunker_env):
+        """Regression for production run 41234841.
+
+        Two genuine PDFs landed in one publication directory, collapsed onto a
+        single chunks.json, and the second was never chunked or embedded. Both
+        must now survive, and the first (sorted) must keep the legacy
+        destination so the already-embedded artifact is not orphaned.
+        """
+        chunker, storage, root = chunker_env
+        body = "Growth diagnostics is a framework. " * 30
+        pub_dir = "processed/documents/growthlab/gl_url_472ee387c3442136"
+        self._write(root, f"{pub_dir}/binding_constraints_morocco.txt", body)
+        self._write(
+            root, f"{pub_dir}/2006_08_Hausmann_Fostering-Higher-Growth.txt", body
+        )
+
+        results = chunker.process_all_documents(storage=storage)
+
+        # Sorted order puts the "2006_..." file first, so it takes the legacy
+        # destination and the other one is disambiguated.
+        assert [r.document_id for r in results] == [
+            "gl_url_472ee387c3442136",
+            "gl_url_472ee387c3442136__binding_constraints_morocco",
+        ]
+
+        chunks_root = root / "processed/chunks/documents/growthlab"
+        written = sorted(
+            str(p.relative_to(chunks_root)) for p in chunks_root.rglob("chunks.json")
+        )
+        assert written == [
+            "gl_url_472ee387c3442136/binding_constraints_morocco/chunks.json",
+            "gl_url_472ee387c3442136/chunks.json",
+        ]
+
+        # chunk_id seeds the vector store primary key, so overlap between the
+        # two documents would silently overwrite one at ingestion.
+        first_ids = {chunk.chunk_id for chunk in results[0].chunks}
+        second_ids = {chunk.chunk_id for chunk in results[1].chunks}
+        assert first_ids and second_ids
+        assert first_ids.isdisjoint(second_ids)
+
+    def test_assignment_is_deterministic(self):
+        """The same inputs must yield the same paths and ids on every run."""
+        relatives = [
+            "processed/documents/growthlab/pub_a/two.txt",
+            "processed/documents/growthlab/pub_a/one.txt",
+            "processed/documents/growthlab/pub_b/only.txt",
+            "processed/documents/growthlab/pub_a/three.txt",
+        ]
+        first = TextChunker.assign_chunk_targets(relatives)
+        second = TextChunker.assign_chunk_targets(list(reversed(relatives)))
+
+        assert first == second
+        assert [(t.chunks_relative, t.document_id) for t in first] == [
+            ("processed/chunks/documents/growthlab/pub_a/chunks.json", "pub_a"),
+            (
+                "processed/chunks/documents/growthlab/pub_a/three/chunks.json",
+                "pub_a__three",
+            ),
+            (
+                "processed/chunks/documents/growthlab/pub_a/two/chunks.json",
+                "pub_a__two",
+            ),
+            ("processed/chunks/documents/growthlab/pub_b/chunks.json", "pub_b"),
+        ]
+
+    def test_genuine_path_collision_is_still_reported(self, chunker_env):
+        """A layout that still collides after disambiguation must shout.
+
+        ``pub/b.txt`` is disambiguated into ``pub/b/chunks.json``, which is
+        also where a real ``pub/b/`` directory would write. That is a broken
+        layout, not the ordinary multi-file case.
 
         The project logs through loguru, which does not propagate to the
         stdlib logging that pytest's caplog captures, so attach a sink.
         """
+        chunker, storage, root = chunker_env
+        body = "Growth diagnostics is a framework. " * 30
+        self._write(root, "processed/documents/growthlab/pub/a.txt", body)
+        self._write(root, "processed/documents/growthlab/pub/b.txt", body)
+        self._write(root, "processed/documents/growthlab/pub/b/c.txt", body)
+
+        from loguru import logger
+
+        errors: list[str] = []
+        sink_id = logger.add(lambda m: errors.append(str(m)), level="ERROR")
+        try:
+            results = chunker.process_all_documents(storage=storage)
+        finally:
+            logger.remove(sink_id)
+
+        assert [r.document_id for r in results] == ["pub", "pub__b"]
+        assert any("collision" in e.lower() for e in errors), errors
+
+    def test_ordinary_multi_file_directory_reports_no_collision(self, chunker_env):
+        """The guard must never fire for the case it used to break on."""
         chunker, storage, root = chunker_env
         body = "Growth diagnostics is a framework. " * 30
         for stem in ("0_intro", "1_malthusian"):
@@ -1300,6 +1415,9 @@ class TestChunkPathCollisions:
         finally:
             logger.remove(sink_id)
 
-        # Only one can win, but the loss must be visible rather than silent.
-        assert len(results) == 1
-        assert any("collision" in e.lower() for e in errors), errors
+        assert len(results) == 2
+        assert not errors, errors
+        assert {r.document_id for r in results} == {
+            "lecture_transcripts",
+            "lecture_transcripts__1_malthusian",
+        }

@@ -573,12 +573,16 @@ class ETLOrchestrator:
 
         successful = sum(1 for r in download_results if r.get("success", False))
         total_size = sum(r.get("file_size", 0) or 0 for r in download_results)
-        oa_downloads = sum(1 for r in download_results if r.get("open_access", False))
+        # NOTE: this counts publications where an open-access location was
+        # DETECTED, not ones successfully retrieved. The two diverge sharply
+        # because publisher hosts Cloudflare-block automated fetches: on
+        # 2026-08-22, 143 were detected and 14 actually downloaded.
+        oa_detected = sum(1 for r in download_results if r.get("open_access", False))
 
         result.metrics = {
             "total_downloads_attempted": len(download_results),
             "successful_downloads": successful,
-            "open_access_downloads": oa_downloads,
+            "open_access_detected": oa_detected,
             "failed_downloads": len(download_results) - successful,
             "total_size_bytes": total_size,
             "total_size_mb": total_size / (1024 * 1024),
@@ -586,7 +590,7 @@ class ETLOrchestrator:
 
         logger.info(
             f"Downloaded {successful}/{len(download_results)} OpenAlex files "
-            f"({oa_downloads} via open access, "
+            f"({oa_detected} had an open-access location, "
             f"{total_size / (1024 * 1024):.2f} MB)"
         )
         log_component_metrics("OpenAlex File Downloader", result.metrics)
