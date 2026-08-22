@@ -769,6 +769,21 @@ class FileDownloader:
                         )
                         return result
 
+                # HTML is a landing page or an error page, never a document.
+                # Accepting it inflated successful_downloads and set the
+                # publication to DOWNLOADED, after which it produced no text,
+                # no chunks and no error anywhere.
+                elif expected_content_type == "text/html" or header.lstrip()[
+                    :14
+                ].lower().startswith((b"<!doctype html", b"<html")):
+                    result["format_check"] = False
+                    result["is_valid"] = False
+                    logger.warning(
+                        f"Downloaded an HTML page rather than a document: "
+                        f"{file_path}. Treating as a failed download."
+                    )
+                    return result
+
                 # For other file types, we don't do specific validation
                 else:
                     # Just verify it's not empty and has some content
@@ -820,9 +835,11 @@ class FileDownloader:
         for pub in pub_list:
             self.publication_tracker.add_publication(pub)
 
-        # Find all file URLs to download
+        # Find all file URLs to download. Iterate the limited list, not the
+        # full input: downloading publications that were never registered
+        # above makes --limit a no-op and their status updates silently miss.
         all_downloads = []
-        for pub in publications:
+        for pub in pub_list:
             if not pub.file_urls:
                 continue
 

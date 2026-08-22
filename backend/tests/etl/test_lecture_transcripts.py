@@ -7,6 +7,7 @@ import pytest
 from backend.etl.scripts.run_lecture_transcripts import (
     LectureTranscript,
     clean_transcript,
+    derive_lecture_identifiers,
     extract_lecture_metadata,
     process_single_transcript,
 )
@@ -134,3 +135,45 @@ def test_process_single_transcript(tmp_path):
         data = json.load(f)
         assert "lecture_number" in data
         assert data["lecture_number"] == 1
+
+
+# Unit tests for the artifact identifier derivation (no API calls)
+def test_derive_lecture_identifiers_keeps_legacy_names():
+    """Stems starting with a plain number keep the lecture_NN artifact names.
+
+    The 24 cleaned transcripts already on disk are named after this scheme,
+    so changing it would orphan them and re-run the cleaning LLM on all of
+    them.
+    """
+    assert derive_lecture_identifiers("0_intro") == ("00", 0)
+    assert derive_lecture_identifiers("1_malthusian_economics") == ("01", 1)
+    assert derive_lecture_identifiers("24_policymaker_worlds_view") == ("24", 24)
+    assert derive_lecture_identifiers("6_green growth_framework") == ("06", 6)
+
+
+def test_derive_lecture_identifiers_are_collision_free():
+    """Distinct filenames must never share an artifact identifier.
+
+    Mashing every digit of the stem together used to map 01_lecture and
+    1_lecture onto lecture_01, and every digit-less name onto lecture_00 —
+    so all but one transcript were reported processed without being written.
+    """
+    stems = [
+        "1_lecture",
+        "01_lecture",
+        "intro",
+        "closing_remarks",
+        "part_2_of_3",
+    ]
+    slugs = [derive_lecture_identifiers(stem)[0] for stem in stems]
+    assert len(set(slugs)) == len(stems), slugs
+
+
+def test_derive_lecture_identifiers_warns_without_a_number(caplog):
+    """A filename with no lecture number warns instead of silently using 0."""
+    with caplog.at_level("WARNING"):
+        slug, number = derive_lecture_identifiers("closing_remarks")
+
+    assert slug == "closing_remarks"
+    assert number == 0
+    assert "closing_remarks" in caplog.text

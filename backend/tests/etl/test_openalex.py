@@ -6,6 +6,7 @@ import pytest
 
 from backend.etl.scrapers.openalex import (
     OpenAlexClient,
+    OpenAlexPageError,
     OpenAlexPublication,
 )
 
@@ -431,3 +432,49 @@ class TestProcessResults:
         """Process empty results list."""
         pubs = client.process_results([])
         assert pubs == []
+
+
+class TestPartialResultsAreNotReportedAsComplete:
+    """A page that cannot be fetched must not look like end-of-results."""
+
+    @pytest.mark.asyncio
+    async def test_exhausted_retries_raises_rather_than_returning_empty(self):
+        """fetch_page must raise, not return ([], None).
+
+        Returning an empty result with no cursor is indistinguishable from
+        "no more pages", so the caller would stop early and report a
+        truncated manifest as a complete corpus.
+        """
+        client = OpenAlexClient()
+        client.max_retries_per_page = 2
+
+        session = AsyncMock()
+        response = AsyncMock()
+        response.status = 500
+        session.get.return_value.__aenter__.return_value = response
+
+        with patch("asyncio.sleep", new=AsyncMock()):
+            with pytest.raises(OpenAlexPageError, match="refusing to report"):
+                await client.fetch_page(session, "*")
+
+    @pytest.mark.asyncio
+    async def test_empty_page_still_advances_the_cursor(self):
+        """An empty page with a cursor must advance, not re-fetch itself."""
+        client = OpenAlexClient()
+        client.max_overall_retries = 5
+
+        seen: list[str | None] = []
+
+        async def fake_fetch_page(session, cursor=None):
+            seen.append(cursor)
+            if len(seen) == 1:
+                return [], "cursor_2"  # empty, but more pages remain
+            if len(seen) == 2:
+                return [{"id": "W1"}], None
+            raise AssertionError("should have stopped")
+
+        with patch.object(client, "fetch_page", new=fake_fetch_page):
+            results = await client.fetch_all_pages()
+
+        assert seen == ["*", "cursor_2"], seen
+        assert len(results) == 1

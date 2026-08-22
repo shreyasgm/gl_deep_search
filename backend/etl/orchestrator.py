@@ -606,16 +606,19 @@ class ETLOrchestrator:
             pdf_files: list[Path] = []
             for source in pdf_sources:
                 pdf_files.extend(find_pdfs(self.storage, source=source))
+            # Sorted so a limited or interrupted run always covers the same
+            # subset; de-duplicated so a repeated source (e.g. --sources
+            # growthlab growthlab) does not process every PDF twice.
+            pdf_files = sorted(set(pdf_files))
 
         if not pdf_files:
             logger.warning("No PDF files found, skipping PDF processing")
             result.status = ComponentStatus.SKIPPED
             return
 
-        # Apply limit (sorted first so the selection is stable across runs)
+        # Apply limit
         if self.config.pdf_limit:
             total = len(pdf_files)
-            pdf_files.sort()
             pdf_files = pdf_files[: self.config.pdf_limit]
             logger.info(f"PDF limit set: processing {len(pdf_files)} of {total} PDFs")
 
@@ -754,9 +757,10 @@ class ETLOrchestrator:
     def _cleaned_transcript_path(intermediate_dir: Path, stem: str) -> Path | None:
         """Locate the cleaned transcript that the transcript script wrote.
 
-        The script names its output by zero-padded lecture number, e.g.
-        ``lecture_07_cleaned.txt``. Fall back to the raw stem for transcripts
-        whose filename carries no number.
+        The script names its output by the identifier that
+        ``derive_lecture_identifiers`` returns, e.g. ``lecture_07_cleaned.txt``.
+        The remaining candidates are the names written before that identifier
+        was introduced, so transcripts cleaned by earlier runs are still found.
 
         Args:
             intermediate_dir: Directory the script writes cleaned text into
@@ -765,9 +769,16 @@ class ETLOrchestrator:
         Returns:
             Path to the cleaned transcript, or None if it does not exist.
         """
-        candidates = []
+        from backend.etl.scripts.run_lecture_transcripts import (
+            derive_lecture_identifiers,
+        )
+
+        slug, _ = derive_lecture_identifiers(stem)
+        candidates = [intermediate_dir / f"lecture_{slug}_cleaned.txt"]
         digits = "".join(filter(str.isdigit, stem))
-        if digits:
+        # Only for stems that still resolve to a numeric identifier: for the
+        # rest, the old digit-mashed name may hold another transcript's text.
+        if digits and slug.isdigit():
             candidates.append(
                 intermediate_dir / f"lecture_{int(digits):02d}_cleaned.txt"
             )
@@ -898,6 +909,11 @@ class ETLOrchestrator:
                 EmbeddingGenerationStatus,
             )
 
+            # Documents whose embeddings already existed were not attempted,
+            # so they can neither succeed nor fail this run.
+            attempted_results = [r for r in embedding_results if not r.skipped]
+            skipped_documents = len(embedding_results) - len(attempted_results)
+
             successful_embeddings = sum(
                 r.total_embeddings
                 for r in embedding_results
@@ -916,6 +932,7 @@ class ETLOrchestrator:
                 "documents_processed": len(embedding_results),
                 "successful_documents": len(embedding_results) - failed_documents,
                 "failed_documents": failed_documents,
+                "skipped_documents": skipped_documents,
                 "total_embeddings_created": successful_embeddings,
                 "total_api_calls": total_api_calls,
                 "total_tokens": total_tokens,
@@ -937,10 +954,12 @@ class ETLOrchestrator:
             )
             log_component_metrics("Embeddings Generator", result.metrics)
 
-            # Mark as failed only if documents were attempted but none
-            # succeeded. If 0 were processed (all skipped/already
-            # embedded), that's a successful resume, not a failure.
-            if successful_embeddings == 0 and len(embedding_results) > 0:
+            # Mark as failed only if at least one document was genuinely
+            # attempted and every attempt failed. A run where every document
+            # was already embedded is a clean resume, and must exit 0.
+            if attempted_results and all(
+                r.status == EmbeddingGenerationStatus.FAILED for r in attempted_results
+            ):
                 result.status = ComponentStatus.FAILED
                 result.error = "No embeddings were successfully generated"
 

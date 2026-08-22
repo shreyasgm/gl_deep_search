@@ -492,6 +492,33 @@ runtime:
         shutil.rmtree(temp_dir)
 
     @pytest.mark.asyncio
+    async def test_too_few_dimensions_fails_the_document(
+        self, st_config_dir, sample_chunks
+    ):
+        """A model returning fewer dims than configured must fail loudly.
+
+        Writing the short vectors would leave the parquet disagreeing with
+        metadata.json, which only surfaces later, at Qdrant ingestion.
+        """
+        config_path = st_config_dir / "config.yaml"
+
+        mock_model = Mock()
+        raw_vectors = np.random.randn(2, 512).astype(np.float32)
+        mock_model.encode.return_value = raw_vectors / np.linalg.norm(
+            raw_vectors, axis=1, keepdims=True
+        )
+
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            return_value=mock_model,
+        ):
+            generator = EmbeddingsGenerator(config_path=config_path)
+
+        texts = [chunk["text_content"] for chunk in sample_chunks]
+        with pytest.raises(ValueError, match="512.*1024"):
+            await generator._generate_embeddings_batch(texts)
+
+    @pytest.mark.asyncio
     async def test_real_sentence_transformer_inference(self, test_storage):
         """Integration test: load real model and generate embeddings.
 

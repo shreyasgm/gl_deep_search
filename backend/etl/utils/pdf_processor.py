@@ -268,9 +268,26 @@ class PDFProcessor:
 
             # Skip if the extracted text is too short (likely a failed extraction)
             if len(full_text) < self.min_chars_per_page:
-                logger.warning(
-                    f"Extracted text too short ({len(full_text)} chars): {pdf_path}"
+                error_msg = (
+                    f"Extracted text too short ({len(full_text)} chars, "
+                    f"minimum {self.min_chars_per_page})"
                 )
+                logger.warning(f"{error_msg}: {pdf_path}")
+                # Must be marked FAILED: a row left IN_PROGRESS is invisible to
+                # get_publications_for_embedding and gets re-extracted on every
+                # run, burning GPU time on a PDF that will never succeed.
+                if self.tracker and publication_id:
+                    try:
+                        self.tracker.update_processing_status(
+                            publication_id,
+                            ProcessingStatus.FAILED,
+                            error=error_msg,
+                        )
+                    except Exception as tracker_error:
+                        logger.warning(
+                            f"Failed to update processing status to FAILED for "
+                            f"{publication_id}: {tracker_error}"
+                        )
                 return None
 
             # Write extracted text to file (atomic: a killed job must not leave

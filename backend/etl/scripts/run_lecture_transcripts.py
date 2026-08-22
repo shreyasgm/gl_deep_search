@@ -8,6 +8,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 
@@ -29,6 +30,13 @@ load_dotenv()
 
 # Initialize OpenAI client
 client = OpenAI()
+
+# Dated model snapshot: an unpinned alias silently changes the cleaned text
+# (and therefore every downstream chunk and embedding) between runs.
+OPENAI_MODEL = "gpt-4.1-nano-2025-04-14"
+
+# Characters that are not safe in an artifact filename
+_SLUG_UNSAFE_PATTERN = re.compile(r"[^A-Za-z0-9]+")
 
 
 # Define Pydantic model for lecture transcript data
@@ -77,7 +85,7 @@ def clean_transcript(transcript_text: str) -> str:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-nano",
+            model=OPENAI_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -88,7 +96,9 @@ def clean_transcript(transcript_text: str) -> str:
                     "content": prompt,
                 },
             ],
-            temperature=0.3,
+            # Deterministic: re-cleaning a transcript must reproduce the same
+            # text, or its chunks and embeddings change on every run.
+            temperature=0,
         )
 
         return response.choices[0].message.content
@@ -129,7 +139,7 @@ def extract_lecture_metadata(
     try:
         # Using the parse method with the Pydantic model
         completion = client.beta.chat.completions.parse(
-            model="gpt-4.1-nano-2025-04-14",
+            model=OPENAI_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -141,7 +151,7 @@ def extract_lecture_metadata(
                 },
             ],
             response_format=LectureTranscript,
-            temperature=0.3,
+            temperature=0,
         )
 
         # Get the parsed data directly as a LectureTranscript object
@@ -158,6 +168,63 @@ def extract_lecture_metadata(
             f"Error extracting metadata for lecture {lecture_number}: {str(e)}"
         )
         raise
+
+
+def derive_lecture_identifiers(stem: str) -> tuple[str, int]:
+    """Derive the artifact identifier and lecture number from a filename stem.
+
+    Artifacts are named ``lecture_{slug}_cleaned.txt`` and
+    ``lecture_{slug}_processed.json``. The slug must be unique per raw
+    transcript: mashing every digit of the filename together used to map
+    ``01_lecture`` and ``1_lecture`` onto the same artifacts, and every
+    digit-less filename onto ``lecture_00_*``, so all but one transcript were
+    silently reported as processed without anything being written.
+
+    Stems that begin with a plain, unpadded lecture number keep the legacy
+    zero-padded slug (``0_intro`` -> ``00``) so the transcripts already
+    cleaned on disk are reused rather than re-cleaned. Every other stem falls
+    back to a sanitized copy of itself, which is unique by construction.
+
+    Args:
+        stem: Filename stem of the raw transcript, e.g. ``"7_growth_cities"``.
+
+    Returns:
+        Tuple of (artifact slug, lecture number). The lecture number is 0 when
+        the filename carries none; it is metadata only and never a filename.
+    """
+    prefix = stem.split("_", 1)[0]
+    try:
+        lecture_number = int(prefix)
+    except ValueError:
+        logger.warning(
+            f"Could not extract a lecture number from filename '{stem}'. "
+            f"Using the filename itself as the artifact identifier."
+        )
+        return _slugify(stem), 0
+
+    if prefix != str(lecture_number):
+        # Zero-padded or otherwise non-canonical ("01", "007"): folding it
+        # onto the legacy name would collide with the canonical spelling.
+        return _slugify(stem), lecture_number
+
+    return f"{lecture_number:02d}", lecture_number
+
+
+def _slugify(stem: str) -> str:
+    """Convert a filename stem into a filename-safe artifact slug.
+
+    Args:
+        stem: Filename stem of the raw transcript.
+
+    Returns:
+        The stem with runs of non-alphanumeric characters replaced by
+        underscores. Never returns digits only, so a slug can never collide
+        with the zero-padded numeric identifiers.
+    """
+    slug = _SLUG_UNSAFE_PATTERN.sub("_", stem).strip("_")
+    if not slug:
+        return "unnamed"
+    return f"n{slug}" if slug.isdigit() else slug
 
 
 def process_single_transcript(
@@ -181,19 +248,11 @@ def process_single_transcript(
         # Create output directories if they don't exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # Extract lecture number from filename or use index if not possible
-        try:
-            # Filenames start with lecture number like "01_lecture.txt"
-            lecture_num = int("".join(filter(str.isdigit, file_path.stem)))
-        except:
-            lecture_num = 0  # Default if unable to extract number
-            logger.warning(
-                f"""Could not extract lecture number from filename
-                {file_path.name}. Using 0 as default."""
-            )
+        # Derive a per-transcript identifier for the artifact filenames
+        lecture_slug, lecture_num = derive_lecture_identifiers(file_path.stem)
 
         # Check if the output file already exists
-        output_file = Path(output_dir) / f"lecture_{lecture_num:02d}_processed.json"
+        output_file = Path(output_dir) / f"lecture_{lecture_slug}_processed.json"
         if output_file.exists():
             logger.info(
                 f"Output file already exists: {output_file}. Skipping processing."
@@ -207,7 +266,7 @@ def process_single_transcript(
         if intermediate_dir:
             os.makedirs(intermediate_dir, exist_ok=True)
             clean_file_path = (
-                Path(intermediate_dir) / f"lecture_{lecture_num:02d}_cleaned.txt"
+                Path(intermediate_dir) / f"lecture_{lecture_slug}_cleaned.txt"
             )
 
             # Check if cleaned transcript already exists
@@ -239,7 +298,7 @@ def process_single_transcript(
             # Save cleaned transcript if intermediate directory is provided
             if intermediate_dir:
                 clean_file_path = (
-                    Path(intermediate_dir) / f"lecture_{lecture_num:02d}_cleaned.txt"
+                    Path(intermediate_dir) / f"lecture_{lecture_slug}_cleaned.txt"
                 )
                 # Atomic: the resume check above reuses any existing cleaned
                 # transcript, so a truncated one would be reused forever.
@@ -251,7 +310,7 @@ def process_single_transcript(
         structured_data = extract_lecture_metadata(cleaned_transcript, lecture_num)
 
         # Save as JSON
-        output_file = Path(output_dir) / f"lecture_{lecture_num:02d}_processed.json"
+        output_file = Path(output_dir) / f"lecture_{lecture_slug}_processed.json"
         # Convert Pydantic model to dict first, then serialize the dict to JSON
         model_dict = structured_data.model_dump()
         atomic_write(output_file, json.dumps(model_dict, indent=2, ensure_ascii=False))

@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from loguru import logger
 
+from backend.etl.models.tracking import ProcessingStatus
 from backend.etl.utils.pdf_processor import PDFProcessor, find_growth_lab_pdfs
 from backend.storage.local import LocalStorage
 
@@ -123,6 +124,33 @@ class TestPDFProcessorUnit:
 
         assert result is None
         processor._backend.extract.assert_not_called()
+
+    def test_short_extraction_marks_publication_failed(
+        self, test_storage, processor_with_mock_backend
+    ):
+        """A too-short extraction must end in FAILED, not stay IN_PROGRESS.
+
+        A row left IN_PROGRESS is invisible to get_publications_for_embedding
+        and the PDF is re-extracted on every run.
+        """
+        processor = processor_with_mock_backend
+        tracker = MagicMock()
+        processor.tracker = tracker
+        processor._backend.extract.return_value.text = "too short"
+
+        pdf_dir = test_storage.get_path("raw/documents/growthlab/pub_short")
+        pdf_dir.mkdir(parents=True)
+        pdf_path = pdf_dir / "paper.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4 fake content")
+
+        assert processor.process_pdf(pdf_path) is None
+
+        statuses = [
+            call.args[1] for call in tracker.update_processing_status.call_args_list
+        ]
+        assert statuses == [ProcessingStatus.IN_PROGRESS, ProcessingStatus.FAILED]
+        error = tracker.update_processing_status.call_args.kwargs["error"]
+        assert "too short" in error
 
     def test_upload_called_after_processing(
         self, test_storage, processor_with_mock_backend

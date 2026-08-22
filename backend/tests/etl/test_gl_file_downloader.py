@@ -448,6 +448,63 @@ async def test_download_publications(file_downloader, sample_publication, tmp_pa
 
 
 @pytest.mark.asyncio
+async def test_download_publications_honours_limit(storage):
+    """limit=N must attempt exactly N publications, not the whole corpus.
+
+    The download loop used to iterate the unsliced input, so --limit
+    downloaded everything and the status updates for publications that were
+    never registered in the tracker silently missed.
+    """
+    publications = [
+        GrowthLabPublication(
+            title=f"Publication {i}",
+            file_urls=[f"https://example.com/file_{i}.pdf"],
+            paper_id=f"gl_test_{i}",
+        )
+        for i in range(5)
+    ]
+
+    tracker = MagicMock()
+    downloader = FileDownloader(
+        storage=storage, concurrency_limit=2, publication_tracker=tracker
+    )
+    downloader.download_delay = 0
+
+    attempted: list[str] = []
+
+    async def mock_download_file(
+        url, destination, referer=None, overwrite=False, resume=True
+    ):
+        attempted.append(url)
+        return DownloadResult(
+            url=url,
+            success=True,
+            file_path=destination,
+            file_size=1000,
+            cached=False,
+        )
+
+    with patch.object(downloader, "download_file", mock_download_file):
+        results = await downloader.download_publications(
+            publications, limit=2, progress_bar=False
+        )
+
+    assert attempted == [
+        "https://example.com/file_0.pdf",
+        "https://example.com/file_1.pdf",
+    ]
+    assert len(results) == 2
+
+    # Every publication that was downloaded must also have been registered
+    registered = {
+        call.args[0].paper_id for call in tracker.add_publication.call_args_list
+    }
+    updated = {call.args[0] for call in tracker.update_download_status.call_args_list}
+    assert registered == {"gl_test_0", "gl_test_1"}
+    assert updated == registered
+
+
+@pytest.mark.asyncio
 async def test_download_growthlab_files(storage, sample_publication, tmp_path):
     """Test download_growthlab_files with real production function."""
     # Save sample publication to a real CSV so load_from_csv works

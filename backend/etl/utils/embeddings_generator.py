@@ -66,6 +66,9 @@ class EmbeddingResult:
     total_tokens: int
     status: EmbeddingGenerationStatus
     error_message: str | None = None
+    # True when embeddings already existed and nothing was generated. Callers
+    # must not treat a run of skipped documents as a failed run.
+    skipped: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary for JSON serialization."""
@@ -230,6 +233,7 @@ class EmbeddingsGenerator:
                         api_calls=0,
                         total_tokens=0,
                         status=EmbeddingGenerationStatus.SUCCESS,
+                        skipped=True,
                     )
 
             # Load chunks from JSON
@@ -405,8 +409,18 @@ class EmbeddingsGenerator:
                     release_gpu_memory()
                     batch_size = new_batch_size
 
+            # A short vector must never be written: the parquet would hold
+            # fewer dimensions than metadata.json (and Qdrant) claim, which
+            # only surfaces much later, at ingestion.
+            model_dimensions = int(vectors.shape[1])
+            if model_dimensions < self.dimensions:
+                raise ValueError(
+                    f"Model returned {model_dimensions}-dimensional embeddings "
+                    f"but {self.dimensions} dimensions are configured"
+                )
+
             # Truncate to configured dimensions (MRL)
-            if vectors.shape[1] > self.dimensions:
+            if model_dimensions > self.dimensions:
                 vectors = vectors[:, : self.dimensions]
                 # Re-normalize after truncation
                 norms = np.linalg.norm(vectors, axis=1, keepdims=True)
@@ -484,6 +498,14 @@ class EmbeddingsGenerator:
                 except Exception as e:
                     logger.error(f"Unexpected error generating embeddings: {e}")
                     raise
+
+        # Same guard as the local path: short vectors must fail the document
+        # loudly rather than reach parquet under a wrong dimension count.
+        if embeddings and len(embeddings[0]) < self.dimensions:
+            raise ValueError(
+                f"Model returned {len(embeddings[0])}-dimensional embeddings "
+                f"but {self.dimensions} dimensions are configured"
+            )
 
         # MRL truncation: trim to configured dimensions and re-normalize
         if embeddings and len(embeddings[0]) > self.dimensions:
@@ -587,7 +609,9 @@ class EmbeddingsGenerator:
             return None
         try:
             pattern = f"processed/chunks/**/{document_id}/chunks.json"
-            matches = storage.glob(pattern)
+            # Sorted: glob order is not guaranteed, and an output path that
+            # varies between runs breaks resume.
+            matches = sorted(storage.glob(pattern))
             if matches:
                 chunks_rel = matches[0]
                 # Replace "chunks" segment with "embeddings" and drop "chunks.json"
@@ -614,7 +638,7 @@ class EmbeddingsGenerator:
             Set of document IDs with a ``chunks.json`` present.
         """
         ids: set[str] = set()
-        for rel in storage.glob("processed/chunks/**/chunks.json"):
+        for rel in sorted(storage.glob("processed/chunks/**/chunks.json")):
             parts = Path(rel).parts
             if len(parts) >= 2:
                 ids.add(parts[-2])
@@ -629,11 +653,13 @@ class EmbeddingsGenerator:
 
         Returns document IDs that have chunks but no existing embeddings.
         """
-        chunk_relatives = storage.glob("processed/chunks/**/chunks.json")
+        # Sorted: glob order is not guaranteed, so an unsorted work list makes
+        # a limited run process a different subset of documents each time.
+        chunk_relatives = sorted(storage.glob("processed/chunks/**/chunks.json"))
 
         # Build set of already-embedded document IDs from parquet paths
         embedded_ids: set[str] = set()
-        for rel in storage.glob("processed/embeddings/**/embeddings.parquet"):
+        for rel in sorted(storage.glob("processed/embeddings/**/embeddings.parquet")):
             parts = Path(rel).parts
             if len(parts) >= 2:
                 embedded_ids.add(parts[-2])
@@ -666,11 +692,14 @@ class EmbeddingsGenerator:
         if storage and hasattr(storage, "glob") and callable(storage.glob):
             try:
                 pattern = f"processed/chunks/**/{document_id}/chunks.json"
-                matches = storage.glob(pattern)
+                # Sorted so the same file is picked on every run.
+                matches = sorted(storage.glob(pattern))
                 if matches:
                     if len(matches) > 1:
-                        logger.warning(
-                            f"Multiple chunks found for {document_id}, "
+                        # Two documents sharing an id is a bug upstream, not a
+                        # situation to resolve silently.
+                        logger.error(
+                            f"Multiple chunks found for {document_id}: {matches}, "
                             f"using: {matches[0]}"
                         )
                     # Download to local cache and return local path
@@ -687,8 +716,13 @@ class EmbeddingsGenerator:
         chunks_base = base_path / "processed" / "chunks"
         if chunks_base.exists():
             pattern = f"**/{document_id}/chunks.json"
-            matches = list(chunks_base.glob(pattern))
+            matches = sorted(chunks_base.glob(pattern))
             if matches:
+                if len(matches) > 1:
+                    logger.error(
+                        f"Multiple chunks found for {document_id}: {matches}, "
+                        f"using: {matches[0]}"
+                    )
                 return matches[0]
 
         return None
@@ -783,6 +817,8 @@ class EmbeddingsGenerator:
         if tracker is None:
             tracker = PublicationTracker()
         results: list[EmbeddingResult] = []
+        # Document ids with no tracker row, reported once at the end.
+        untracked: list[str] = []
 
         def update_status(
             doc_id: str,
@@ -797,9 +833,16 @@ class EmbeddingsGenerator:
                 error: Optional error message
             """
             try:
-                tracker.update_embedding_status(doc_id, status, error=error)
+                updated = tracker.update_embedding_status(doc_id, status, error=error)
             except Exception as e:
-                logger.debug(f"Tracker status update skipped for {doc_id}: {e}")
+                # A locked or corrupt tracker DB must not look like success.
+                logger.warning(f"Tracker update FAILED for {doc_id}: {e}")
+                return
+            if updated is False:
+                # Expected for sources that never register in the tracker
+                # (OpenAlex, lectures). Counted and reported once by the
+                # caller rather than logged per document.
+                untracked.append(doc_id)
 
         try:
             # Disk scan always runs, so untracked documents are never dropped.
@@ -842,9 +885,11 @@ class EmbeddingsGenerator:
             missing = [doc_id for doc_id in work if doc_id not in chunked]
             if missing:
                 work = [doc_id for doc_id in work if doc_id in chunked]
-                logger.info(
+                preview = ", ".join(sorted(missing)[:10])
+                suffix = ", ..." if len(missing) > 10 else ""
+                logger.warning(
                     f"Skipping {len(missing)} tracker-listed documents with no "
-                    f"chunks on disk (nothing to embed yet)"
+                    f"chunks on disk (nothing to embed yet): {preview}{suffix}"
                 )
 
             # Apply the limit once, to the merged list
@@ -894,6 +939,15 @@ class EmbeddingsGenerator:
                 except Exception as e:
                     logger.error(f"Error processing {doc_id}: {e}")
                     update_status(doc_id, EmbeddingStatus.FAILED, error=str(e))
+
+            if untracked:
+                # Expected for OpenAlex and lecture transcripts, which are not
+                # registered in the tracker. Reported once so genuine
+                # tracker/disk divergence is still noticeable.
+                logger.info(
+                    f"{len(untracked)} embedded documents have no tracker row "
+                    f"(normal for OpenAlex and lectures)"
+                )
 
             return results
 

@@ -24,6 +24,14 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+class OpenAlexPageError(RuntimeError):
+    """Raised when a page of OpenAlex results cannot be fetched.
+
+    Distinguishes a hard failure from a legitimate end-of-results, so a
+    truncated manifest is never reported as a complete one.
+    """
+
+
 class OpenAlexClient:
     """Client for the OpenAlex API"""
 
@@ -100,8 +108,13 @@ class OpenAlexClient:
 
             retries += 1
 
-        logger.error(f"Failed to fetch {url} after {retries} retries")
-        return [], None
+        # Do NOT return ([], None) here. That is indistinguishable from
+        # "no more pages", so the caller would stop early and report a
+        # truncated manifest as a complete one.
+        raise OpenAlexPageError(
+            f"Failed to fetch {url} after {retries} retries; refusing to "
+            f"report a partial result set as complete"
+        )
 
     async def fetch_all_pages(self) -> list[dict[str, Any]]:
         """Fetch all pages of results from OpenAlex API"""
@@ -118,12 +131,19 @@ class OpenAlexClient:
                         all_results.extend(results)
                         pbar.update(1)
                         pbar.set_postfix({"total": len(all_results)})
-                        cursor = next_cursor
                     else:
+                        # An empty page is legitimate at the end of the result
+                        # set. Count it so a pathological server that keeps
+                        # handing back a cursor cannot loop forever.
                         overall_retries += 1
-                        if not next_cursor:
-                            # No more pages
-                            break
+
+                    if not next_cursor:
+                        break
+                    # Advance even on an empty page — the old code only
+                    # advanced when results were non-empty, so an empty page
+                    # with a valid cursor re-fetched itself until the retry
+                    # budget ran out.
+                    cursor = next_cursor
 
         logger.info(f"Fetched {len(all_results)} results from OpenAlex")
         return all_results

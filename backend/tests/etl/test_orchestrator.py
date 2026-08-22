@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -682,6 +682,139 @@ class TestETLOrchestrator:
 
                     assert processor.process_pdf.call_count == len(discovered)
                     assert result.metrics["files_processed"] == len(discovered)
+
+    @pytest.mark.asyncio
+    async def test_pdf_processor_sorts_and_deduplicates(self):
+        """PDFs are processed once each, in a stable order.
+
+        A repeated source (``--sources growthlab growthlab``) used to process
+        every PDF twice, and the unsorted work list made a limited or
+        interrupted run cover a different subset each time.
+        """
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "config.yaml"
+            config_path.write_text("test_config: true")
+
+            config = OrchestrationConfig(
+                config_path=config_path, sources=["growthlab", "growthlab"]
+            )
+            discovered = [
+                Path("/tmp/pdfs/doc_2.pdf"),
+                Path("/tmp/pdfs/doc_0.pdf"),
+                Path("/tmp/pdfs/doc_1.pdf"),
+            ]
+
+            with patch("backend.etl.orchestrator.logger"):
+                orchestrator = ETLOrchestrator(config)
+
+                with (
+                    patch(
+                        "backend.etl.orchestrator.find_pdfs", return_value=discovered
+                    ),
+                    patch(
+                        "backend.etl.orchestrator.PDFProcessor"
+                    ) as mock_processor_cls,
+                ):
+                    processor = mock_processor_cls.return_value
+                    processor.process_pdf.return_value = Path("/tmp/out.md")
+
+                    result = ComponentResult(
+                        component_name="PDF Processor",
+                        status=ComponentStatus.RUNNING,
+                    )
+                    await orchestrator._run_pdf_processor(result)
+
+                    processed = [
+                        call.args[0] for call in processor.process_pdf.call_args_list
+                    ]
+                    assert processed == sorted(discovered)
+
+
+class TestEmbeddingsGeneratorComponent:
+    """Test the embeddings component's success and failure accounting."""
+
+    @staticmethod
+    def _embedding_result(status, total_embeddings, skipped):
+        """Build an EmbeddingResult for the component under test."""
+        from backend.etl.utils.embeddings_generator import EmbeddingResult
+
+        return EmbeddingResult(
+            document_id="doc",
+            source_path=Path("chunks.json"),
+            embeddings=[],
+            total_embeddings=total_embeddings,
+            processing_time=0.1,
+            api_calls=0,
+            total_tokens=0,
+            status=status,
+            skipped=skipped,
+        )
+
+    async def _run_component(self, embedding_results) -> ComponentResult:
+        """Run _run_embeddings_generator against a stubbed generator."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "config.yaml"
+            config_path.write_text("test_config: true")
+
+            config = OrchestrationConfig(config_path=config_path)
+            with patch("backend.etl.orchestrator.logger"):
+                orchestrator = ETLOrchestrator(config)
+            orchestrator.etl_config = {
+                "file_processing": {"embedding": {"model": "sentence_transformer"}}
+            }
+            orchestrator.storage = MagicMock()
+            orchestrator.storage.exists.return_value = True
+            orchestrator.storage.glob.return_value = ["processed/chunks/a/chunks.json"]
+
+            generator = MagicMock()
+            generator.process_all_documents = AsyncMock(return_value=embedding_results)
+
+            result = ComponentResult(
+                component_name="Embeddings Generator",
+                status=ComponentStatus.RUNNING,
+            )
+            with (
+                patch("backend.etl.orchestrator.logger"),
+                patch(
+                    "backend.etl.orchestrator.EmbeddingsGenerator",
+                    return_value=generator,
+                ),
+            ):
+                await orchestrator._run_embeddings_generator(result)
+            return result
+
+    @pytest.mark.asyncio
+    async def test_fully_skipped_run_is_not_a_failure(self):
+        """A resume where every document is already embedded must not fail.
+
+        The skip path returns SUCCESS with total_embeddings=0, which used to
+        be counted as "attempted and produced nothing" and exited non-zero.
+        """
+        from backend.etl.utils.embeddings_generator import EmbeddingGenerationStatus
+
+        results = [
+            self._embedding_result(EmbeddingGenerationStatus.SUCCESS, 0, skipped=True)
+            for _ in range(3)
+        ]
+        result = await self._run_component(results)
+
+        assert result.status == ComponentStatus.RUNNING
+        assert result.error is None
+        assert result.metrics["skipped_documents"] == 3
+
+    @pytest.mark.asyncio
+    async def test_all_attempts_failing_is_a_failure(self):
+        """A document that was attempted and failed still fails the component."""
+        from backend.etl.utils.embeddings_generator import EmbeddingGenerationStatus
+
+        results = [
+            self._embedding_result(EmbeddingGenerationStatus.SUCCESS, 0, skipped=True),
+            self._embedding_result(EmbeddingGenerationStatus.FAILED, 0, skipped=False),
+        ]
+        result = await self._run_component(results)
+
+        assert result.status == ComponentStatus.FAILED
+        assert result.error == "No embeddings were successfully generated"
 
 
 class TestMainFunction:
