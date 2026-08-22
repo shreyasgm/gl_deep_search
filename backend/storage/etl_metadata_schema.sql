@@ -35,6 +35,12 @@ CREATE TABLE IF NOT EXISTS publication_tracking (
     ingestion_timestamp TIMESTAMP,                            -- When ingestion was completed or failed
     ingestion_attempt_count INTEGER NOT NULL DEFAULT 0,       -- Number of ingestion attempts
 
+    -- Tagging stage
+    tagging_status VARCHAR(20) NOT NULL DEFAULT 'Pending',  -- Pending, Tagged, Failed
+    tagging_timestamp TIMESTAMP,                            -- When tagging was completed or failed
+    tagging_attempt_count INTEGER NOT NULL DEFAULT 0,       -- Number of tagging attempts
+    tags TEXT,                                              -- JSON dict with taxonomy keys (regions, topics, etc.)
+
     -- General tracking
     last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- Timestamp of last modification
     error_message TEXT,                                         -- Most recent error message (if any)
@@ -43,7 +49,8 @@ CREATE TABLE IF NOT EXISTS publication_tracking (
     CHECK (download_status IN ('Pending', 'In Progress', 'Downloaded', 'Failed')),
     CHECK (processing_status IN ('Pending', 'In Progress', 'Processed', 'OCR_Failed', 'Chunking_Failed', 'Failed')),
     CHECK (embedding_status IN ('Pending', 'In Progress', 'Embedded', 'Failed')),
-    CHECK (ingestion_status IN ('Pending', 'In Progress', 'Ingested', 'Failed'))
+    CHECK (ingestion_status IN ('Pending', 'In Progress', 'Ingested', 'Failed')),
+    CHECK (tagging_status IN ('Pending', 'In Progress', 'Tagged', 'Failed'))
 );
 
 -- Create indexes for efficient querying
@@ -51,6 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_pub_download_status ON publication_tracking(downl
 CREATE INDEX IF NOT EXISTS idx_pub_processing_status ON publication_tracking(processing_status);
 CREATE INDEX IF NOT EXISTS idx_pub_embedding_status ON publication_tracking(embedding_status);
 CREATE INDEX IF NOT EXISTS idx_pub_ingestion_status ON publication_tracking(ingestion_status);
+CREATE INDEX IF NOT EXISTS idx_pub_tagging_status ON publication_tracking(tagging_status);
 CREATE INDEX IF NOT EXISTS idx_pub_last_updated ON publication_tracking(last_updated);
 CREATE INDEX IF NOT EXISTS idx_pub_title ON publication_tracking(title);
 CREATE INDEX IF NOT EXISTS idx_pub_year ON publication_tracking(year);

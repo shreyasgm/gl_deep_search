@@ -106,7 +106,6 @@ def ensure_db_initialized():
     if schema_path.exists():
         init_db(schema_path)
     else:
-        # Just create the SQLModel tables if no schema file
         init_db()
         logger.warning(
             f"Schema file not found at {schema_path}, created tables from SQLModel only"

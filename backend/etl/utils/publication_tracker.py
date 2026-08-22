@@ -23,6 +23,7 @@ from backend.etl.models.tracking import (
     IngestionStatus,
     ProcessingStatus,
     PublicationTracking,
+    TaggingStatus,
 )
 
 # Import scraper classes for publication discovery
@@ -395,7 +396,7 @@ class PublicationTracker:
         self,
         publication_id: str,
         stage: str,
-        status: DownloadStatus | ProcessingStatus | EmbeddingStatus | IngestionStatus,
+        status: DownloadStatus | ProcessingStatus | EmbeddingStatus | IngestionStatus | TaggingStatus,
         error: str | None = None,
         session: Session | None = None,
     ) -> bool:
@@ -500,6 +501,81 @@ class PublicationTracker:
         return self._update_publication_status(
             publication_id, "ingestion", status, error, session
         )
+
+    def update_tagging_status(
+        self,
+        publication_id: str,
+        status: TaggingStatus,
+        error: str | None = None,
+        session: Session | None = None,
+    ) -> bool:
+        """
+        Update tagging status for a publication in the manifest.
+
+        This method is called by the document tagger to record
+        progress through the tagging stage of the ETL pipeline.
+        """
+        return self._update_publication_status(
+            publication_id, "tagging", status, error, session
+        )
+
+    def update_tags(
+        self,
+        publication_id: str,
+        tags: dict,
+        session: Session | None = None,
+    ) -> bool:
+        """Persist the tags dict to the tags_json column for a publication.
+
+        Args:
+            publication_id: Unique identifier of the publication.
+            tags: Dict with taxonomy keys (regions, topics, document_type, methodology).
+            session: Optional database session.
+
+        Returns:
+            True if record was found and updated, False otherwise.
+        """
+        import json as _json
+
+        with self._get_session(session) as sess:
+            stmt = select(PublicationTracking).where(
+                PublicationTracking.publication_id == publication_id
+            )
+            pub = sess.exec(stmt).first()
+            if not pub:
+                logger.warning(
+                    f"Publication not found when saving tags: {publication_id}"
+                )
+                return False
+            pub.tags_json = _json.dumps(tags)
+            pub.last_updated = __import__("datetime").datetime.now()
+            sess.add(pub)
+            sess.commit()
+            return True
+
+    def get_publications_for_tagging(
+        self, limit: int | None = None, session: Session | None = None
+    ) -> list[PublicationTracking]:
+        """Get publications that need to be tagged.
+
+        Only returns publications that have been successfully processed
+        (processing_status == PROCESSED) and not yet tagged.
+
+        Args:
+            limit: Optional limit on number of publications to return.
+            session: Optional database session to use.
+
+        Returns:
+            List of publications to tag.
+        """
+        with self._get_session(session) as sess:
+            stmt = select(PublicationTracking).where(
+                PublicationTracking.processing_status == ProcessingStatus.PROCESSED,
+                PublicationTracking.tagging_status == TaggingStatus.PENDING,
+            )
+            if limit:
+                stmt = stmt.limit(limit)
+            return list(sess.exec(stmt))
 
     def get_publications_for_download(
         self, limit: int | None = None, session: Session | None = None
@@ -628,3 +704,24 @@ class PublicationTracker:
                 "ingestion_status": pub.ingestion_status,
                 "error_message": pub.error_message,
             }
+
+    def get_publication(
+        self, publication_id: str, session: Session | None = None
+    ) -> PublicationTracking | None:
+        """Return the full PublicationTracking record for a given ID.
+
+        Args:
+            publication_id: Unique identifier of the publication.
+            session: Optional database session to use.
+
+        Returns:
+            PublicationTracking instance, or None if not found.
+        """
+        with self._get_session(session) as sess:
+            stmt = select(PublicationTracking).where(
+                PublicationTracking.publication_id == publication_id
+            )
+            pub = sess.exec(stmt).first()
+            if pub:
+                sess.expunge(pub)
+            return pub
