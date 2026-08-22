@@ -409,6 +409,45 @@ The only lecture content in the index is 147 chunks from one smoke-test transcri
 
 ---
 
+## ETL hardening, 2026-08-22 — the pipeline is now crash-safe
+
+A full audit of every stage up to and including embeddings, then fixes. The goal was a pipeline nobody has to revisit: a re-run after a crash must not duplicate work, silently skip work, or lose work.
+
+### The three that mattered most
+
+**1. Half the pipeline's logging was being thrown away.** `pdf_processor`, `gl_file_downloader`, `oa_file_downloader`, `growthlab` and `publication_tracker` all log through the **standard library**, while the orchestrator configured **only loguru** and installed no `InterceptHandler`. With no root handler, stdlib INFO records were discarded outright and WARNING/ERROR fell through to `logging.lastResort` as bare stderr. **This is the 16-hour silence** during PDF extraction — every progress line existed and was dropped on the floor. The standalone `run_*.py` scripts each installed their own interceptor, so the gap existed only on the orchestrated path. Fixed with `backend/etl/utils/logging_bridge.py`, verified empirically.
+
+**2. Any non-clean exit discarded the entire run.** The job stages data to node-local `/scratch` and previously copied it back only from a bash `EXIT` trap. SLURM terminates on TIMEOUT, `scancel`, node failure and OOM-kill via SIGTERM then SIGKILL. A 17-hour run dying at hour 16 lost everything, including the tracker rows that would have said what was done. Now: `--signal=B:USR1@900`, traps on USR1/TERM/INT, idempotent cleanup, and an incremental sync every 15 minutes so at most that much is ever at risk. All three exit paths tested — including that a pipeline failure still propagates its exit code rather than being masked by the sync.
+
+**3. Truncated downloads were treated as complete, forever.** Both downloaders streamed the HTTP body straight to the final path, and the resume check accepted any file over 1024 bytes as done. Validation checks only size bounds and the first bytes of magic, so a truncated PDF passes — then gets extracted, chunked, embedded, and nothing ever revisits it. **This silently corrupts the corpus rather than merely wasting time.** Downloads now stream to a `.part` sidecar, verify `Content-Length` against bytes actually written, and `os.replace()` into place only on success. PDF discovery skips `.part` files, which it would otherwise have sniffed by magic bytes and processed as documents.
+
+### Everything else fixed
+
+| Item | Was | Now |
+|---|---|---|
+| Artifact writes | Written directly to the final path; a crash mid-write left a partial file every resume check accepted | `atomic_io.atomic_write` — temp file in the same directory, `fsync`, `os.replace`. Applied at all 8 sites |
+| Lecture transcripts | 24 written flat into one directory, collapsed onto one `document_id`, 23 silently lost | One directory per transcript + a chunker collision guard that logs an ERROR naming both files |
+| Lecture ids | `int("".join(filter(str.isdigit, stem)))` — `01_lecture` and `1_lecture` collided; bare `except:` mapped every digitless name to `0` | Stable slug, verified to reproduce all 24 existing artifact names so nothing is orphaned or re-cleaned |
+| Transcript cleaning | `temperature=0.3`, unpinned model — same input gave different text, chunks, embeddings | `temperature=0`, pinned dated snapshot, both calls |
+| PDF short-text path | Returned without touching the tracker; row stuck IN_PROGRESS forever and the PDF re-extracted at ~145s **every run** | Marked FAILED with the reason |
+| `--limit` (GL downloader) | Sliced the list then iterated the **unsliced** one — a "test run" downloaded the whole corpus | Iterates the slice |
+| Clean resume | "Already embedded, skipping" returns SUCCESS with 0 embeddings, which the orchestrator counted as total failure — **a no-op resume exited 1** | Skips counted separately; a fully-skipped run exits 0 |
+| Glob ordering | Unsorted, so a limited run processed a different subset each time and a crash left a different half done | All globs sorted; PDF discovery de-duplicated (also fixes `--sources growthlab growthlab` doing everything twice) |
+| Embedding dimensions | A model returning **fewer** dims than configured was written to parquet while metadata claimed the configured count | Fails the document loudly, both local and OpenRouter paths |
+| OpenAlex pagination | Returned `([], None)` on exhausted retries — indistinguishable from "no more pages", so a mid-corpus failure silently truncated the manifest and reported success | Raises. An empty page with a valid cursor also now advances instead of re-fetching itself |
+| HTML landing pages | Passed validation as documents, inflating the download count and marking publications DOWNLOADED before producing nothing | Failed download, logged |
+| Tracker failures | Exceptions logged at DEBUG — a locked database looked like success | WARNING; missing rows counted and reported once |
+| `%s` in loguru calls | Four rendered literally, including one on a failure path | f-strings |
+
+### Known limitations, deliberately not fixed
+
+- **Multi-file publications can still lose a document.** `document_id` and the chunks path both come from the parent directory, so two processable files in one publication directory collide. Today the second file in the three affected directories is an HTML landing page (now rejected outright), so nothing is actually lost — and the new collision guard makes it a loud ERROR rather than a silent drop. A real fix means separating `publication_id` from `document_id`, which changes the tracker key for all 358 existing documents. Not worth it while the count is zero.
+- **OpenAlex has no tracker rows at all**, so nothing records which DOIs were already probed and found non-OA; each run re-probes. Costs ~5 minutes per run. Left alone while OpenAlex is deferred.
+- **One shared `error_message` column** across stages — a later stage's success erases an earlier stage's failure reason. Schema change; deferred.
+- **Cloud storage path is unverified** (`--storage-type local` is pinned in the sbatch). Several latent bugs there if Cloud Run is ever revived.
+
+---
+
 ## What GitHub says (reviewed 2026-08-22)
 
 The board is badly out of date and should not be trusted as a plan. Project #2 contains only issues #1–#31; **every 2026 issue (#41–#49) is missing from it**, including both `critical-path` items. Milestones are 17 months overdue, and the ETL milestone still describes deployment on Cloud Run, which is wrong — it runs on SLURM.
