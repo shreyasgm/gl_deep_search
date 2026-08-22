@@ -18,7 +18,11 @@ Three things are true right now:
 
 So the system still cannot answer a search query — the same headline as November — but the gap is now one integration step wide, not three components wide.
 
-**Update, end of 2026-08-21:** points 1 and 2 are being resolved right now — a full-corpus run (job `40971461`, ~24h) is in flight after a staged rollout that fixed six distinct blockers. Point 3 is untouched and is the real remaining work: **stand up Qdrant and ingest.** See [Staged rollout](#staged-rollout-2026-08-21) and [What to do next](#what-to-do-next).
+**Update, 2026-08-22 — the corpus is built.** The full run completed in 17h15m with zero errors: **29,285 embeddings from 374 extracted documents**, all sitting in `data/processed/embeddings/` on the cluster. Points 1 and 2 above are resolved.
+
+**Point 3 is unchanged and is now the whole job: nothing has ever reached a vector store.** The pipeline ends at embeddings — there is no ingestion component, and `ingestion_status` is `PENDING` for all 449 rows. Two things must be decided before writing that code: **which vector store** (GitHub #49 argues for pgvector over Qdrant, and it was never settled), and **whether to merge PR #51 first** so the corpus lands with filterable tags instead of needing re-ingestion.
+
+Two data gaps to close alongside it: **23 of 24 lecture transcripts are missing** from the index (see below), and OpenAlex coverage is 14 of 332 (deferred by decision).
 
 ---
 
@@ -70,10 +74,10 @@ The baked-in orchestrator is 36 KB; current `main` is 46 KB. The sbatch script (
 |---|---|---|
 | **Growth Lab scraper** | ✅ Working | 449 publications, 452 file URLs |
 | **GL file downloader** | ✅ Working | 417/452 succeeded (92%) |
-| **OpenAlex scraper + downloader** | ✅ Ran on cluster 2026-08-21 | 332 publications scraped in the smoke test. Note the scraper ignores `--scraper-limit`; only the downloader honours a limit |
-| **PDF processor (Marker/CUDA)** | ✅ Working | 331/336 extracted. 13.1 hours on an A100 — the dominant cost |
-| **Lecture transcripts** | ✅ Ran on cluster 2026-08-21 | 1/1 in the smoke test; all 24 included in the production run. Each makes an LLM call — cap with `TRANSCRIPTS_LIMIT` |
-| **Text chunker** | ✅ Working | 24,039 chunks, 0 failures. The Nov token-limit bug is fixed |
+| **OpenAlex scraper + downloader** | ⚠️ Scrapes fine, retrieves almost nothing | 332 scraped, 14 PDFs retrieved. Sci-Hub unreachable and publisher hosts Cloudflare-block the OA route (§4c). scidownl removed 2026-08-22. Deferred by decision |
+| **PDF processor (Marker/CUDA)** | ✅ Working | 374/379 extracted (98.7%) on 2026-08-22. 16.2h on an A100 — still the dominant cost, ~145s/PDF |
+| **Lecture transcripts** | ⚠️ Cleaned but not indexed | 24/24 cleaned on 2026-08-22, but only 1 reached the index — writes flat into one directory, so the chunker collapses them |
+| **Text chunker** | ⚠️ Works, but collapses lecture transcripts | 29,285 chunks, 0 failures. Derives `document_id` from the parent directory, so flat-written transcripts collide — 23 of 24 lost |
 | **Embeddings (Qwen3-8B local)** | ✅ Fixed 2026-08-21 | Feb: 266/304, all 38 failures CUDA OOM. Now loads in bf16 with a capped sequence length; work list is disk-driven so nothing is silently dropped |
 | **Qdrant ingestion** | 🔴 Never executed | `ingest_to_qdrant.py` exists and is unit-tested. `ingestion_status = PENDING` × 449 |
 | **Vector DB instance** | 🔴 Does not exist | No local container, no Compose service, no cloud instance. `qdrant_url` defaults to `localhost:6333` |
@@ -365,7 +369,79 @@ Image matches checkout.
 
 The 331 processed rows are exactly the 293 `EMBEDDED` + 38 `FAILED`. The tracker will *never* return them, so **only disk discovery can reach those 331 documents**. Without the union fix they would have been chunked and then silently dropped. Verified no rows were flipped to `FAILED` by the run (38 before, 38 after).
 
-### Gate 3 — full production run (job `40971461`)
+### Gate 3 — full production run (job `40971461`) — ✅ COMPLETED 2026-08-22
+
+**17h15m, exit 0, zero errors.** MaxRSS **16.2 GB** against 100 G requested — that is now representative evidence, so 24–32 G is right for the next run.
+
+| Stage | Result |
+|---|---|
+| Growth Lab scraper | 460 publications (11 new since February) |
+| GL file downloader | 451 / 472 (95.5%) |
+| OpenAlex scraper | 332 publications |
+| OpenAlex downloader | 14 / 250 (12 open-access) — see §4c |
+| PDF processor | **374 / 379 extracted (98.7%)**, 16.2h |
+| Lecture transcripts | 24 cleaned — **but not indexed, see below** |
+| Text chunker | 29,285 chunks, 0 failures |
+| **Embeddings** | **29,285 created, 0 failures**, 36 min |
+
+**Both 2026-08-21 fixes proved themselves in production:**
+
+- **The OOM fix:** 0 embedding failures against February's 38, and the stage ran **6× faster** — 36 min vs 3h42m — from bf16 loading.
+- **The disk-driven fix was load-bearing.** The log reads `Embedding 369 documents (95 from tracker, 274 discovered on disk)`. The tracker returned 95, so under the old either/or logic the disk fallback would never have fired and **274 of 369 documents (74%) would have been silently dropped.** That single bug would have wasted the entire run.
+
+Verified afterwards: vector dimension is **1024** in the produced parquet, matching `config.yaml`, `ServiceSettings.embedding_dimensions`, and `ingest_to_qdrant.py`. This closes the dimensionality-mismatch risk flagged in GitHub issue #46.
+
+### 🔴 New bug found in the output: 23 of 24 lecture transcripts are missing
+
+All 24 transcripts were cleaned successfully, but only **one** reached the index. The chunker log is explicit:
+
+```
+Chunks already exist for processed/documents/lecture_transcripts/0_intro.txt, skipping
+Chunks already exist for processed/documents/lecture_transcripts/10_growth_diagnostics_questions.txt, skipping
+... (all 24)
+```
+
+**Mechanism.** PDFs are written one directory per document — `processed/documents/growthlab/<pub_id>/file.txt` — and the chunker derives `document_id` from the parent directory. Lecture transcripts are instead written **flat into a single directory**, so all 24 resolve to the same `document_id` (`lecture_transcripts`) and the same output path, `chunks/documents/lecture_transcripts/chunks.json`. That file already existed from the smoke test, so the skip-if-exists check discarded all 24.
+
+The only lecture content in the index is 147 chunks from one smoke-test transcript.
+
+**Fix:** have the lecture transcripts processor write each transcript into its own subdirectory, matching the growthlab/openalex layout. Then delete the stale `chunks/documents/lecture_transcripts/` artifacts so they get regenerated. Cheap to re-run — chunking and embedding are minutes, not hours, since no PDF extraction is involved.
+
+---
+
+## What GitHub says (reviewed 2026-08-22)
+
+The board is badly out of date and should not be trusted as a plan. Project #2 contains only issues #1–#31; **every 2026 issue (#41–#49) is missing from it**, including both `critical-path` items. Milestones are 17 months overdue, and the ETL milestone still describes deployment on Cloud Run, which is wrong — it runs on SLURM.
+
+**There is no GitHub issue for Qdrant ingestion.** It exists only as checklist item 7 inside #48.
+
+### The item that should change the plan
+
+**#49 — "Explore pgvector instead of Qdrant". The vector store is not actually decided.** The argument: if a checkpoint DB on Cloud SQL is needed anyway, pgvector may beat paid Qdrant. No comments, no decision recorded. `ingest_to_qdrant.py` may rest on an undecided premise. **Resolve this before writing more ingestion code.**
+
+### Things GitHub knows that this repo does not
+
+1. **#19's audit independently confirms the gap and prescribes the pattern** — *"Ingestion stage completely unused. All 517 records show PENDING."* It also found the orchestrator follows file paths rather than the tracker, and concluded ingestion must be **disk-driven**. That is exactly the pattern shipped for embeddings on 2026-08-21; build ingestion the same way.
+2. **An un-filed product scope sits in #19's comments**: a collaborative publication-management platform for the **Growth Lab comms team (5–10 users)** — manual entry, metadata correction, PDF uploads, webhook-triggered reprocessing, on Supabase with auth. Designed in detail, closed NOT_PLANNED, replacement issue promised but never created. Real stakeholder-facing scope, currently invisible.
+3. **PR #51 (`feat/chunk-tagger`) interacts with ingestion ordering.** It writes LLM document tags into chunk metadata specifically to enable Qdrant payload filters. Ingest first and the whole 29,285-chunk corpus lands without filterable tags and needs re-ingesting. Only 9 commits behind main.
+4. **Three blind spots with zero issues**: evaluation / retrieval-quality harness, data licensing, and hosting the search service itself (#30 covers only the dead ETL monitor).
+5. **Incremental updates do not exist** (#8, closed NOT_PLANNED). Fine for a one-shot corpus build; a problem the second time you refresh.
+
+### GitHub housekeeping
+
+| Action | Items |
+|---|---|
+| Close as done | #45 (already fixed on main), #46 (Qwen3 live), #43 (superseded by the full run) |
+| Close as a group | #28–#31 — all depend on the publication tracker that #19 closed as "fundamentally broken" |
+| Retitle, don't close | #41, #42 — bodies claim `backend/service/` and `frontend/` are empty; both exist. Real work is running them against real data |
+| Salvage | PR #51 (chunk tagger), PR #50 (pdf limit — overlaps the `--pdf-limit` added 2026-08-21, but at the standalone-script layer) |
+| Abandon | PRs #33, #37, #38, #39 — all conflicting, all tied to dead issues |
+| Delete outright | branch `feature/openalex-downloader` — zero unique commits |
+
+Branch count is **10**, not the ~15 stated earlier in this document.
+
+
+### Gate 3 sizing (as planned, for reference)
 
 Submitted `SOURCES=all` with no limits, 48h limit, tracking DB backed up first. Sized from measured evidence:
 

@@ -65,6 +65,10 @@ def sample_cleaned_transcript():
 
 
 # Unit test for clean_transcript
+# Integration: hits a real LLM endpoint.
+# clean_transcript() calls the OpenAI API, and the assertions depend on
+# LLM output (length, leading words), so this is non-deterministic.
+@pytest.mark.integration
 def test_clean_transcript(sample_raw_transcript):
     # Limit the raw transcript to the first 500 characters for testing
     limited_raw_transcript = sample_raw_transcript[:500]
@@ -87,6 +91,9 @@ def test_clean_transcript(sample_raw_transcript):
 
 
 # Unit test for extract_lecture_metadata
+# Integration: hits a real LLM endpoint.
+# extract_lecture_metadata() calls the OpenAI API.
+@pytest.mark.integration
 def test_extract_lecture_metadata(sample_cleaned_transcript):
     lecture_number = 0
     metadata = extract_lecture_metadata(sample_cleaned_transcript, lecture_number)
